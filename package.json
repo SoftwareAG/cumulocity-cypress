@@ -1,7 +1,7 @@
 {
-  "name": "@c8y/cumulocity-cypress",
-  "version": "0.0.26",
-  "description": "Shared Cypress commands for Cumulocity development builds",
+  "name": "@softwareag/cumulocity-cypress",
+  "version": "0.1.0",
+  "description": "Cypress commands for Cumulocity",
   "main": "lib/commands/index.js",
   "scripts": {
     "start-server": "http-server app/ --port 8080 --silent --mimetypes custom_mime_types.types",
@@ -14,10 +14,7 @@
     "build": "\"$npm_execpath\" run clean && \"$npm_execpath\" run copy-files && cd dist/ && \"$npm_execpath\" run clean-package-json && tsc",
     "clean-package-json": "npm pkg delete 'devDependencies' &&  npm pkg delete 'scripts'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:SoftwareAG/cumulocity-cypress.git"
-  },
+  "repository": "https://github.com/SoftwareAG/cumulocity-cypress.git",
   "keywords": [
     "cypress"
   ],
