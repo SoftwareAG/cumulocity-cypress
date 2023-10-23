@@ -1,0 +1,418 @@
+# Cypress commands for Cumulocity
+
+Collection of commands and utilities to be used for automating tests for Cumulocity with Cypress. Also use the repository to discuss questions and issues with Cypress tests for Cumulocity.
+
+Contribute by raising pull requests. All commands must be documented and, if possible, tested using test suite in this repository.
+
+# Commands
+
+Current set of commands include
+
+- `login`
+- `setAuth` and `useAuth`
+- `setLanguage`
+- `hideCookieBanner`
+- `disableGainsights`
+- `getCurrentTenant` and `getTenantId`
+- `visitAndWaitForSelector`
+- `toDate` and `toISODate`
+- `c8yclient`
+- `createUser` and `deleteUser`
+
+# Install
+
+There is different ways to install and use the shared custom commands in your repository. Simplest way is to add npm package dependency.
+
+...
+
+# Development
+
+Use following commands to run tests locally:
+
+```bash
+> npm run test:open
+```
+
+```bash
+> npm run test
+```
+
+Build into `dist` folder by calling
+
+```bash
+> npm run build
+```
+
+# Additional frameworks
+
+Other frameworks that might help improve efficiency, quality and reliability of Cypress tests include:
+
+- [cypress-commands](https://github.com/Lakitna/cypress-commands)
+- [cypress-map](https://github.com/bahmutov/cypress-map)
+- [cypress-recurse](https://github.com/bahmutov/cypress-recurse)
+
+# Concepts
+
+To use the custom commands provided in this library across different projects, it comes with some concepts to allow more flexible use.
+
+The most important use case has been accessing credentials for authentication, as probably every project uses a different approach to pass credentials into it's tests.
+
+## Authentication and credentials
+
+This library supports different ways to configure authentication and credentials in your tests. The `getAuth` and `useAuth` commands create or read authentication options from environment and pass or configure it for given commands or the entire test.
+
+Within this library, all commands must use and support authentication based on `C8yAuthOptions`. `C8yAuthOptions` are compatible with authentication options used in
+
+- `cy.request()` as defined in [HTPP Authentication](https://github.com/request/request#http-authentication)
+- `ICredentials` as defined by `c8y/client`
+
+### Authentication via getAuth and useAuth commands
+
+For accessing authentication credentials, the `getAuth()` and `useAuth()` commands are provided. Both accept any arguments and create, if possible, a `C8yAuthOptions` object.
+
+```typescript
+// get auth options from Cypress env variables, test annotation or cy.useAuth()
+cy.getAuth();
+
+// user "admin" and password from "admin_password" Cypress env variable
+cy.getAuth("admin");
+
+// user and password given as strings
+cy.getAuth("admin", "password");
+
+// use C8yAuthOptions (for chaining commands)
+cy.getAuth({ user: "admin", password: "password" });
+```
+
+`getAuth()` and `useAuth()` support chaining by accepting arguments as previous subjects. All commands requiring authentication should accept `C8yAuthOptions` object as it's first (previous subject) argument.
+
+```typescript
+// without chaining
+cy.getAuth().then((auth) => {
+  cy.createUser(auth, "newuser");
+});
+
+// with chaining
+cy.getAuth().createUser("newuser");
+```
+
+With `useAuth()` the `C8yAuthOptions` object will be available for all commands within the scope of the test. Use if there is more than one command requiring authentication or if not all commands in a chain yield auth options.
+
+```typescript
+cy.useAuth("admin");
+
+cy.deleteUser("newuser");
+cy.createUser({
+  userName: "newuser",
+  password: "newpassword",
+  email: "newuser@example.com",
+  displayName: "New User",
+});
+cy.getApplicationsByName("OEE").subscribeApplications("newuser");
+
+// using getAuth() to pass auth options into login will override the
+// authentication options configured via cy.useAuth()
+cy.getAuth("newuser").login();
+```
+
+### Authentication via test case annotations
+
+Instead of calling `useAuth()`, it is also possible to annotate the test with authentication options.
+
+```typescript
+it(
+  "my test requiring authentication",
+  { auth: { user: "myadmin", password: "mypassword" } },
+  () => {
+    // commands will use auth passed from annotation
+  }
+);
+
+it("another test requiring authentication", { auth: "myadmin" }, () => {
+  // commands will use auth from annotation with password from env variable
+});
+```
+
+### Authentication via environment variables
+
+To provide authentication options into all tests, use `C8Y_USERNAME` and `C8Y_PASSWORD` env variables. Set env variables in your tests or use one of the ways descibed in [Cypress documentation](https://docs.cypress.io/guides/guides/environment-variables#Setting).
+
+Example for setting environment variables in your tests:
+
+```typescript
+Cypress.env("C8Y_USERNAME", "admin");
+Cypress.env("C8Y_PASSWORD", "password");
+```
+
+### Passing authentication to cy.request
+
+With `import "@c8y/cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication suppport to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
+
+Note: chaining authentication into `cy.request()` is not supported as `cy.request()` does not support previous subject and always is a parent in the Cypress chain.
+
+Note: in order to work, add the import before any other imports (not related to this library) in your support file. This is required if `cy.request()` is overwritten. If any `cy.overwrite("request", ...)` is called after the import, `cy.request()` will not automatically use the authentication.
+
+```typescript
+it(
+  "use request with authentication from test annotation",
+  { auth: "admin" },
+  function () {
+    cy.request({
+      method: "GET",
+      url: "/path/to/some/resource",
+    }).then((response) => {
+      // do something
+    });
+  }
+);
+
+// same as
+it("standard request authentication", function () {
+  cy.request({
+    method: "GET",
+    url: "/path/to/some/resource",
+    auth: { user: "admin", password: "password" },
+  }).then((response) => {
+    // do something
+  });
+});
+```
+
+## Chaining of commands
+
+Custom commands provided by this library should support chaining. This means commands need to accept `previousSubject` and yield it's result for next command in the chain.
+
+Instead of having one command with a lot of arguments, chaining allows splitting into multiple commands.
+
+```typescript
+cy.getAuth("admin", "password").login();
+cy.wrap("admin").getAuth().login();
+```
+
+## c8y/client and Web SDK types
+
+In general, all custom commands should use `c8y/client` type definitions working with Cumulocity API.
+
+### c8yclient command
+
+To interact with Cumulocity REST endpoints, `cy.c8yclient` custom command is provided. `cy.c8yclient` mimics `cy.request` to easily exchange or replace `cy.request` within your tests. For compatibility, the yielded result of `cy.c8yclient` is a `Cypress.Response<T>` (as used by `cy.request`) to make all assertions work as expected for `cy.request` and `cy.c8yclient`.
+
+Configuration supports most of the options accepted by `cy.request`, as for example `Loggable` and `Failable`.
+
+Note: via the `Failable` interface it is possible to configure a test not to fail on status codes less than 200 or greater or equal to 300.
+
+`cy.c8yclient` will choose authentication automatically. If there is a `X-XSRF-TOKEN` cookie, it will automatically choose `CookieAuth` without `BasicAuth`. This is important as basic authentication is disabled by default in Cumulocity. To use `cy.c8yclient`, you should login first to set the auth token.
+
+```typescript
+cy.getAuth("admin").login();
+cy.c8yclient().then((c) => c.user.delete("usertodelete"));
+```
+
+To override the default behaviour, pass `preferBasicAuth` option with `true` value. By overriding, `BasicAuth` will be used instead of `CookieAuth` even if a `X-XSRF-TOKEN` is found.
+
+Feature overview:
+
+- creates `Client` automatically configures with `BasicAuth` or `CookieAuth`
+- uses authentication from `cy.getAuth`, `cy.useAuth`, etc. (see [Authentication and credentials](#Authentication-and-credentials))
+- chaining of clients via Cypress command chain or by passing as array
+- returns `Cypress.Response<T>` to be compatible with `cy.request`
+- console debug logging compatible with `cy.request`
+- custom error logging compatibile with `cy.request`
+- get current tenant if C8Y_TENANT is not defined
+
+Examples:
+
+```typescript
+// create a client and store tenant from client C8Y_TENANT environment variable
+cy.getAuth("admin")
+  .c8yclient().then((c) => {
+    Cypress.env("C8Y_TENANT", c.core.tenant);
+  });
+
+// query current tenant via TenantService forcing BasicAuth
+cy.getAuth({ user: "admin", password: "mypassword" })
+  .c8yclient((client) => client.tenant.current())
+  .then((response) => {
+    // response body will have ICurrentTenant type derived from client.tenant.current()
+    console.log(response.body.domainName);
+  });
+
+// chaining of c8yclient via Cypress command chain. response will be passed as second
+// argument to next command in the chain. provide type information if required.
+cy.c8yclient<ICurrentTenant>((client) => client.tenant.current())
+  .c8yclient<IManagedObject, ICurrentTenant>((c, tenantResponse) => {
+    // do something with tenantResponse and query managed object
+    console.log(tenantResponse.body.domainName);
+    return c.inventory.detail(1, { withChildren: false });
+  })
+  .then((response) => {
+    // response body will be of type IManagedObject
+    console.log(response.body.lastUpdated);
+  });
+
+// chaining via array of c8yclient service functions. again, responses will be passed
+// as second argument.
+cy.c8yclient<IManagedObject>([
+  (c) => c.tenant.current(),
+  (c, tenantResponse: Cypress.Response<ICurrentTenant>) => {
+    // do something with tenant response and query managed object
+    return c.inventory.detail(1, { withChildren: false });
+  },
+]).then((response) => {
+  // response body will be of type IManagedObject
+  console.log(response.body.lastUpdated);
+});
+
+// create array of Promise<C8yClientIResult<T>>
+cy.c8yclient((c) => c.userGroup.list({ pageSize: 10000}))
+  .c8yclient((c, groups) => {
+    const assignments = permissions
+      .map(p => groups.body.find(group => group.name === "mygroupname"))
+      .filter(group => !!group)
+      .map(group => c.userGroup.addUserToGroup(group.id, <userself>));
+      return assignments
+    })
+  .then((resonse) => {
+    ...
+  })
+```
+
+# Development
+
+Debugging Cypress tests is little tricky. To help debugging custom commands, this library comes with needed setup for debugging in Cypress.
+
+## Console log debugging
+
+All custom commands of this library are logged within the Command Log of the [Cypress App](https://docs.cypress.io/guides/core-concepts/cypress-app). By clicking the logged command in Command Log of Cypress App, extra information are printed to the console for debugging. Extra information should include at least subject as well as the value yielded by the command. Every command can add any additional information.
+
+Use `consoleProps` object to pass additional information as in the following example.
+
+```typescript
+// get $args from arguments passed to the command
+const [auth, userOptions] = $args;
+const consoleProps = {
+  // include authentication and user options passed as arguments
+  auth: auth,
+  userOptions: userOptions,
+};
+
+Cypress.log({
+  name: "createUser",
+  // custom message (title) shown in command log
+  message: userOptions.userName,
+  consoleProps: () => consoleProps,
+});
+
+// do something
+
+cy.request({
+  method: "POST",
+  url: "/user/" + tenant.name + "/users",
+  auth: auth,
+  body: userOptions,
+}).should((response) => {
+  // add more details to console props
+  consoleProps.response = response;
+});
+```
+
+When adding extra information to the log, keep overall object size in mind. You might run out of memory in case of extensive logging with many large command log entries.
+
+See [Get console log for commands](https://docs.cypress.io/guides/guides/debugging#Get-console-logs-for-commands) from Cypress documentation for more details.
+
+All extra debug information added to the Command log, will also be available in Report Portal via the [@twi/build-pipeline-cypress-reporting](https://github.softwareag.com/twi/build-pipeline-cypress-reporting) plugin.
+
+## Debugging in Visual Studio Code
+
+Debugging in Visual Studio Code is not very straight forward, but after all it is or should be possible. The project does contain the launch configuration `Attach to Chrome`, wich requires the Cypress app to be started with `npm run test:open`.
+
+Once Cypress App has been started, select run and debug `Attach to Chrome` launch configuration and restart your test(s) in the Cypress App using `Rerun all tests`.
+
+Create breakpoints for Cypress commands using `debugger` statement.
+
+```typescript
+it.only("debugging test", () => {
+  debugger;
+  // to debug getCurrentTenant(), place another debugger statement
+  // in the implementation of getCurrentTenant()
+  cy.getAuth("admin")
+    .getCurrentTenant()
+    .then((tenant) => {
+      // to debug result of getCurrentTenant, place debugger in then()
+      debugger;
+      expect(tenant.name).to.equal("mytenant");
+      expect(Cypress.env("C8Y_TENANT")).to.deep.equal({ name: "mytenant" });
+    });
+});
+```
+
+For more information see [Debug just like you always do](https://docs.cypress.io/guides/guides/debugging#Debug-just-like-you-always-do) in the official Cypress documentation.
+
+# Testing
+
+Cypress is used for testing commands. If needed, add HTML fixtures in `app/` folder.
+
+Run tests using
+
+```bash
+> npm run test
+```
+
+or with opening the Cypress console
+
+```bash
+> npm run test:open
+```
+
+## Test access of DOM elements
+
+## Test requests
+
+Testing requests and the processing of it's responses a set of utilities is provided by this library.
+
+```typescript
+// can be called in beforeEach() hook
+initRequestStub();
+
+stubResponse<ICurrentTenant>({
+  isOkStatusCode: true,
+  status: 200,
+  body: { name: "mytenant" },
+});
+
+cy.getAuth("admin")
+  .getCurrentTenant()
+  .then((tenant) => {
+    expectHttpRequest({
+      url: url(`/tenant/currentTenant`),
+      method: "GET",
+      auth: { user: "admin", password: "password" },
+    });
+    expect(tenant.name).to.equal("mytenant");
+    expect(Cypress.env("C8Y_TENANT")).to.deep.equal({ name: "mytenant" });
+  });
+```
+
+## Test interceptions
+
+Interceptions are a very important concept to test with stubbed network responses. If custom commands use interceptions, it can be easily triggered using `JQueryStatic` provided by Cypress.
+
+```typescript
+$.get(url(`/tenant/currentTenant.json`));
+```
+
+If interceptions do not just stub a response, but modify the response from server, mock the service with fixtures in `app` folder. You might need to append an extension to the endpoint to get the right content type however.
+
+```typescript
+const { $ } = Cypress;
+
+cy.disableGainsight()
+  .as("interception")
+  .then(() => {
+    return $.get(url(`/tenant/currentTenant.json`));
+  })
+  .then((response) => {
+    expect(response.customProperties.gainsightEnabled).to.eq(false);
+  })
+  .wait("@interception");
+```

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "rootDir": "./",
+    "strictNullChecks": false,
+    "target": "es5",
+    "lib": ["es5", "dom"],
+    "types": ["cypress", "node"],
+    "declaration": true,
+    "outDir": "./dist",
+    "strict": true,
+    "module": "Node16"
+  },
+  "include": ["lib/**/*.ts"],
+  "exclude": ["cypress", "app", "node_modules"]
+}

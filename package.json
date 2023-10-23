@@ -1,0 +1,40 @@
+{
+  "name": "@c8y/cumulocity-cypress",
+  "version": "0.0.26",
+  "description": "Shared Cypress commands for Cumulocity development builds",
+  "main": "lib/commands/index.js",
+  "scripts": {
+    "start-server": "http-server app/ --port 8080 --silent --mimetypes custom_mime_types.types",
+    "test": "TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 test:run",
+    "test:run": "TZ=Europe/Berlin cypress run --browser chrome --config video=false",
+    "test:open": "TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 debug",
+    "debug": "CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open",
+    "clean": "rimraf dist/",
+    "copy-files": "copyfiles lib/**/*.*js lib/**/*.d.ts README.md package.json dist/",
+    "build": "\"$npm_execpath\" run clean && \"$npm_execpath\" run copy-files && cd dist/ && \"$npm_execpath\" run clean-package-json && tsc",
+    "clean-package-json": "npm pkg delete 'devDependencies' &&  npm pkg delete 'scripts'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:SoftwareAG/cumulocity-cypress.git"
+  },
+  "keywords": [
+    "cypress"
+  ],
+  "author": "Thomas Winkler",
+  "license": "ISC",
+  "dependencies": {
+    "@c8y/client": "^1015.0.295",
+    "date-fns": "^2.30.0",
+    "semver": "^7.3.8"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.4",
+    "copyfiles": "^2.4.1",
+    "cypress": "^12.8.1",
+    "http-server": "^14.1.1",
+    "rimraf": "^5.0.1",
+    "start-server-and-test": "^2.0.0",
+    "typescript": "^5.0.2"
+  }
+}
