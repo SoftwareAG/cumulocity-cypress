@@ -15,32 +15,67 @@ Current set of commands include
 - `disableGainsights`
 - `getCurrentTenant` and `getTenantId`
 - `visitAndWaitForSelector`
-- `toDate` and `toISODate`
+- `toDate`, `toISODate` and `compareDates`
 - `c8yclient`
 - `createUser` and `deleteUser`
 
 # Install
 
-There is different ways to install and use the shared custom commands in your repository. Simplest way is to add npm package dependency.
+There is different ways to install and use the Cumulocity commands in your repository. Simplest way is to add npm package dependency.
 
-...
+Create or update `.npmrc` file in your project to configure the registry for `softwareag` the context. 
 
-# Development
-
-Use following commands to run tests locally:
-
-```bash
-> npm run test:open
+```
+@softwareag:registry=https://npm.pkg.github.com
 ```
 
+Add dependency to your package.json.
+
 ```bash
-> npm run test
+npm install @softwareag/cumulocity-cypress --save-dev 
+yarn add -D @softwareag/cumulocity-cypress
 ```
 
-Build into `dist` folder by calling
+Configure Cumulocity authentication. Easiest way to configure authentication is to create `cypress.env.json` file in your project and add all credentials needed for the tests, for example with different permissions or roles.
 
-```bash
-> npm run build
+```json
+{
+  "admin_username": "admin",
+  "admin_password": "password",
+  "noaccess_username": "noaccess",
+  "noaccess_password": "password",
+}
+```
+
+Update your projects `e2e.supportFile` (e.g. `cypress/support/e2e.ts`) to make custom commands available to your tests.
+
+Import all commands:
+
+```typescript
+import "@softwareag/cumulocity-cypress/lib/commands/";
+```
+
+Import selected commands:
+
+```typescript
+import "@softwareag/cumulocity-cypress/lib/commands/request";
+```
+
+With this, also in the support file of your Cypress project, you can init environment variables as for example with:
+
+```typescript
+before(() => {
+  cy.getAuth('admin')
+    .getCurrentTenant()
+    .then((tenant) => {
+      Cypress.env('C8Y_TENANT', tenant.body.name);
+      Cypress.env('C8Y_INSTANCE', tenant.body.domainName?.split('.').slice(1).join('.'));
+    })
+    .then(() => {
+      expect(Cypress.env('C8Y_TENANT')).not.be.undefined;
+      expect(Cypress.env('C8Y_INSTANCE')).not.be.undefined;
+    });
+});
 ```
 
 # Additional frameworks
@@ -146,7 +181,7 @@ Cypress.env("C8Y_PASSWORD", "password");
 
 ### Passing authentication to cy.request
 
-With `import "@c8y/cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication suppport to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
+With `import "@softwareag/cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication support to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
 
 Note: chaining authentication into `cy.request()` is not supported as `cy.request()` does not support previous subject and always is a parent in the Cypress chain.
 
@@ -279,9 +314,11 @@ cy.c8yclient((c) => c.userGroup.list({ pageSize: 10000}))
 
 # Development
 
-Debugging Cypress tests is little tricky. To help debugging custom commands, this library comes with needed setup for debugging in Cypress.
+## Debugging 
 
-## Console log debugging
+Debugging Cypress tests is tricky. To help debugging custom commands, this library comes with needed setup for debugging in Cypress.
+
+### Console log debugging
 
 All custom commands of this library are logged within the Command Log of the [Cypress App](https://docs.cypress.io/guides/core-concepts/cypress-app). By clicking the logged command in Command Log of Cypress App, extra information are printed to the console for debugging. Extra information should include at least subject as well as the value yielded by the command. Every command can add any additional information.
 
@@ -320,9 +357,7 @@ When adding extra information to the log, keep overall object size in mind. You 
 
 See [Get console log for commands](https://docs.cypress.io/guides/guides/debugging#Get-console-logs-for-commands) from Cypress documentation for more details.
 
-All extra debug information added to the Command log, will also be available in Report Portal via the [@twi/build-pipeline-cypress-reporting](https://github.softwareag.com/twi/build-pipeline-cypress-reporting) plugin.
-
-## Debugging in Visual Studio Code
+### Debugging in Visual Studio Code
 
 Debugging in Visual Studio Code is not very straight forward, but after all it is or should be possible. The project does contain the launch configuration `Attach to Chrome`, wich requires the Cypress app to be started with `npm run test:open`.
 
@@ -348,25 +383,27 @@ it.only("debugging test", () => {
 
 For more information see [Debug just like you always do](https://docs.cypress.io/guides/guides/debugging#Debug-just-like-you-always-do) in the official Cypress documentation.
 
-# Testing
+## Testing
 
-Cypress is used for testing commands. If needed, add HTML fixtures in `app/` folder.
+Cypress is used for testing commands. All tests a located in `cypress` folder. If needed, add HTML fixtures in `app/` folder.
 
 Run tests using
 
 ```bash
-> npm run test
+npm run test
 ```
 
 or with opening the Cypress console
 
 ```bash
-> npm run test:open
+npm run test:open
 ```
 
-## Test access of DOM elements
+### Test access of DOM elements
 
-## Test requests
+tbd.
+
+### Test requests
 
 Testing requests and the processing of it's responses a set of utilities is provided by this library.
 
@@ -393,7 +430,7 @@ cy.getAuth("admin")
   });
 ```
 
-## Test interceptions
+### Test interceptions
 
 Interceptions are a very important concept to test with stubbed network responses. If custom commands use interceptions, it can be easily triggered using `JQueryStatic` provided by Cypress.
 
