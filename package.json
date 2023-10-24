@@ -23,7 +23,7 @@
   "dependencies": {
     "@c8y/client": "^1015.0.295",
     "date-fns": "^2.30.0",
-    "semver": "^7.3.8"
+    "semver": "^7.5.2"
   },
   "devDependencies": {
     "@types/chai": "^4.3.4",
