@@ -566,6 +566,38 @@ describe("c8yclient", () => {
           });
         });
     });
+
+    // https://github.com/SoftwareAG/cumulocity-cypress/issues/1
+    it("should wrap client authentication errors into CypressError", () => {
+      // {"responseObj":{"status":504,"isOkStatusCode":false,"statusText":"Gateway Timeout","headers":{"connection":"keep-alive","date":"Tue, 24 Oct 2023 07:57:52 GMT","keep-alive":"timeout=5","transfer-encoding":"chunked","x-powered-by":"Express"},"requestHeaders":{"Authorization":"Basic dHdpOkRlbW8yMDE5ISE=","content-type":"application/json","UseXBasic":true},"duration":92,"url":"http://localhost:9000/tenant/currentTenant","body":"Error occurred while trying to proxy: localhost:9000/tenant/currentTenant"}}'
+
+      stubResponse(
+        new window.Response(
+          "Error occurred while trying to proxy: localhost:9000/tenant/currentTenant",
+          {
+            status: 504,
+            statusText: "Gateway Timeout",
+          }
+        )
+      );
+
+      let errorWasThrown = false;
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("c8yclient failed with: 504");
+        expect(err.message).to.contain("Gateway Timeout");
+        expect(err.message).to.contain(
+          "Error occurred while trying to proxy: localhost:9000/tenant/currentTenant"
+        );
+        errorWasThrown = true;
+      });
+
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
+        .then(() => {
+          expect(window.fetchStub).to.have.been.calledOnce;
+          expect(errorWasThrown).to.be.true;
+        });
+    });
   });
 
   context("fetch responses", () => {
