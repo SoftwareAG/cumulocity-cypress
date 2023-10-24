@@ -28,7 +28,7 @@
   "devDependencies": {
     "@types/chai": "^4.3.4",
     "copyfiles": "^2.4.1",
-    "cypress": "^12.8.1",
+    "cypress": "^13.3.2",
     "http-server": "^14.1.1",
     "rimraf": "^5.0.1",
     "start-server-and-test": "^2.0.0",
