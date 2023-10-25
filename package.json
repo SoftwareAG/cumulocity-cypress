@@ -1,6 +1,6 @@
 {
   "name": "@softwareag/cumulocity-cypress",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cypress commands for Cumulocity",
   "main": "lib/commands/index.js",
   "scripts": {
