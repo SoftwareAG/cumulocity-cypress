@@ -1,10 +1,35 @@
 # Cypress commands for Cumulocity
 
-Collection of commands and utilities to be used for automating tests for Cumulocity with Cypress. Also use the repository to discuss questions and issues with Cypress tests for Cumulocity.
+Collection of commands and utilities to be used for automating tests for [Cumulocity IoT](https://www.cumulocity.com) with [Cypress](https://www.cypress.io). Also use the repository to discuss questions and issues when testing your Cumulocity IoT applications with Cypress.
 
 Contribute by raising pull requests. All commands must be documented and, if possible, tested using test suite in this repository.
 
-# Commands
+# Content
+
+- [Cypress commands for Cumulocity](#cypress-commands-for-cumulocity)
+- [Content](#content)
+- [Overview of commands](#overview-of-commands)
+- [Installation and setup](#installation-and-setup)
+- [Additional frameworks](#additional-frameworks)
+- [Concepts](#concepts)
+  - [Authentication and credentials](#authentication-and-credentials)
+    - [Authentication via getAuth and useAuth commands](#authentication-via-getauth-and-useauth-commands)
+    - [Authentication via test case annotations](#authentication-via-test-case-annotations)
+    - [Authentication via environment variables](#authentication-via-environment-variables)
+    - [Passing authentication to cy.request](#passing-authentication-to-cyrequest)
+  - [Chaining of commands](#chaining-of-commands)
+  - [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
+    - [c8yclient command](#c8yclient-command)
+- [Development](#development)
+  - [Debugging](#debugging)
+    - [Console log debugging](#console-log-debugging)
+    - [Debugging in Visual Studio Code](#debugging-in-visual-studio-code)
+  - [Testing](#testing)
+    - [Test access of DOM elements](#test-access-of-dom-elements)
+    - [Test requests](#test-requests)
+    - [Test interceptions](#test-interceptions)
+
+# Overview of commands
 
 Current set of commands include
 
@@ -19,7 +44,7 @@ Current set of commands include
 - `c8yclient`
 - `createUser` and `deleteUser`
 
-# Install
+# Installation and setup
 
 There is different ways to install and use the Cumulocity commands in your repository. Simplest way is to add npm package dependency.
 
@@ -85,6 +110,7 @@ Other frameworks that might help improve efficiency, quality and reliability of 
 - [cypress-commands](https://github.com/Lakitna/cypress-commands)
 - [cypress-map](https://github.com/bahmutov/cypress-map)
 - [cypress-recurse](https://github.com/bahmutov/cypress-recurse)
+- [cypress-file-upload](https://github.com/abramenal/cypress-file-upload)
 
 # Concepts
 
@@ -453,3 +479,11 @@ cy.disableGainsight()
   })
   .wait("@interception");
 ```
+
+-----------
+
+These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
+
+For more information you can Ask a Question in the [TECH Community Forums](https://tech.forums.softwareag.com/tag/Cumulocity-IoT).
+
+Contact us at [TECHcommunity](mailto:Communities@softwareag.com) if you have any questions.
