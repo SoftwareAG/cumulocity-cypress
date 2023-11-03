@@ -11,8 +11,8 @@
     "debug": "CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open",
     "clean": "rimraf dist/",
     "copy-files": "copyfiles lib/**/*.*js lib/**/*.d.ts README.md package.json dist/",
-    "build": "\"$npm_execpath\" run clean && \"$npm_execpath\" run copy-files && cd dist/ && \"$npm_execpath\" run clean-package-json && tsc",
-    "clean-package-json": "npm pkg delete 'devDependencies' &&  npm pkg delete 'scripts'"
+    "build": "npm run clean && npm run copy-files && tsc && cd dist/ && npm run clean-package-json",
+    "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },
   "repository": "https://github.com/SoftwareAG/cumulocity-cypress.git",
   "keywords": [
