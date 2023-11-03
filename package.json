@@ -19,7 +19,7 @@
     "cypress"
   ],
   "author": "Thomas Winkler",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@c8y/client": "^1015.0.295",
     "date-fns": "^2.30.0",
