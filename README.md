@@ -61,6 +61,15 @@ npm install @softwareag/cumulocity-cypress --save-dev
 yarn add -D @softwareag/cumulocity-cypress
 ```
 
+You also need to have `@c8y/client` installed and make it available within the tested project as `cumulocity-cypress` defines `@c8y/client` as a peer-dependency. This is to ensure the version of `@c8y/client` to be used is the same as in the hosted test project.
+
+Install `@c8y/client` if needed via using
+
+```bash
+npm install @c8y/client --save-dev 
+yarn add -D @c8y/client
+```
+
 Configure Cumulocity authentication. Easiest way to configure authentication is to create `cypress.env.json` file in your project and add all credentials needed for the tests, for example with different permissions or roles.
 
 ```json

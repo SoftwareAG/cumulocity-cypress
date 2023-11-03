@@ -1,7 +1,7 @@
 {
   "name": "@softwareag/cumulocity-cypress",
-  "version": "0.2.0",
-  "description": "Cypress commands for Cumulocity",
+  "version": "0.2.2",
+  "description": "Cypress commands for Cumulocity IoT",
   "main": "lib/commands/index.js",
   "scripts": {
     "start-server": "http-server app/ --port 8080 --silent --mimetypes custom_mime_types.types",
@@ -16,16 +16,19 @@
   },
   "repository": "https://github.com/SoftwareAG/cumulocity-cypress.git",
   "keywords": [
-    "cypress"
+    "Cypress",
+    "Cumulocity",
+    "IoT",
+    "Test"
   ],
   "author": "Thomas Winkler",
   "license": "Apache-2.0",
   "dependencies": {
-    "@c8y/client": "^1015.0.295",
     "date-fns": "^2.30.0",
     "semver": "^7.5.2"
   },
   "devDependencies": {
+    "@c8y/client": "^1017.0.369",
     "@types/chai": "^4.3.4",
     "copyfiles": "^2.4.1",
     "cypress": "^13.3.2",
@@ -33,5 +36,8 @@
     "rimraf": "^5.0.1",
     "start-server-and-test": "^2.0.0",
     "typescript": "^5.0.2"
+  },
+  "peerDependencies": {
+    "@c8y/client": ">=1015.0.0"
   }
 }
