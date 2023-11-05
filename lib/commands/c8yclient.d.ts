@@ -71,19 +71,6 @@ declare global {
       ): Chainable<Response<T[]>>;
 
       c8yclient(): Chainable<Client>;
-
-      c8yclean(session: string | C8ySession): Chainable<boolean>;
-
-      getC8ySession(session: string): Chainable<C8ySession>;
-    }
-
-    interface C8ySession {
-      name: string;
-      objects: (type?: string) => [IIdentified];
-      clear: (type?: string) => void;
-      store();
-      restore();
-      log();
     }
 
     type C8yOptions = Partial<{
