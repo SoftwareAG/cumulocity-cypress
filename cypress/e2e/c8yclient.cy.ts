@@ -20,6 +20,12 @@ declare global {
 }
 
 describe("c8yclient", () => {
+  const errorForbidden = {
+    error: "userManagement/Forbidden",
+    message: "authenticated user's tenant different from the one in URL path",
+    info: "https://www.cumulocity.com/guides/reference/rest-implementation//#a-name-error-reporting-a-error-reporting",
+  };
+
   beforeEach(() => {
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
@@ -487,19 +493,13 @@ describe("c8yclient", () => {
   });
 
   context("error responses", () => {
-    const error = {
-      error: "userManagement/Forbidden",
-      message: "authenticated user's tenant different from the one in URL path",
-      info: "https://www.cumulocity.com/guides/reference/rest-implementation//#a-name-error-reporting-a-error-reporting",
-    };
-
     beforeEach(() => {
       Cypress.env("C8Y_TENANT", "t123456789");
     });
 
     it("should catch and process Cumulocity error response", () => {
       stubResponse(
-        new window.Response(JSON.stringify(error), {
+        new window.Response(JSON.stringify(errorForbidden), {
           status: 404,
           statusText: "Not found",
           headers: { "content-type": "application/json" },
@@ -547,7 +547,7 @@ describe("c8yclient", () => {
 
     it("should not throw on 404 response with failOnStatusCode false", () => {
       stubResponse(
-        new window.Response(JSON.stringify(error), {
+        new window.Response(JSON.stringify(errorForbidden), {
           status: 404,
           statusText: "Not found",
           headers: { "content-type": "application/json" },
@@ -638,6 +638,81 @@ describe("c8yclient", () => {
           expect(response.duration).to.not.be.undefined;
           expectC8yClientRequest(requestOptions);
         });
+    });
+  });
+
+  context("test", () => {
+    beforeEach(() => {
+      Cypress.env("C8Y_TENANT", "t123456789");
+    });
+
+    const managedObject = {
+      creationTime: "2017-12-12T22:09:06.881+01:00",
+      id: "51994",
+      lastUpdated: "2018-07-19T12:01:50.731Z",
+      name: "My tracking device",
+      owner: "manga",
+      self: "https://<TENANT_DOMAIN>/inventory/managedObjects/51994",
+      c8y_IsDevice: {},
+    };
+
+    it.only("post request", () => {
+      stubResponses([
+        new window.Response(JSON.stringify(managedObject), {
+          status: 201,
+          statusText: "Created",
+          headers: {
+            "content-type":
+              "application/vnd.com.nsn.cumulocity.measurement+json",
+          },
+        }),
+        new window.Response(JSON.stringify(managedObject), {
+          status: 202,
+          statusText: "Created",
+          headers: {
+            "content-type":
+              "application/vnd.com.nsn.cumulocity.managedobject+json",
+          },
+        }),
+        new window.Response(JSON.stringify(managedObject), {
+          status: 203,
+          statusText: "Created",
+          headers: {
+            "content-type":
+              "application/vnd.com.nsn.cumulocity.managedobject+json",
+          },
+        }),
+      ]);
+
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<IManagedObject>(
+          [
+            (client) => client.inventory.create({ name: "My tracking device" }),
+            (client) => client.inventory.create({ name: "My tracking device" }),
+            (client) => client.inventory.create({ name: "My tracking device" }),
+          ],
+          {
+            failOnStatusCode: false,
+            session: "inventory",
+          }
+        )
+        .then((response) => {
+          expect(response.status).to.eq(203);
+          expect(response.statusText).to.eq("Created");
+          expect(response.headers).to.deep.eq({
+            "content-type":
+              "application/vnd.com.nsn.cumulocity.managedobject+json",
+          });
+        });
+    });
+
+    after(() => {
+      cy.getC8ySession("inventory").then((session) => {
+        session.log();
+        console.log(session.objects("measurement"));
+        session.clear();
+        session.log();
+      });
     });
   });
 });
