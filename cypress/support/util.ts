@@ -131,6 +131,14 @@ export function expectHttpRequest(expectedOptions: any | any[]): any[] {
 }
 
 /**
+ * Reset the cy.request call stub history.
+ */
+export function resetRequestStub() {
+  // @ts-ignore
+  Cypress.backend.resetHistory();
+}
+
+/**
  * Assert a request sent by c8y/client.
  *
  * Pass expected requests in the order requests should be received. Options are
@@ -184,6 +192,13 @@ export function expectC8yClientRequest(
   expect(window.fetchStub).to.have.callCount(all.length);
   const calls = window.fetchStub.getCalls();
   return expectCallsWithArgs(calls, all);
+}
+
+/**
+ * Reset the c8yclient call stub history.
+ */
+export function resetC8yClientRequestStub() {
+  window.fetchStub.resetHistory();
 }
 
 function expectCallsWithArgs(

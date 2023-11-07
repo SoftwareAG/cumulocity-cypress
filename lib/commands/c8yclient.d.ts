@@ -2,7 +2,6 @@ import {
   Client,
   IAuthentication,
   IFetchResponse,
-  IIdentified,
   IResult,
   IResultList,
 } from "@c8y/client";

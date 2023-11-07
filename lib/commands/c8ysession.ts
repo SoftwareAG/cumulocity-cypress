@@ -1,3 +1,6 @@
+import { BasicAuth, IManagedObject, IResult } from "@c8y/client";
+import { getAuthOptionsFromBasicAuthHeader } from "./utils";
+
 export {};
 
 const { _ } = Cypress;
@@ -5,9 +8,19 @@ const { _ } = Cypress;
 declare global {
   namespace Cypress {
     interface Chainable {
-      c8yclean(session: string | C8ySession): Chainable<boolean>;
-
       c8ysession(session: string): Chainable<C8ySession>;
+    }
+
+    interface SuiteConfigOverrides {
+      c8yid: string;
+    }
+
+    interface TestConfigOverrides {
+      c8yid: string;
+    }
+
+    interface RuntimeConfigOptions {
+      c8yid: string;
     }
 
     interface Cypress {}
@@ -15,16 +28,18 @@ declare global {
 
   interface C8yDataSession {
     name: string;
-    objects: (type?: string) => C8yDataResponse[];
+    objects<T>(type?: string): C8yDataResponse<T>[];
     clear: (type?: string) => void;
     store(): boolean;
     restore(): boolean;
     log(): void;
+    teardown(): Cypress.Chainable<boolean>;
   }
 
-  interface C8yDataResponse {
+  interface C8yDataResponse<BodyType = any> {
     headers: Record<string, string | number | boolean>;
-    body: string;
+    requestHeaders: Record<string, string | number | boolean>;
+    body: BodyType;
     redirected: boolean;
     status: number;
     statusText: string;
@@ -73,10 +88,9 @@ class C8ySession implements C8yDataSession {
     });
   }
 
-  objects(type: string = null) {
+  objects<T>(type: string = null): C8yDataResponse<T>[] {
     if (!type || _.isEmpty(type)) return this.data;
     const result = this.data.filter((o) => {
-      debugger;
       const contentType = (o.headers && o.headers["content-type"]) || "";
       const uri = o.url.replace(Cypress.config().baseUrl, "");
       return (
@@ -86,6 +100,29 @@ class C8ySession implements C8yDataSession {
       );
     });
     return result;
+  }
+
+  teardown() {
+    // managed objects
+    const responses: C8yDataResponse<IManagedObject>[] = this.objects(
+      "/inventory/managedObjects"
+    );
+    for (const response of responses) {
+      if (_.has(response.requestHeaders, "Authorization")) {
+        const base64auth = _.get(
+          response.requestHeaders,
+          "Authorization"
+        ).toString();
+        const authOptions = getAuthOptionsFromBasicAuthHeader(base64auth);
+        cy.c8yclient((client) => client.inventory.delete(response.body.id), {
+          auth: authOptions ? new BasicAuth(authOptions) : undefined,
+          preferBasicAuth: authOptions != null,
+          failOnStatusCode: authOptions != null,
+        });
+      }
+    }
+
+    return cy.wrap(true);
   }
 
   store(): boolean {
