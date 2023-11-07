@@ -18,13 +18,12 @@ describe("general", () => {
         .wait("@interception");
     });
 
-    it("gainsight api.key request will throw exception", () => {
-      let errorWasThrown = false;
+    it("gainsight api.key request will throw exception", (done) => {
       Cypress.on("fail", (err) => {
         expect(err.message).to.eq(
           "Intercepted Gainsight API key call, but Gainsight should have been disabled. Failing..."
         );
-        errorWasThrown = true;
+        done();
       });
 
       cy.disableGainsight()
@@ -34,7 +33,7 @@ describe("general", () => {
         })
         .wait("@interception")
         .then(() => {
-          expect(errorWasThrown).to.be.true;
+          throw new Error("Expected error. Should not get here.");
         });
     });
   });

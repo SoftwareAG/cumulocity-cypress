@@ -286,13 +286,12 @@ describe("dates", () => {
       });
     });
 
-    it("fails with error for invalid input with throw option", () => {
-      let errorWasThrown = false;
+    it("fails with error for invalid input with throw option", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain(
           "could not be converted into a valid date"
         );
-        errorWasThrown = true;
+        done();
       });
 
       cy.toISODate(
@@ -304,23 +303,22 @@ describe("dates", () => {
         ],
         { invalid: "throw" }
       ).then(() => {
-        expect(errorWasThrown).to.be.true;
+        throw new Error("Expected error. Should not get here.");
       });
     });
 
-    it("throws error on locale id not being registered", () => {
+    it("throws error on locale id not being registered", (done) => {
       // @ts-ignore
       cy.setLanguage("UNSUPPORTED");
-      let errorWasThrown = false;
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain(
           'Missing locale data for the locale "UNSUPPORTED".'
         );
-        errorWasThrown = true;
+        done();
       });
 
       cy.toISODate("15 June 2015 at 9:03:01 +01").then(() => {
-        expect(errorWasThrown).to.be.true;
+        throw new Error("Expected error. Should not get here.");
       });
     });
   });
@@ -338,26 +336,27 @@ describe("dates", () => {
   });
 
   context("dateFormat - failures", () => {
-    let errorWasThrown = false;
     beforeEach(() => {
       cy.setLanguage("en");
+    });
 
-      errorWasThrown = false;
+    it("fails with error for invalid input and throw option enabled", (done) => {
       cy.once("fail", (err) => {
-        errorWasThrown = true;
+        done();
       });
-    });
 
-    it("fails with error for invalid input and throw option enabled", () => {
       cy.dateFormat("3/12/23121", { invalid: "throw" }).then(() => {
-        expect(errorWasThrown).to.be.true;
+        throw new Error("Expected error. Should not get here.");
       });
     });
 
-    it("fails without error for invalid source and ignore option enabled", () => {
+    it("fails without error for invalid source and ignore option enabled", (done) => {
+      cy.once("fail", (err) => {
+        done();
+      });
+
       cy.dateFormat("3/12/23121", { invalid: "ignore" }).then((result) => {
-        expect(result).to.be.undefined;
-        expect(errorWasThrown).to.be.false;
+        throw new Error("Expected error. Should not get here.");
       });
     });
   });
@@ -372,7 +371,7 @@ describe("dates", () => {
       cy.compareDates("30/11/2018, 16:22", isoDate).should("eq", true);
     });
 
-    it ("compares date string iso formatted date string", () => {
+    it("compares date string iso formatted date string", () => {
       cy.compareDates("30/11/2018, 16:22", isoDate.toISOString()).should(
         "eq",
         true
@@ -387,33 +386,33 @@ describe("dates", () => {
         "eq",
         false
       );
-    })
+    });
   });
 
   context("compareDates - failures", () => {
     const isoDate = new Date(Date.UTC(2018, 10, 30, 15, 22, 30, 600));
-    let errorWasThrown = false;
 
     beforeEach(() => {
       cy.setLanguage("en");
 
-      errorWasThrown = false;
-      cy.once("fail", (err) => {
-        errorWasThrown = true;
-      });
     });
 
-    it("fails with error for invalid source and throw option enabled", () => {
+    it("fails with error for invalid source and throw option enabled", (done) => {
+      cy.once("fail", (err) => {
+        done();
+      });
       cy.compareDates("30/11/20181", isoDate, { invalid: "throw" }).then(() => {
-        expect(errorWasThrown).to.be.true;
+        throw new Error("Expected error. Should not get here.");
       });
     });
 
     it("fails without error for invalid source and ignore option enabled", () => {
-      cy.compareDates("30/11/20181", isoDate, { invalid: "ignore" }).then(
+      cy.once("fail", (err) => {
+        throw new Error("Did not expected error. Should not get here.");
+      });
+      cy.compareDates("30/11/201823", isoDate, { invalid: "ignore" }).then(
         (result) => {
           expect(result).to.be.false;
-          expect(errorWasThrown).to.be.false;
         }
       );
     });
