@@ -20,25 +20,28 @@ declare global {
        *   displayName: "New User",
        * });
        *
-       * @param {C8yAuthOptions} authOptions the authentication options to use for the request
-       * @param {C8yUserOptions} userOptions the user options defining the user to be created
+       * @param {C8yAuthOptions} authOptions the C8yAuthOptions authentication options including username and password
+       * @param {IUser} userOptions the user options defining the user to be created
        * @param {string[]} permissions the permissions to be assigned to the user
        * @param {string[] | IApplication[]} applications the name of applications to subscribe the user to
-       *
+       * @param {C8yClientOptions} c8yoptions the C8yClientOptions options passed to cy.c8yclient
+       * 
        * @returns {[C8yAuthOptions, string]} the auth options and id of the user created for chaining
        */
       createUser(
         ...args:
           | [
               authOptions: C8yAuthOptions,
-              userOptions: C8yUserOptions,
+              userOptions: IUser,
               permissions?: string[],
-              applications?: string[] | IApplication[]
+              applications?: string[] | IApplication[],
+              c8yoptions?: C8yClientOptions
             ]
           | [
-              userOptions: C8yUserOptions,
+              userOptions: IUser,
               permissions?: string[],
-              applications?: string[] | IApplication[]
+              applications?: string[] | IApplication[],
+              c8yoptions?: C8yClientOptions
             ]
       ): Chainable<Cypress.Response<IUser>>;
 
@@ -52,15 +55,16 @@ declare global {
        * @example
        * cy.deleteUser("newuser");
        *
-       * @param {C8yAuthOptions} authOptions the authentication options to use for the request
+       * @param {C8yAuthOptions} authOptions the C8yAuthOptions authentication options including username and password
        * @param {string} username the name of the user to be deleted
+       * @param {C8yClientOptions} c8yoptions the C8yClientOptions options passed to cy.c8yclient
        *
        * @returns {C8yAuthOptions} the auth options for chaining
        */
       deleteUser(
         ...args:
-          | [username: string | C8yUserOptions]
-          | [authOptions: C8yAuthOptions, username: string]
+          | [username: string | IUser, c8yoptions?: C8yClientOptions]
+          | [authOptions: C8yAuthOptions, username: string | IUser, c8yoptions?: C8yClientOptions]
       ): Chainable<Cypress.Response<null>>;
 
       /**
@@ -72,9 +76,10 @@ declare global {
        * cy.getCurrentTenant();
        * cy.getAuth("admin").getCurrentTenant();
        *
-       * @param {C8yAuthOptions} options the authentication options including username and password
+       * @param {C8yAuthOptions} authOptions the C8yAuthOptions authentication options including username and password
+       * @param {C8yClientOptions} c8yoptions the C8yClientOptions options passed to cy.c8yclient
        */
-      getCurrentTenant(authOptions?: C8yAuthOptions): Chainable<Cypress.Response<ICurrentTenant>>;
+      getCurrentTenant(authOptions?: C8yAuthOptions, c8yoptions?: C8yClientOptions): Chainable<Cypress.Response<ICurrentTenant>>;
 
       /**
        * Convenience getter for name of the current tenant. 
@@ -94,6 +99,4 @@ declare global {
       getTenantId(authOptions?: C8yAuthOptions): Chainable<string>;
     }
   }
-
-  type C8yUserOptions = Omit<IUser, "id" | "self">;
 }
