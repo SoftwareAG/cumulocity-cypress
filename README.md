@@ -209,7 +209,7 @@ Cypress.env("C8Y_PASSWORD", "password");
 
 ### Passing authentication to cy.request
 
-With `import "@softwareag/cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication support to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
+With `import "cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication support to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
 
 Note: chaining authentication into `cy.request()` is not supported as `cy.request()` does not support previous subject and always is a parent in the Cypress chain.
 
