@@ -71,36 +71,35 @@ declare global {
 
       c8yclient(): Chainable<Client>;
     }
+  }
 
-    type C8yOptions = Partial<{
-      auth: IAuthentication;
-      baseUrl: string;
-      client: Client;
-      preferBasicAuth: boolean;
-      skipClientAuthenication: boolean;
-      session: string;
-    }>;
+  type C8yClientIResult<T> = IResult<T> | IResult<null> | IFetchResponse;
 
-    type C8yClientIResult<T> = IResult<T> | IResult<null> | IFetchResponse;
+  type C8yClientServiceFn<R, T> = (
+    client: Client,
+    previousResponse?: Response<R>
+  ) => Promise<C8yClientIResult<T>>;
 
-    type C8yClientServiceFn<R, T> = (
-      client: Client,
-      previousResponse?: Response<R>
-    ) => Promise<C8yClientIResult<T>>;
+  type C8yClientServiceArrayFn<R, T> = (
+    client: Client,
+    previousResponse?: Response<R>
+  ) => Promise<C8yClientIResult<T>>[];
 
-    type C8yClientServiceArrayFn<R, T> = (
-      client: Client,
-      previousResponse?: Response<R>
-    ) => Promise<C8yClientIResult<T>>[];
+  type C8yClientServiceListFn<R, T> = (
+    client: Client,
+    previousResponse?: Response<R>
+  ) => Promise<IResultList<T>>;
 
-    type C8yClientServiceListFn<R, T> = (
-      client: Client,
-      previousResponse?: Response<R>
-    ) => Promise<IResultList<T>>;
+  type C8yClientOptions = Partial<C8yOptions> &
+    // Partial<Timeoutable> &
+    Partial<Cypress.Loggable> &
+    Partial<Pick<Cypress.Failable, "failOnStatusCode">>;
 
-    export type C8yClientOptions = C8yOptions &
-      // Partial<Timeoutable> &
-      Partial<Loggable> &
-      Partial<Pick<Failable, "failOnStatusCode">>;
+  interface C8yOptions {
+    auth: IAuthentication;
+    baseUrl: string;
+    client: Client;
+    preferBasicAuth: boolean;
+    skipClientAuthenication: boolean;
   }
 }

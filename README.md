@@ -28,6 +28,7 @@ Contribute by raising pull requests. All commands must be documented and, if pos
     - [Test access of DOM elements](#test-access-of-dom-elements)
     - [Test requests](#test-requests)
     - [Test interceptions](#test-interceptions)
+- [Disclaimer](#disclaimer)
 
 # Overview of commands
 
@@ -46,19 +47,11 @@ Current set of commands include
 
 # Installation and setup
 
-There is different ways to install and use the Cumulocity commands in your repository. Simplest way is to add npm package dependency.
-
-Create or update `.npmrc` file in your project to configure the registry for `softwareag` the context. 
-
-```
-@softwareag:registry=https://npm.pkg.github.com
-```
-
 Add dependency to your package.json.
 
 ```bash
-npm install @softwareag/cumulocity-cypress --save-dev 
-yarn add -D @softwareag/cumulocity-cypress
+npm install cumulocity-cypress --save-dev 
+yarn add -D cumulocity-cypress
 ```
 
 You also need to have `@c8y/client` installed and make it available within the tested project as `cumulocity-cypress` defines `@c8y/client` as a peer-dependency. This is to ensure the version of `@c8y/client` to be used is the same as in the hosted test project.
@@ -86,13 +79,13 @@ Update your projects `e2e.supportFile` (e.g. `cypress/support/e2e.ts`) to make c
 Import all commands:
 
 ```typescript
-import "@softwareag/cumulocity-cypress/lib/commands/";
+import "cumulocity-cypress/lib/commands/";
 ```
 
 Import selected commands:
 
 ```typescript
-import "@softwareag/cumulocity-cypress/lib/commands/request";
+import "cumulocity-cypress/lib/commands/request";
 ```
 
 With this, also in the support file of your Cypress project, you can init environment variables as for example with:
@@ -216,7 +209,7 @@ Cypress.env("C8Y_PASSWORD", "password");
 
 ### Passing authentication to cy.request
 
-With `import "@softwareag/cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication support to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
+With `import "cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication support to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
 
 Note: chaining authentication into `cy.request()` is not supported as `cy.request()` does not support previous subject and always is a parent in the Cypress chain.
 
@@ -490,6 +483,8 @@ cy.disableGainsight()
 ```
 
 -----------
+
+# Disclaimer
 
 These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
 
