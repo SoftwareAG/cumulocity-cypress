@@ -3,7 +3,7 @@ import {
   initRequestStub,
   stubResponses,
 } from "../support/util";
-const { _ } = Cypress;
+const { _, sinon } = Cypress;
 
 declare global {
   interface Window {
@@ -36,6 +36,7 @@ describe("administration", () => {
           headers: { "content-type": "application/json" },
         }),
       ]);
+
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
         .deleteUser({ userName: "test", displayName: "wewe" })
         .then((response) => {
@@ -64,7 +65,7 @@ describe("administration", () => {
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
         .deleteUser(
           { userName: "test", displayName: "wewe" },
-          { baseUrl: "https://abc.def.com", failOnStatusCode: true },
+          { baseUrl: "https://abc.def.com", failOnStatusCode: true }
         )
         .then((response) => {
           expect(response.status).to.eq(404);
@@ -79,6 +80,23 @@ describe("administration", () => {
             method: "DELETE",
           });
         });
+    });
+
+    it("throws error for missing user and logs username", (done) => {
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("Missing argument. Requiring IUser");
+        expect(Cypress.log).to.be.calledWithMatch(
+          sinon.match({ message: `{user: test}` })
+        );
+        done();
+      });
+
+      cy.spy(Cypress, "log").log(false);
+
+      //@ts-ignore
+      cy.deleteUser({ user: "test" }).then(() => {
+        throw new Error("Expected error. Should not get here.");
+      });
     });
   });
 
@@ -141,7 +159,7 @@ describe("administration", () => {
     });
 
     it("should use tenant id from env variable", function () {
-      Cypress.env("C8Y_TENANT", "t232447652")
+      Cypress.env("C8Y_TENANT", "t232447652");
       cy.getAuth({ user: "admin", password: "mypassword" })
         .getTenantId()
         .then((id) => {
@@ -151,7 +169,7 @@ describe("administration", () => {
     });
 
     it("should prefer tenant id from auth", function () {
-      Cypress.env("C8Y_TENANT", "t232447652")
+      Cypress.env("C8Y_TENANT", "t232447652");
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t324678" })
         .getTenantId()
         .then((id) => {
