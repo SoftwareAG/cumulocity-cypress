@@ -11,6 +11,8 @@ import {
   stubResponse,
   stubResponses,
 } from "../support/util";
+
+import { SinonSpy } from "cypress/types/sinon";
 const { _ } = Cypress;
 
 declare global {
@@ -312,6 +314,32 @@ describe("c8yclient", () => {
       });
 
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current());
+    });
+  });
+
+  context("debug logging", () => {
+    it("should log username of basic auth and cookie auth users", () => {
+      cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
+      Cypress.env("C8Y_LOGGED_IN_USER", "testuser");
+
+      cy.spy(Cypress, "log").log(false);
+
+      cy.getAuth({ user: "admin3", password: "mypassword", tenant: "t12345" })
+        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
+        .then((response) => {
+          const spy = Cypress.log as SinonSpy;
+          // last log is the one from fetchStub, get the last c8yclient log
+          const args = spy.args[Math.max(spy.callCount - 2, 0)];
+          const logged = _.isArray(args) ? _.last(args) : args;
+          
+          expect(logged).to.not.be.undefined;
+          expect(logged.consoleProps).to.not.be.undefined;
+          expect(_.isFunction(logged.consoleProps)).to.be.true;
+
+          const consoleProps = logged.consoleProps.call();
+          expect(consoleProps.CookieAuth).to.eq("XSRF-TOKEN fsETfgIBdAnEyOLbADTu22 (testuser)");
+          expect(consoleProps.BasicAuth).to.eq("Basic dDEyMzQ1L2FkbWluMzpteXBhc3N3b3Jk (t12345/admin3)");
+        });
     });
   });
 
