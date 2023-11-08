@@ -11,6 +11,8 @@ import {
   stubResponse,
   stubResponses,
 } from "../support/util";
+
+import { SinonSpy } from "cypress/types/sinon";
 const { _ } = Cypress;
 
 declare global {
@@ -160,9 +162,9 @@ describe("c8yclient", () => {
         "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu22",
       });
 
-      cy.getAuth({ user: "admin", password: "mypassword", tenant: "t1234" })
-        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
-        .then((response) => {
+      cy.useAuth({ user: "admin", password: "mypassword", tenant: "t1234" });
+      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
+        (response) => {
           expect(response.status).to.eq(200);
           // Client uses both, Basic and Cookie auth, if available
           expect(_.get(response.requestHeaders, "X-XSRF-TOKEN")).not.to.be
@@ -170,6 +172,23 @@ describe("c8yclient", () => {
           expect(_.get(response.requestHeaders, "Authorization")).to.be
             .undefined;
 
+          expectC8yClientRequest(expectedOptions);
+        }
+      );
+    });
+
+    it("should prefer basic auth over cookie if basic auth is previousSubject", () => {
+      cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
+
+      const expectedOptions = _.cloneDeep(requestOptions);
+      _.extend(expectedOptions.headers, {
+        "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu22",
+      });
+
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "t1234" })
+        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
+        .then((response) => {
+          expect(response.status).to.eq(200);
           expectC8yClientRequest(expectedOptions);
         });
     });
@@ -289,18 +308,38 @@ describe("c8yclient", () => {
     });
 
     it("fails with error if no auth or cookie is provided", () => {
-      let errorWasThrown = false;
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("Missing authentication");
-        errorWasThrown = true;
+        expect(window.fetchStub).to.not.have.been.called;
       });
 
-      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
-        () => {
-          expect(window.fetchStub).to.not.have.been.called;
-          expect(errorWasThrown).to.be.true;
-        }
-      );
+      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current());
+    });
+  });
+
+  context("debug logging", () => {
+    it("should log username of basic auth and cookie auth users", () => {
+      cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
+      Cypress.env("C8Y_LOGGED_IN_USER", "testuser");
+
+      cy.spy(Cypress, "log").log(false);
+
+      cy.getAuth({ user: "admin3", password: "mypassword", tenant: "t12345" })
+        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
+        .then((response) => {
+          const spy = Cypress.log as SinonSpy;
+          // last log is the one from fetchStub, get the last c8yclient log
+          const args = spy.args[Math.max(spy.callCount - 2, 0)];
+          const logged = _.isArray(args) ? _.last(args) : args;
+          
+          expect(logged).to.not.be.undefined;
+          expect(logged.consoleProps).to.not.be.undefined;
+          expect(_.isFunction(logged.consoleProps)).to.be.true;
+
+          const consoleProps = logged.consoleProps.call();
+          expect(consoleProps.CookieAuth).to.eq("XSRF-TOKEN fsETfgIBdAnEyOLbADTu22 (testuser)");
+          expect(consoleProps.BasicAuth).to.eq("Basic dDEyMzQ1L2FkbWluMzpteXBhc3N3b3Jk (t12345/admin3)");
+        });
     });
   });
 
@@ -497,7 +536,7 @@ describe("c8yclient", () => {
       Cypress.env("C8Y_TENANT", "t123456789");
     });
 
-    it("should catch and process Cumulocity error response", () => {
+    it("should catch and process Cumulocity error response", (done) => {
       stubResponse(
         new window.Response(JSON.stringify(error), {
           status: 404,
@@ -506,22 +545,21 @@ describe("c8yclient", () => {
         })
       );
 
-      let errorWasThrown = false;
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("c8yclient failed with");
         expect(err.message).to.contain('"error": "userManagement/Forbidden"');
-        errorWasThrown = true;
+        expect(window.fetchStub).to.have.been.calledOnce;
+        done();
       });
 
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then(() => {
-          expect(window.fetchStub).to.have.been.calledOnce;
-          expect(errorWasThrown).to.be.true;
+          throw new Error("Expected error. Should not get here.");
         });
     });
 
-    it("should catch and process generic error response", () => {
+    it("should catch and process generic error response", (done) => {
       stubResponse(
         new window.Response("Resource not found!!!", {
           status: 404,
@@ -530,18 +568,17 @@ describe("c8yclient", () => {
         })
       );
 
-      let errorWasThrown = false;
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("c8yclient failed with");
         expect(err.message).to.contain("Resource not found!!!");
-        errorWasThrown = true;
+        expect(window.fetchStub).to.have.been.calledOnce;
+        done();
       });
 
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then(() => {
-          expect(window.fetchStub).to.have.been.calledOnce;
-          expect(errorWasThrown).to.be.true;
+          throw new Error("Expected error. Should not get here.");
         });
     });
 
@@ -581,21 +618,19 @@ describe("c8yclient", () => {
         )
       );
 
-      let errorWasThrown = false;
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("c8yclient failed with: 504");
         expect(err.message).to.contain("Gateway Timeout");
         expect(err.message).to.contain(
           "Error occurred while trying to proxy: localhost:9000/tenant/currentTenant"
         );
-        errorWasThrown = true;
+        expect(window.fetchStub).to.have.been.calledOnce;
       });
 
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then(() => {
-          expect(window.fetchStub).to.have.been.calledOnce;
-          expect(errorWasThrown).to.be.true;
+          throw new Error("Expected error. Should not get here.");
         });
     });
   });

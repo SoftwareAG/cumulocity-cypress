@@ -11,12 +11,17 @@ declare global {
     interface Chainable {
       /**
        * Create a c8y/client `Client` to interact with Cumulocity API. Yielded
-       * results are `Cypress.Response` objects as return by `cy.request`.
+       * results are `Cypress.Response` objects as returned by `cy.request`.
        *
-       * Authentication can be passed via `cy.getAuth` or `cy.useAuth` for basic
-       * auth. If there is a `X-XSRF-TOKEN` cookie, the token will be used for
-       * cookie auth without basic auth. To get the cookie token, call `cy.login`
-       * before using `cy.c8yclient`.
+       * `cy.c8yclient` supports c8y/client `BasicAuth` and `CookieAuth`. To use
+       * any other auth method, such as `BearerAuth`, create a custom `Client` and
+       * pass it in `options`. 
+       * 
+       * Note: If there is a `X-XSRF-TOKEN` cookie, `CookieAuth` will be used as
+       * auth method and basic auth credentials will be ignored. To create the 
+       * cookie token, call `cy.login` before using `cy.c8yclient`. To force using
+       * basic auth method, pass credentials via `cy.getAuth().c8yclient()` or use
+       * `preferBasicAuth` option.
        *
        * `cy.c8yclient` supports chaining of requests. By chaining the response of
        * one request will be provided as second argument to the next request.

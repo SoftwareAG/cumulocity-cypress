@@ -237,16 +237,14 @@ describe("login", () => {
       }
     );
 
-    it("should throw if no auth options found", () => {
-      let errorWasThrown = false;
+    it("should throw if no auth options found", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("No valid C8yAuthOptions found");
-        errorWasThrown = true;
+        done();
       });
 
       cy.getAuth().then((result) => {
-        expect(errorWasThrown).to.be.true;
-        expect(result).to.be.undefined;
+        throw new Error("Expected error. Should not get here.");
       });
     });
   });
@@ -280,18 +278,14 @@ describe("login", () => {
       });
     });
 
-    it("should throw if no auth options found", () => {
-      let errorWasThrown = false;
+    it("should throw if no auth options found", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("No valid C8yAuthOptions found");
-        errorWasThrown = true;
+        done();
       });
 
       cy.useAuth("userthatdoesnotexist").then(() => {
-        expect(errorWasThrown).to.be.true;
-        cy.getAuth().then((auth) => {
-          expect(auth).to.be.undefined;
-        });
+        throw new Error("Expected error. Should not get here.");
       });
     });
   });
