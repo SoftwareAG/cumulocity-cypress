@@ -160,9 +160,9 @@ describe("c8yclient", () => {
         "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu22",
       });
 
-      cy.getAuth({ user: "admin", password: "mypassword", tenant: "t1234" })
-        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
-        .then((response) => {
+      cy.useAuth({ user: "admin", password: "mypassword", tenant: "t1234" });
+      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
+        (response) => {
           expect(response.status).to.eq(200);
           // Client uses both, Basic and Cookie auth, if available
           expect(_.get(response.requestHeaders, "X-XSRF-TOKEN")).not.to.be
@@ -170,6 +170,23 @@ describe("c8yclient", () => {
           expect(_.get(response.requestHeaders, "Authorization")).to.be
             .undefined;
 
+          expectC8yClientRequest(expectedOptions);
+        }
+      );
+    });
+
+    it("should prefer basic auth over cookie if basic auth is previousSubject", () => {
+      cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
+
+      const expectedOptions = _.cloneDeep(requestOptions);
+      _.extend(expectedOptions.headers, {
+        "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu22",
+      });
+
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "t1234" })
+        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
+        .then((response) => {
+          expect(response.status).to.eq(200);
           expectC8yClientRequest(expectedOptions);
         });
     });
@@ -510,9 +527,7 @@ describe("c8yclient", () => {
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then(() => {
-          throw new Error(
-            "Expected error. Should not get here."
-          );
+          throw new Error("Expected error. Should not get here.");
         });
     });
 
@@ -535,9 +550,7 @@ describe("c8yclient", () => {
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then(() => {
-          throw new Error(
-            "Expected error. Should not get here."
-          );
+          throw new Error("Expected error. Should not get here.");
         });
     });
 
@@ -589,9 +602,7 @@ describe("c8yclient", () => {
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then(() => {
-          throw new Error(
-            "Expected error. Should not get here."
-          );
+          throw new Error("Expected error. Should not get here.");
         });
     });
   });
