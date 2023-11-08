@@ -15,9 +15,7 @@ describe("login", () => {
 
       Cypress.env("C8Y_TENANT", "t702341987");
       url = _url(`/tenant/oauth?tenant_id=t702341987`);
-    });
 
-    it("login with user and password", () => {
       stubResponse({
         isOkStatusCode: true,
         status: 200,
@@ -28,7 +26,9 @@ describe("login", () => {
         },
         body: undefined,
       });
+    });
 
+    it("login with user and password", () => {
       let validationCalled = false;
       cy.login("user", "password", {
         useSession: false,
@@ -40,7 +40,8 @@ describe("login", () => {
         expect(auth.user).to.eq("user");
         expect(auth.password).to.eq("password");
 
-        expect(validationCalled).to.be.false;
+        expect(validationCalled).to.be.true;
+        expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("user");
 
         const options = expectHttpRequest({
           url,
@@ -60,14 +61,6 @@ describe("login", () => {
     });
 
     it("login reset c8yclient", () => {
-      stubResponse({
-        isOkStatusCode: true,
-        status: 200,
-        // seems not to work
-        headers: {},
-        body: undefined,
-      });
-
       cy.getAuth({
         user: "admin",
         password: "mypassword",
@@ -79,27 +72,29 @@ describe("login", () => {
           expect(cy.state("ccs.client")).to.not.be.undefined;
         });
 
+      let validationCalled = false;
       cy.login("user", "password", {
         useSession: false,
+        validationFn: cy.stub(() => {
+          validationCalled = true;
+        }),
       }).then(() => {
-        expectHttpRequest({
-          url,
-        });
+        expectHttpRequest({ url });
+        expect(validationCalled).to.be.true;
+        expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("user");
+
         expect(cy.state("ccs.client")).to.be.undefined;
       });
     });
 
     it("login with subject from cypress chain", () => {
-      stubResponse({
-        isOkStatusCode: true,
-        status: 200,
-        headers: {},
-        body: undefined,
-      });
-
+      let validationCalled = false;
       cy.getAuth("x", "y")
         .login({
           useSession: false,
+          validationFn: cy.stub(() => {
+            validationCalled = true;
+          }),  
         })
         .then(() => {
           expectHttpRequest({
@@ -113,6 +108,8 @@ describe("login", () => {
             },
             form: true,
           });
+          expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("x");
+          expect(validationCalled).to.be.true;
         });
     });
   });
@@ -126,6 +123,17 @@ describe("login", () => {
 
       Cypress.env("C8Y_TENANT", "t702341987");
       url = _url(`/tenant/oauth?tenant_id=t702341987`);
+
+      stubResponse({
+        isOkStatusCode: true,
+        status: 200,
+        // seems not to work
+        headers: {
+          "Set-Cookie":
+            "authorization=eyJhbGciOiJ; Path=/; Domain=localhost; HttpOnly",
+        },
+        body: undefined,
+      });
     });
 
     it.skip("login with user and password", () => {
@@ -137,6 +145,7 @@ describe("login", () => {
         expect(auth).to.not.be.undefined;
         expect(auth.user).to.eq("user");
         expect(auth.password).to.eq("password");
+        expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("pvtuser");
       });
     });
   });
