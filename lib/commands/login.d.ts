@@ -7,7 +7,7 @@ declare global {
        * Login to Cumulocity.
        *
        * Uses env variables `C8Y_USERNAME` and `C8Y_PASSWORD` if no arguments or no
-       * password is passed.
+       * password is passed. The logged in user will be stored in `C8Y_LOGGED_IN_USER`.
        *
        * Default values for login options:
        * ```
