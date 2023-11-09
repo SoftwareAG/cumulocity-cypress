@@ -302,9 +302,7 @@ describe("dates", () => {
           "2023-03-25T12:00:00.000Z",
         ],
         { invalid: "throw" }
-      ).then(() => {
-        throw new Error("Expected error. Should not get here.");
-      });
+      );
     });
 
     it("throws error on locale id not being registered", (done) => {
@@ -317,9 +315,7 @@ describe("dates", () => {
         done();
       });
 
-      cy.toISODate("15 June 2015 at 9:03:01 +01").then(() => {
-        throw new Error("Expected error. Should not get here.");
-      });
+      cy.toISODate("15 June 2015 at 9:03:01 +01");
     });
   });
 
@@ -394,7 +390,6 @@ describe("dates", () => {
 
     beforeEach(() => {
       cy.setLanguage("en");
-
     });
 
     it("fails with error for invalid source and throw option enabled", (done) => {

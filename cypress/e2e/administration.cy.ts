@@ -94,9 +94,7 @@ describe("administration", () => {
       cy.spy(Cypress, "log").log(false);
 
       //@ts-ignore
-      cy.deleteUser({ user: "test" }).then(() => {
-        throw new Error("Expected error. Should not get here.");
-      });
+      cy.deleteUser({ user: "test" });
     });
   });
 

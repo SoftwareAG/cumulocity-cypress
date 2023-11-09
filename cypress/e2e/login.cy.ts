@@ -94,7 +94,7 @@ describe("login", () => {
           useSession: false,
           validationFn: cy.stub(() => {
             validationCalled = true;
-          }),  
+          }),
         })
         .then(() => {
           expectHttpRequest({
@@ -252,9 +252,7 @@ describe("login", () => {
         done();
       });
 
-      cy.getAuth().then((result) => {
-        throw new Error("Expected error. Should not get here.");
-      });
+      cy.getAuth();
     });
   });
 
@@ -293,9 +291,7 @@ describe("login", () => {
         done();
       });
 
-      cy.useAuth("userthatdoesnotexist").then(() => {
-        throw new Error("Expected error. Should not get here.");
-      });
+      cy.useAuth("userthatdoesnotexist");
     });
   });
 });
