@@ -307,10 +307,11 @@ describe("c8yclient", () => {
       });
     });
 
-    it("fails with error if no auth or cookie is provided", () => {
+    it("fails with error if no auth or cookie is provided", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("Missing authentication");
         expect(window.fetchStub).to.not.have.been.called;
+        done();
       });
 
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current());
@@ -331,14 +332,18 @@ describe("c8yclient", () => {
           // last log is the one from fetchStub, get the last c8yclient log
           const args = spy.args[Math.max(spy.callCount - 2, 0)];
           const logged = _.isArray(args) ? _.last(args) : args;
-          
+
           expect(logged).to.not.be.undefined;
           expect(logged.consoleProps).to.not.be.undefined;
           expect(_.isFunction(logged.consoleProps)).to.be.true;
 
           const consoleProps = logged.consoleProps.call();
-          expect(consoleProps.CookieAuth).to.eq("XSRF-TOKEN fsETfgIBdAnEyOLbADTu22 (testuser)");
-          expect(consoleProps.BasicAuth).to.eq("Basic dDEyMzQ1L2FkbWluMzpteXBhc3N3b3Jk (t12345/admin3)");
+          expect(consoleProps.CookieAuth).to.eq(
+            "XSRF-TOKEN fsETfgIBdAnEyOLbADTu22 (testuser)"
+          );
+          expect(consoleProps.BasicAuth).to.eq(
+            "Basic dDEyMzQ1L2FkbWluMzpteXBhc3N3b3Jk (t12345/admin3)"
+          );
         });
     });
   });
@@ -552,11 +557,10 @@ describe("c8yclient", () => {
         done();
       });
 
-      cy.getAuth({ user: "admin", password: "mypassword" })
-        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
-        .then(() => {
-          throw new Error("Expected error. Should not get here.");
-        });
+      cy.getAuth({
+        user: "admin",
+        password: "mypassword",
+      }).c8yclient<ICurrentTenant>((client) => client.tenant.current());
     });
 
     it("should catch and process generic error response", (done) => {
@@ -575,11 +579,10 @@ describe("c8yclient", () => {
         done();
       });
 
-      cy.getAuth({ user: "admin", password: "mypassword" })
-        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
-        .then(() => {
-          throw new Error("Expected error. Should not get here.");
-        });
+      cy.getAuth({
+        user: "admin",
+        password: "mypassword",
+      }).c8yclient<ICurrentTenant>((client) => client.tenant.current());
     });
 
     it("should not throw on 404 response with failOnStatusCode false", () => {
@@ -605,7 +608,7 @@ describe("c8yclient", () => {
     });
 
     // https://github.com/SoftwareAG/cumulocity-cypress/issues/1
-    it("should wrap client authentication errors into CypressError", () => {
+    it("should wrap client authentication errors into CypressError", (done) => {
       // {"responseObj":{"status":504,"isOkStatusCode":false,"statusText":"Gateway Timeout","headers":{"connection":"keep-alive","date":"Tue, 24 Oct 2023 07:57:52 GMT","keep-alive":"timeout=5","transfer-encoding":"chunked","x-powered-by":"Express"},"requestHeaders":{"Authorization":"Basic dHdpOkRlbW8yMDE5ISE=","content-type":"application/json","UseXBasic":true},"duration":92,"url":"http://localhost:9000/tenant/currentTenant","body":"Error occurred while trying to proxy: localhost:9000/tenant/currentTenant"}}'
 
       stubResponse(
@@ -625,13 +628,13 @@ describe("c8yclient", () => {
           "Error occurred while trying to proxy: localhost:9000/tenant/currentTenant"
         );
         expect(window.fetchStub).to.have.been.calledOnce;
+        done();
       });
 
-      cy.getAuth({ user: "admin", password: "mypassword" })
-        .c8yclient<ICurrentTenant>((client) => client.tenant.current())
-        .then(() => {
-          throw new Error("Expected error. Should not get here.");
-        });
+      cy.getAuth({
+        user: "admin",
+        password: "mypassword",
+      }).c8yclient<ICurrentTenant>((client) => client.tenant.current());
     });
   });
 

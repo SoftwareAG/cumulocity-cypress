@@ -19,7 +19,7 @@ describe("general", () => {
     });
 
     it("gainsight api.key request will throw exception", (done) => {
-      Cypress.on("fail", (err) => {
+      Cypress.once("fail", (err) => {
         expect(err.message).to.eq(
           "Intercepted Gainsight API key call, but Gainsight should have been disabled. Failing..."
         );
@@ -31,10 +31,6 @@ describe("general", () => {
         .then(() => {
           $.get(url(`/tenant/system/options/gainsight/api.key`));
         })
-        .wait("@interception")
-        .then(() => {
-          throw new Error("Expected error. Should not get here.");
-        });
     });
   });
 });

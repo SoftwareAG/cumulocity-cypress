@@ -321,9 +321,7 @@ describe("request", () => {
         (response) => {
           return response.status === 200;
         }
-      ).then(() => {
-        throw "Expected request to throw, but got response...";
-      });
+      );
     });
 
     it("should fail when retry requests exceeds max - failOnStatusCode false", () => {
