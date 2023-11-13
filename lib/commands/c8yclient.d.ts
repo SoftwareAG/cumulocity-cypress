@@ -8,6 +8,10 @@ import {
 
 declare global {
   namespace Cypress {
+    interface Cypress {
+      c8ypact: C8yPact;
+    }
+ 
     interface Chainable {
       /**
        * Create a c8y/client `Client` to interact with Cumulocity API. Yielded
@@ -15,10 +19,10 @@ declare global {
        *
        * `cy.c8yclient` supports c8y/client `BasicAuth` and `CookieAuth`. To use
        * any other auth method, such as `BearerAuth`, create a custom `Client` and
-       * pass it in `options`. 
-       * 
+       * pass it in `options`.
+       *
        * Note: If there is a `X-XSRF-TOKEN` cookie, `CookieAuth` will be used as
-       * auth method and basic auth credentials will be ignored. To create the 
+       * auth method and basic auth credentials will be ignored. To create the
        * cookie token, call `cy.login` before using `cy.c8yclient`. To force using
        * basic auth method, pass credentials via `cy.getAuth().c8yclient()` or use
        * `preferBasicAuth` option.
@@ -76,6 +80,18 @@ declare global {
 
       c8yclient(): Chainable<Client>;
     }
+
+    interface SuiteConfigOverrides {
+      c8ypact: string;
+    }
+
+    interface TestConfigOverrides {
+      c8ypact: string;
+    }
+
+    interface RuntimeConfigOptions {
+      c8ypact: string;
+    }
   }
 
   type C8yClientIResult<T> = IResult<T> | IResult<null> | IFetchResponse;
@@ -106,5 +122,17 @@ declare global {
     client: Client;
     preferBasicAuth: boolean;
     skipClientAuthenication: boolean;
+  }
+
+  interface C8yPact {
+    matcher: C8yPactMatcher;
+    currentPactIdentifier: () => string;
+    currentNextPact: <T = any>() => Cypress.Chainable<Cypress.Response<T>>;
+    currentPacts: () => Cypress.Chainable<Cypress.Response<any>[]>;
+    isRecordingEnabled: () => boolean;
+  }
+
+  interface C8yPactMatcher {
+    match: (response: Cypress.Response, pact) => boolean;
   }
 }
