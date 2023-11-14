@@ -1,15 +1,19 @@
-import { throwPactError } from "../commands/utils";
-
 const { _ } = Cypress;
 
 export class C8yDefaultPactMatcher {
-  constructor(propertyMatchers = { body: new C8yPactContentMatcher() }) {
+  private propertyMatchers: { [key: string]: C8yPactMatcher } = {};
+
+  constructor(
+    propertyMatchers: { [key: string]: C8yPactMatcher } = {
+      body: new C8yPactContentMatcher(),
+    }
+  ) {
     this.propertyMatchers = propertyMatchers;
 
     this.addPropertyMatcher("duration", new C8yNumberMatcher());
   }
 
-  match(obj1, obj2) {
+  match(obj1: any, obj2: any): boolean {
     if (obj1 === obj2) {
       return true;
     }
@@ -37,7 +41,9 @@ export class C8yDefaultPactMatcher {
       const value2 = obj2[key];
 
       if (!keys2.includes(key)) {
-        throwPactError(`Pact validation failed! Pact does not have ${key} key.`);
+        throwPactError(
+          `Pact validation failed! Pact does not have ${key} key.`
+        );
       }
       if (this.propertyMatchers[key]) {
         if (!this.propertyMatchers[key].match(value1, value2)) {
@@ -59,13 +65,19 @@ export class C8yDefaultPactMatcher {
     return true;
   }
 
-  addPropertyMatcher(propertyName, matcher) {
+  addPropertyMatcher(propertyName: string, matcher: C8yPactMatcher) {
     this.propertyMatchers[propertyName] = matcher;
   }
 
-  removePropertyMatcher(propertyName) {
+  removePropertyMatcher(propertyName: string) {
     delete this.propertyMatchers[propertyName];
   }
+}
+
+function throwPactError(message: string) {
+  const newErr = new Error(message);
+  newErr.name = "C8yPactError";
+  throw newErr;
 }
 
 export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
@@ -81,8 +93,8 @@ export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
   }
 }
 
-export class C8yIdentifierMatcher {
-  match(obj1, obj2) {
+export class C8yIdentifierMatcher implements C8yPactMatcher {
+  match(obj1: any, obj2: any): boolean {
     return (
       _.isString(obj1) &&
       /^\d+$/.test(obj1) &&
@@ -92,20 +104,20 @@ export class C8yIdentifierMatcher {
   }
 }
 
-export class C8yNumberMatcher {
-  match(obj1, obj2) {
+export class C8yNumberMatcher implements C8yPactMatcher {
+  match(obj1: any, obj2: any): boolean {
     return _.isNumber(obj1) && _.isNumber(obj2);
   }
 }
 
-export class C8yIgnoreMatcher {
-  match(obj1, obj2) {
+export class C8yIgnoreMatcher implements C8yPactMatcher {
+  match(obj1: any, obj2: any): boolean {
     return true;
   }
 }
 
-export class C8yISODateStringMatcher {
-  match(obj1, obj2) {
+export class C8yISODateStringMatcher implements C8yPactMatcher {
+  match(obj1: any, obj2: any): boolean {
     if (!_.isString(obj1) || !_.isString(obj2)) {
       return false;
     }

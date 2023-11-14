@@ -107,7 +107,7 @@ describe("c8yclient", () => {
             expect(response.status).to.eq(202);
             // pacts are not validated when recording
             const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
-            expect(spy).to.not.have.been.calledTwice;
+            expect(spy).to.have.been.calledTwice;
           });
       }
     );

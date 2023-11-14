@@ -8,10 +8,6 @@ import {
 
 declare global {
   namespace Cypress {
-    interface Cypress {
-      c8ypact: C8yPact;
-    }
- 
     interface Chainable {
       /**
        * Create a c8y/client `Client` to interact with Cumulocity API. Yielded
@@ -80,35 +76,23 @@ declare global {
 
       c8yclient(): Chainable<Client>;
     }
-
-    interface SuiteConfigOverrides {
-      c8ypact: string;
-    }
-
-    interface TestConfigOverrides {
-      c8ypact: string;
-    }
-
-    interface RuntimeConfigOptions {
-      c8ypact: string;
-    }
   }
 
   type C8yClientIResult<T> = IResult<T> | IResult<null> | IFetchResponse;
 
   type C8yClientServiceFn<R, T> = (
     client: Client,
-    previousResponse?: Response<R>
+    previousResponse?: Cypress.Response<R>
   ) => Promise<C8yClientIResult<T>>;
 
   type C8yClientServiceArrayFn<R, T> = (
     client: Client,
-    previousResponse?: Response<R>
+    previousResponse?: Cypress.Response<R>
   ) => Promise<C8yClientIResult<T>>[];
 
   type C8yClientServiceListFn<R, T> = (
     client: Client,
-    previousResponse?: Response<R>
+    previousResponse?: Cypress.Response<R>
   ) => Promise<IResultList<T>>;
 
   type C8yClientOptions = Partial<C8yOptions> &
@@ -122,18 +106,5 @@ declare global {
     client: Client;
     preferBasicAuth: boolean;
     skipClientAuthenication: boolean;
-  }
-
-  interface C8yPact {
-    matcher: C8yPactMatcher;
-    currentPactIdentifier: () => string;
-    currentPactFilename: () => string;
-    currentNextPact: <T = any>() => Cypress.Chainable<Cypress.Response<T>>;
-    currentPacts: () => Cypress.Chainable<Cypress.Response<any>[]>;
-    isRecordingEnabled: () => boolean;
-  }
-
-  interface C8yPactMatcher {
-    match: (obj1: unknown, obj2: unknown) => boolean;
   }
 }
