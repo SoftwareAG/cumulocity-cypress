@@ -18,6 +18,10 @@ export class C8yDefaultPactMatcher {
       return true;
     }
 
+    if (_.isString(obj1) && _.isString(obj2) && !_.isEqual(obj1, obj2)) {
+      throwPactError("Pact validation failed! Response bodies not matching.");
+    }
+
     if (!_.isObject(obj1) || !_.isObject(obj2)) {
       throwPactError(
         "Pact validation failed! Expected 2 objects as input for matching."
@@ -122,13 +126,8 @@ export class C8yISODateStringMatcher implements C8yPactMatcher {
       return false;
     }
 
-    const d1 = new Date(obj1);
-    const d2 = new Date(obj2);
-    return (
-      !Number.isNaN(d1.valueOf()) &&
-      d1.toISOString() === obj1 &&
-      !Number.isNaN(d2.valueOf()) &&
-      d2.toISOString() === obj2
-    );
+    const d1 = Cypress.datefns.parseISO(obj1);
+    const d2 = Cypress.datefns.parseISO(obj2);
+    return Cypress.datefns.isValid(d1) && Cypress.datefns.isValid(d2);
   }
 }

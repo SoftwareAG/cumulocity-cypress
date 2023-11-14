@@ -93,6 +93,60 @@ describe("c8yclient", () => {
     });
 
     it(
+      "should fail for missing pact - failOnMissingPacts enabled",
+      { c8ypact: "non-existing-pact-id" },
+      function (done) {
+        Cypress.c8ypact.failOnMissingPacts = true;
+
+        cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
+        Cypress.once("fail", (err) => {
+          expect(err.message).to.contain(
+            "Pact non-existing-pact-id not found and Cypress.c8ypact.failOnMissingPacts is enabled."
+          );
+          const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+          done();
+        });
+
+        cy.getAuth({
+          user: "admin",
+          password: "mypassword",
+        }).c8yclient<IManagedObject>([
+          (c) => c.inventory.detail(1, { withChildren: false }),
+          (c) => c.inventory.detail(1, { withChildren: false }),
+        ]);
+      }
+    );
+
+    it(
+      "should fail for missing pact - failOnMissingPacts disbaled",
+      { c8ypact: "non-existing-pact-id" },
+      function () {
+        Cypress.c8ypact.failOnMissingPacts = false;
+
+        cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
+
+        cy.getAuth({ user: "admin", password: "mypassword" })
+          .c8yclient<IManagedObject>([
+            (c) => c.inventory.detail(1, { withChildren: false }),
+            (c) => c.inventory.detail(1, { withChildren: false }),
+          ])
+          .then((response) => {
+            expect(response.status).to.eq(202);
+            const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
+            expect(spy).to.have.been.calledTwice;
+            // plugins must return null, do not test for undefined
+            spy.getCall(0).returnValue.then((r) => {
+              expect(r).to.be.null;
+            })
+            spy.getCall(1).returnValue.then((r) => {
+              expect(r).to.be.null;
+            })
+          });
+      }
+    );
+
+    it(
       "should match with existing pact",
       { c8ypact: "fixture-c8ypact-matching" },
       function () {
@@ -105,7 +159,6 @@ describe("c8yclient", () => {
           ])
           .then((response) => {
             expect(response.status).to.eq(202);
-            // pacts are not validated when recording
             const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
             expect(spy).to.have.been.calledTwice;
           });
