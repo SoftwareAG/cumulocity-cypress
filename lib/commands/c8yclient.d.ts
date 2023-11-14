@@ -127,12 +127,13 @@ declare global {
   interface C8yPact {
     matcher: C8yPactMatcher;
     currentPactIdentifier: () => string;
+    currentPactFilename: () => string;
     currentNextPact: <T = any>() => Cypress.Chainable<Cypress.Response<T>>;
     currentPacts: () => Cypress.Chainable<Cypress.Response<any>[]>;
     isRecordingEnabled: () => boolean;
   }
 
   interface C8yPactMatcher {
-    match: (response: Cypress.Response, pact) => boolean;
+    match: (obj1: unknown, obj2: unknown) => boolean;
   }
 }
