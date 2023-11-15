@@ -7,11 +7,11 @@ declare global {
     }
 
     interface TestConfigOverrides {
-      c8ypact: string;
+      c8ypact?: string;
     }
 
     interface RuntimeConfigOptions {
-      c8ypact: string;
+      c8ypact?: string;
     }
   }
 
