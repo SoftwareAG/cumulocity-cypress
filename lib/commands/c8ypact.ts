@@ -6,10 +6,6 @@ declare global {
       c8ypact: C8yPact;
     }
 
-    interface SuiteConfigOverrides {
-      c8ypact: string;
-    }
-
     interface TestConfigOverrides {
       c8ypact: string;
     }
