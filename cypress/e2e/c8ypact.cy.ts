@@ -31,8 +31,32 @@ describe("c8yclient", () => {
   });
 
   context("c8ypact recording", function () {
-    before(() => {
+    beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
+    });
+
+    it("recording should be enabled", function () {
+      Cypress.env("C8Y_PACT_ENABLED", "true");
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+    });
+
+    it("recording should be disabled", function () {
+      const isEnabled = Cypress.env("C8Y_PACT_ENABLED");
+      Cypress.env("C8Y_PACT_ENABLED", "true");
+      Cypress.env("C8Y_PACT_MODE", undefined);
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      Cypress.env("C8Y_PACT_ENABLED", isEnabled.toString());
+    });
+
+    it("recording should be disabled if plugin is disabled", function () {
+      const isEnabled = Cypress.env("C8Y_PACT_ENABLED");
+      Cypress.env("C8Y_PACT_ENABLED", undefined);
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      Cypress.env("C8Y_PACT_ENABLED", isEnabled.toString());
+    });
+
+    it("plugin should be enabled", function () {
+      expect(Cypress.env("C8Y_PACT_ENABLED")).to.eq("true");
     });
 
     it("should create pact identifier from test case name", function () {
@@ -55,7 +79,9 @@ describe("c8yclient", () => {
       Cypress.env("C8Y_TENANT", undefined);
       cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
 
-      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      cy.then(() => {
+        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      });
       Cypress.c8ypact.currentPacts().then((pacts) => {
         expect(pacts).to.be.null;
       });
@@ -138,10 +164,10 @@ describe("c8yclient", () => {
             // plugins must return null, do not test for undefined
             spy.getCall(0).returnValue.then((r) => {
               expect(r).to.be.null;
-            })
+            });
             spy.getCall(1).returnValue.then((r) => {
               expect(r).to.be.null;
-            })
+            });
           });
       }
     );

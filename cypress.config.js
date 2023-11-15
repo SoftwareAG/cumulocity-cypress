@@ -6,6 +6,8 @@ module.exports = defineConfig({
     baseUrl: "http://localhost:8080",
     setupNodeEvents(on, config) {
       registerC8yPlugin(on, config);
+      config.env.C8Y_PACT_MODE = "recording";
+      return config;
     },
   },
 });
