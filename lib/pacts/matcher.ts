@@ -6,12 +6,17 @@ export class C8yDefaultPactMatcher {
   constructor(
     propertyMatchers: { [key: string]: C8yPactMatcher } = {
       body: new C8yPactContentMatcher(),
+      requestBody: new C8yPactContentMatcher(),
     }
   ) {
     this.propertyMatchers = propertyMatchers;
 
     this.addPropertyMatcher("duration", new C8yNumberMatcher());
     this.addPropertyMatcher("date", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("Authorization", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("location", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("url", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("lastMessage", new C8yISODateStringMatcher());
   }
 
   match(obj1: any, obj2: any): boolean {

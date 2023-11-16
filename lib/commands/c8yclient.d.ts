@@ -75,6 +75,29 @@ declare global {
       ): Chainable<Response<T[]>>;
 
       c8yclient(): Chainable<Client>;
+
+      /**
+       * Convenience for cy.c8yclient with failOnStatus false. Use if the request is
+       * expected to fail. 
+       * 
+       * @see c8yclient
+       */
+      c8yclientf<T = any, R = any>(
+        serviceFn: C8yClientServiceFn<R, T> | C8yClientServiceFn<R, any>[],
+        options?: C8yClientOptions
+      ): Chainable<Response<T>>;
+
+      c8yclientf<T = any, R = any>(
+        serviceFn:
+          | C8yClientServiceArrayFn<R, T>
+          | C8yClientServiceArrayFn<R, any>[],
+        options?: C8yClientOptions
+      ): Chainable<Response<T>[]>;
+
+      c8yclientf<T = any, R = any>(
+        serviceFn: C8yClientServiceListFn<R, T>,
+        options?: C8yClientOptions
+      ): Chainable<Response<T[]>>;
     }
   }
 
@@ -106,5 +129,7 @@ declare global {
     client: Client;
     preferBasicAuth: boolean;
     skipClientAuthenication: boolean;
+    failOnPactValidation: boolean;
+    ignorePact: boolean;
   }
 }

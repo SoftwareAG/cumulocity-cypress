@@ -7,12 +7,19 @@ declare global {
     }
 
     interface TestConfigOverrides {
-      c8ypact?: string;
+      c8ypact?: C8yPactConfigOptions;
     }
 
     interface RuntimeConfigOptions {
-      c8ypact?: string;
+      c8ypact?: C8yPactConfigOptions;
     }
+  }
+
+  interface C8yPactConfigOptions  {
+    id?: string;
+    ignore?: boolean;
+    log?: boolean;
+    matcher?: C8yPactMatcher;
   }
 
   interface C8yPact {
@@ -23,6 +30,7 @@ declare global {
       T = any
     >() => Cypress.Chainable<Cypress.Response<T> | null>;
     currentPacts: () => Cypress.Chainable<Cypress.Response<any>[] | null>;
+    currentMatcher: () => C8yPactMatcher;
     savePact: (response: Cypress.Response<any>) => void;
     isEnabled: () => boolean;
     isRecordingEnabled: () => boolean;
@@ -36,6 +44,7 @@ declare global {
 
 Cypress.c8ypact = {
   currentPactIdentifier: pactIdentifier,
+  currentMatcher,
   currentPacts,
   currentPactFilename,
   currentNextPact: getNextPact,
@@ -60,15 +69,21 @@ beforeEach(() => {
   }
 });
 
-const logTasks = false;
+const logTasks = true;
 
 function pactIdentifier(): string {
   let key = Cypress.currentTest?.titlePath?.join("--");
   if (key == null) {
     key = Cypress.spec?.relative?.split("/").slice(-2).join("--");
   }
-  return Cypress.config().c8ypact || key.replace(/ /g, "_");
+  const pact = Cypress.config().c8ypact;
+  return (pact && pact.id) || key.replace(/ /g, "_");
 }
+
+function currentMatcher(): C8yPactMatcher {
+  const pact = Cypress.config().c8ypact;
+  return (pact && pact.matcher) || Cypress.c8ypact.matcher;
+};
 
 function isEnabled(): boolean {
   return Cypress.env("C8Y_PACT_ENABLED") != null;

@@ -67,7 +67,7 @@ describe("c8yclient", () => {
 
     it(
       "should create pact identifier from test case annotation",
-      { c8ypact: "mycustom test case" },
+      { c8ypact: { id: "mycustom test case" } },
       function () {
         expect(Cypress.c8ypact.currentPactIdentifier()).to.equal(
           "mycustom test case"
@@ -120,7 +120,8 @@ describe("c8yclient", () => {
 
     it(
       "should fail for missing pact - failOnMissingPacts enabled",
-      { c8ypact: "non-existing-pact-id" },
+      { c8ypact: { id: "non-existing-pact-id" } },
+
       function (done) {
         Cypress.c8ypact.failOnMissingPacts = true;
 
@@ -146,7 +147,7 @@ describe("c8yclient", () => {
 
     it(
       "should fail for missing pact - failOnMissingPacts disbaled",
-      { c8ypact: "non-existing-pact-id" },
+      { c8ypact: { id: "non-existing-pact-id" } },
       function () {
         Cypress.c8ypact.failOnMissingPacts = false;
 
@@ -174,7 +175,7 @@ describe("c8yclient", () => {
 
     it(
       "should match with existing pact",
-      { c8ypact: "fixture-c8ypact-matching" },
+      { c8ypact: { id: "fixture-c8ypact-matching" } },
       function () {
         cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
 

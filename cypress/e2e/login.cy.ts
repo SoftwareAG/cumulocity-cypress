@@ -1,9 +1,11 @@
+import { IDeviceCredentials } from "@c8y/client";
 import {
   expectHttpRequest,
   stubResponse,
   initRequestStub,
   url as _url,
 } from "../support/util";
+const { _ } = Cypress;
 
 describe("login", () => {
   context("without cy.session", () => {
@@ -211,6 +213,29 @@ describe("login", () => {
         });
     });
 
+    it("should filter additional keys", () => {
+      cy.wrap({
+        user: "admin",
+        password: "password",
+        tenant: "t7654321",
+        test: "test",
+        x: "y",
+      })
+        .getAuth()
+        .then((result) => {
+          expect(result.user).to.eq("admin");
+          expect(result.password).to.eq("password");
+          expect(result.tenant).to.eq("t7654321");
+          expect(Object.keys(result)).to.have.length(3);
+          expect(
+            _.isEqual(
+              Object.keys(result).sort(),
+              ["user", "password", "tenant"].sort()
+            )
+          ).to.be.true;
+        });
+    });
+
     it("should work without tenant environment variable", () => {
       Cypress.env("C8Y_TENANT", undefined);
       cy.wrap({ user: "admin", password: "password" })
@@ -245,6 +270,27 @@ describe("login", () => {
         });
       }
     );
+    it("should get auth options from IDeviceCredentials with username key", () => {
+      const dc: IDeviceCredentials = {
+        username: "myusername",
+        password: "mypassword",
+        id: "123",
+        self: "https://localhost",
+        tenantId: "t1234567890",
+      };
+      cy.getAuth(dc).then((result) => {
+        expect(result.user).to.eq("myusername");
+        expect(result.password).to.eq("mypassword");
+        expect(result.tenant).to.eq("t1234567890");
+        expect(Object.keys(result)).to.have.length(3);
+        expect(
+          _.isEqual(
+            Object.keys(result).sort(),
+            ["user", "password", "tenant"].sort()
+          )
+        ).to.be.true;
+      });
+    });
 
     it("should throw if no auth options found", (done) => {
       Cypress.once("fail", (err) => {
@@ -285,6 +331,50 @@ describe("login", () => {
       });
     });
 
+    it("should allow to overwrite auth", () => {
+      cy.useAuth({
+        user: "admin",
+        password: "password",
+        tenant: "t7654321",
+      });
+
+      cy.useAuth({
+        user: "admin2",
+        password: "password2",
+        tenant: "t76543210",
+      });
+
+      cy.getAuth().then((result) => {
+        expect(result.user).to.eq("admin2");
+        expect(result.password).to.eq("password2");
+        expect(result.tenant).to.eq("t76543210");
+      });
+    });
+
+    it(
+      "should allow to overwrite auth from annotation",
+      { auth: "myauthuser" },
+      () => {
+        cy.getAuth().then((result) => {
+          expect(result.user).to.eq("myauthuser");
+          expect(result.password).to.eq("myadminpassword");
+          expect(result.tenant).to.eq("t1234567");
+        });
+
+        cy.useAuth({
+          user: "admin2",
+          password: "password2",
+          tenant: "t76543210",
+        });
+
+        cy.getAuth().then((result) => {
+          expect(result.user).to.eq("admin2");
+          expect(result.password).to.eq("password2");
+          expect(result.tenant).to.eq("t76543210");
+        });
+      }
+    );
+
     it("should throw if no auth options found", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("No valid C8yAuthOptions found");
@@ -292,6 +382,15 @@ describe("login", () => {
       });
 
       cy.useAuth("userthatdoesnotexist");
+    });
+
+    it("should throw for undefined object", (done) => {
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("No valid C8yAuthOptions found");
+        done();
+      });
+
+      cy.useAuth(undefined);
     });
   });
 });
