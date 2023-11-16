@@ -11,6 +11,7 @@ export class C8yDefaultPactMatcher {
     this.propertyMatchers = propertyMatchers;
 
     this.addPropertyMatcher("duration", new C8yNumberMatcher());
+    this.addPropertyMatcher("date", new C8yIgnoreMatcher());
   }
 
   match(obj1: any, obj2: any): boolean {
@@ -88,12 +89,13 @@ export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
   constructor(propertyMatchers = {}) {
     super(propertyMatchers);
 
-    this.addPropertyMatcher("id", new C8yIdentifierMatcher());
+    this.addPropertyMatcher("id", new C8yStringMatcher());
     this.addPropertyMatcher("statistics", new C8yIgnoreMatcher());
     this.addPropertyMatcher("lastUpdated", new C8yISODateStringMatcher());
     this.addPropertyMatcher("creationTime", new C8yISODateStringMatcher());
     this.addPropertyMatcher("next", new C8yIgnoreMatcher());
     this.addPropertyMatcher("self", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("password", new C8yIgnoreMatcher());
   }
 }
 
@@ -114,6 +116,11 @@ export class C8yNumberMatcher implements C8yPactMatcher {
   }
 }
 
+export class C8yStringMatcher implements C8yPactMatcher {
+  match(obj1: any, obj2: any): boolean {
+    return _.isString(obj1) && _.isString(obj2);
+  }
+}
 export class C8yIgnoreMatcher implements C8yPactMatcher {
   match(obj1: any, obj2: any): boolean {
     return true;
