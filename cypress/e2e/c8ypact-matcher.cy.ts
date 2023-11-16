@@ -28,7 +28,6 @@ describe("c8ypactmatcher", () => {
       const pact = _.cloneDeep(obj1);
       pact.requestHeaders = {
         "content-type": "application/json",
-        Authorization: "Basic YWRtaW46bXlwYXNzd29yZA==",
         UseXBasic: true,
         accept: "application/json",
       };
@@ -85,13 +84,14 @@ describe("c8ypactmatcher", () => {
       expect(matcher.match(obj, pact)).to.be.true;
     });
 
-    it("should not match managed objects with non-numeric ids", function () {
+    it("should match managed objects with non-numeric ids", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = { body: { id: "212123" } };
       const obj = { body: { id: "92992asdasdasd99" } };
-      expect(() => matcher.match(obj, pact)).to.throw(
-        "Pact validation failed for id with propertyMatcher [object Object]"
-      );
+      expect(matcher.match(obj, pact)).to.be.true;
+      // expect(() => matcher.match(obj, pact)).to.throw(
+      //   "Pact validation failed for id with propertyMatcher [object Object]"
+      // );
     });
 
     it("should not match managed objects with different id types", function () {

@@ -7,7 +7,6 @@
       "content-type": "application/json"
     },
     "requestHeaders": {
-      "Authorization": "Basic YWRtaW46bXlwYXNzd29yZA==",
       "content-type": "application/json",
       "accept": "application/json",
       "UseXBasic": true
@@ -239,7 +238,6 @@
       "content-type": "application/json"
     },
     "requestHeaders": {
-      "Authorization": "Basic YWRtaW46bXlwYXNzd29yZA==",
       "content-type": "application/json",
       "accept": "application/json",
       "UseXBasic": true
