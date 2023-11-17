@@ -192,4 +192,88 @@ describe("c8yclient", () => {
       }
     );
   });
+
+  context("c8ypact preprocessing", function () {
+    beforeEach(() => {
+      Cypress.env("C8Y_PACT_MODE", "recording");
+    });
+
+    it("should replace Authorization header and password in body", function () {
+      const obj = {
+        status: 201,
+        isOkStatusCode: true,
+        statusText: "Created",
+        headers: {
+          "content-type":
+            "application/vnd.com.nsn.cumulocity.newdevicerequest+json;charset=UTF-8;ver=0.9",
+          date: "Fri, 17 Nov 2023 13:12:04 GMT",
+          expires: "0",
+        },
+        requestHeaders: {
+          Authorization: "Basic dHdpOkRlbW8yMDE5ISE=",
+          "content-type": "application/json",
+          accept: "application/json",
+          UseXBasic: true,
+        },
+        duration: 35,
+        url: "https://oee-dev.eu-latest.cumulocity.com/devicecontrol/newDeviceRequests",
+        body: {
+          customProperties: {},
+          creationTime: "2023-11-17T13:12:03.992Z",
+          status: "WAITING_FOR_CONNECTION",
+          password: "abasasapksasas",
+        },
+        method: "POST",
+        requestBody: {
+          id: "abc123124",
+        },
+      };
+      Cypress.c8ypact.preprocessor.preprocess(obj);
+      expect(obj.requestHeaders.Authorization).to.eq("Basic ********");
+      expect(obj.body.password).to.eq("********");
+    });
+
+    it("should replace Authorization header and password in body", function () {
+      stubResponses([
+        new window.Response(JSON.stringify({ password: "sdqadasdadasd" }), {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+      ]);
+      cy.getAuth({
+        user: "admin",
+        password: "mypassword",
+        tenant: "t123",
+      }).c8yclient<IManagedObject>((c) => {
+        return c.inventory.detail(1, { withChildren: false });
+      });
+      Cypress.c8ypact.currentNextPact().then((pact) => {
+        expect(pact).to.not.be.null;
+        expect(pact.requestHeaders.Authorization).to.eq("Basic ********");
+        expect(pact.body.password).to.eq("********");
+      });
+    });
+
+    it("should not add preprocessed properties", function () {
+      cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
+      Cypress.env("C8Y_TENANT", "t1234");
+
+      stubResponses([
+        new window.Response(JSON.stringify({ test: "test" }), {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+      ]);
+      cy.c8yclient<IManagedObject>((c) => {
+        return c.inventory.detail(1, { withChildren: false });
+      });
+      Cypress.c8ypact.currentNextPact().then((pact) => {
+        expect(pact).to.not.be.null;
+        expect(pact.requestHeaders.Authorization).to.be.undefined;
+        expect(pact.body.password).to.be.undefined;
+      });
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import { C8yDefaultPactMatcher } from "../pacts/matcher";
+import { C8yPactDefaultPreprocessor } from "../pacts/preprocessor";
 
 declare global {
   namespace Cypress {
@@ -24,6 +25,7 @@ declare global {
 
   interface C8yPact {
     matcher: C8yPactMatcher;
+    preprocessor: C8yPactPreprocessor;
     currentPactIdentifier: () => string;
     currentPactFilename: () => string;
     currentNextPact: <
@@ -45,6 +47,10 @@ declare global {
       loggerProps?: { [key: string]: any }
     ) => boolean;
   }
+
+  interface C8yPactPreprocessor {
+    preprocess: (obj1: unknown) => void;
+  }
 }
 
 Cypress.c8ypact = {
@@ -57,6 +63,7 @@ Cypress.c8ypact = {
   savePact,
   isEnabled,
   matcher: new C8yDefaultPactMatcher(),
+  preprocessor: new C8yPactDefaultPreprocessor(),
   failOnMissingPacts: false,
   strictMatching: true,
 };
@@ -106,6 +113,7 @@ function savePact(response: Cypress.Response<any>) {
   const pact = Cypress.c8ypact.currentPactIdentifier();
   if (pact) {
     const folder = Cypress.config().fixturesFolder;
+    Cypress.c8ypact.preprocessor.preprocess(response);
     cy.task(
       "c8ypact:save",
       {
@@ -120,7 +128,7 @@ function savePact(response: Cypress.Response<any>) {
 
 function currentPacts(): Cypress.Chainable<Cypress.Response<any>[] | null> {
   return !isEnabled()
-    ? cy.wrap<Cypress.Response<any>[] | null>(null)
+    ? cy.wrap<Cypress.Response<any>[] | null>(null, { log: false })
     : cy.task<Cypress.Response<any>[]>(
         "c8ypact:get",
         Cypress.c8ypact.currentPactIdentifier(),
