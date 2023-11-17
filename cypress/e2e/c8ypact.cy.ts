@@ -210,7 +210,7 @@ describe("c8yclient", () => {
           expires: "0",
         },
         requestHeaders: {
-          Authorization: "Basic dHdpOkRlbW8yMDE5ISE=",
+          Authorization: "asdasdasdasd",
           "content-type": "application/json",
           accept: "application/json",
           UseXBasic: true,

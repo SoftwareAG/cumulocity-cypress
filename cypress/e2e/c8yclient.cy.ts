@@ -610,8 +610,6 @@ describe("c8yclient", () => {
 
     // https://github.com/SoftwareAG/cumulocity-cypress/issues/1
     it("should wrap client authentication errors into CypressError", (done) => {
-      // {"responseObj":{"status":504,"isOkStatusCode":false,"statusText":"Gateway Timeout","headers":{"connection":"keep-alive","date":"Tue, 24 Oct 2023 07:57:52 GMT","keep-alive":"timeout=5","transfer-encoding":"chunked","x-powered-by":"Express"},"requestHeaders":{"Authorization":"Basic dHdpOkRlbW8yMDE5ISE=","content-type":"application/json","UseXBasic":true},"duration":92,"url":"http://localhost:9000/tenant/currentTenant","body":"Error occurred while trying to proxy: localhost:9000/tenant/currentTenant"}}'
-
       stubResponse(
         new window.Response(
           "Error occurred while trying to proxy: localhost:9000/tenant/currentTenant",
