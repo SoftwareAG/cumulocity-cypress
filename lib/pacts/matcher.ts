@@ -19,10 +19,28 @@ export class C8yDefaultPactMatcher {
     this.addPropertyMatcher("lastMessage", new C8yISODateStringMatcher());
   }
 
-  match(obj1: any, obj2: any): boolean {
+  match(
+    obj1: any,
+    obj2: any,
+    consoleProps: { [key: string]: any } = {}
+  ): boolean {
     if (obj1 === obj2) {
       return true;
     }
+
+    const throwPactError = (message: string, key?: string) => {
+      const newErr = new Error(message);
+      newErr.name = "C8yPactError";
+      if (consoleProps) {
+        consoleProps.error = message;
+        consoleProps.key = key;
+        consoleProps.objects =
+          key && _.isPlainObject(obj1) && _.isPlainObject(obj2)
+            ? [_.pick(obj1, [key]), _.pick(obj2, [key])]
+            : [obj1, obj2];
+      }
+      throw newErr;
+    };
 
     if (_.isString(obj1) && _.isString(obj2) && !_.isEqual(obj1, obj2)) {
       throwPactError("Pact validation failed! Response bodies not matching.");
@@ -52,22 +70,41 @@ export class C8yDefaultPactMatcher {
 
       if (!keys2.includes(key)) {
         throwPactError(
-          `Pact validation failed! Pact does not have ${key} key.`
+          `Pact validation failed! Pact does not have key: "${key}".`
         );
       }
       if (this.propertyMatchers[key]) {
-        if (!this.propertyMatchers[key].match(value1, value2)) {
+        if (!this.propertyMatchers[key].match(value1, value2, consoleProps)) {
           throwPactError(
-            `Pact validation failed for ${key} with propertyMatcher ${this.propertyMatchers[key]}`
+            `Pact validation failed for key "${key}" with propertyMatcher ${this.propertyMatchers[key]}`,
+            key
           );
         }
-      } else if (_.isObject(value1) && _.isObject(value2)) {
-        if (!this.match(value1, value2))
-          throwPactError(`Pact validation of objects failed for ${key}`);
+      } else if (_.isPlainObject(value1) && _.isPlainObject(value2)) {
+        if (!this.match(value1, value2, consoleProps)) {
+          throwPactError(
+            `Pact validation of objects failed for key: "${key}"`,
+            key
+          );
+        }
+      } else if (_.isArray(value1) && _.isArray(value2)) {
+        const v = [value1, value2].sort(
+          (a1: any[], a2: any[]) => a2.length - a1.length
+        );
+        const diff = _.difference(v[0], v[1]);
+        if (_.isEmpty(diff)) {
+          continue;
+        } else {
+          throwPactError(
+            `Pact validation failed for array with key "${key}". Different values are ${diff}.`,
+            key
+          );
+        }
       } else {
         if (!_.isEqual(value1, value2)) {
           throwPactError(
-            `Pact validation failed for ${key}. Values ${value1} and ${value2} are not equal.`
+            `Pact validation failed for key: "${key}". Values ${value1} and ${value2} are not equal.`,
+            key
           );
         }
       }
@@ -82,12 +119,6 @@ export class C8yDefaultPactMatcher {
   removePropertyMatcher(propertyName: string) {
     delete this.propertyMatchers[propertyName];
   }
-}
-
-function throwPactError(message: string) {
-  const newErr = new Error(message);
-  newErr.name = "C8yPactError";
-  throw newErr;
 }
 
 export class C8yPactContentMatcher extends C8yDefaultPactMatcher {

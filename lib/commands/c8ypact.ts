@@ -15,7 +15,7 @@ declare global {
     }
   }
 
-  interface C8yPactConfigOptions  {
+  interface C8yPactConfigOptions {
     id?: string;
     ignore?: boolean;
     log?: boolean;
@@ -38,7 +38,11 @@ declare global {
   }
 
   interface C8yPactMatcher {
-    match: (obj1: unknown, obj2: unknown) => boolean;
+    match: (
+      obj1: unknown,
+      obj2: unknown,
+      loggerProps?: { [key: string]: any }
+    ) => boolean;
   }
 }
 
@@ -83,7 +87,7 @@ function pactIdentifier(): string {
 function currentMatcher(): C8yPactMatcher {
   const pact = Cypress.config().c8ypact;
   return (pact && pact.matcher) || Cypress.c8ypact.matcher;
-};
+}
 
 function isEnabled(): boolean {
   return Cypress.env("C8Y_PACT_ENABLED") != null;

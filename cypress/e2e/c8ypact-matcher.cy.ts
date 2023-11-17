@@ -8,7 +8,7 @@ describe("c8ypactmatcher", () => {
   beforeEach(() => {});
 
   context("C8yDefaultPactMatcher", function () {
-    let obj1, obj2: Cypress.Response<any>;
+    let obj1: Cypress.Response<any>, obj2: Cypress.Response<any>;
 
     beforeEach(() => {
       cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
