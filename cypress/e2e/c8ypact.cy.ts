@@ -128,7 +128,7 @@ describe("c8yclient", () => {
         cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
         Cypress.once("fail", (err) => {
           expect(err.message).to.contain(
-            "Pact non-existing-pact-id not found and Cypress.c8ypact.failOnMissingPacts is enabled."
+            "non-existing-pact-id not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore."
           );
           const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
           expect(spy).to.have.been.calledOnce;

@@ -1,8 +1,9 @@
-const { _ } = Cypress;
 import {
   C8yDefaultPactMatcher,
   C8yISODateStringMatcher,
 } from "../../lib/pacts/matcher";
+
+const { _ } = Cypress;
 
 describe("c8ypactmatcher", () => {
   beforeEach(() => {});
@@ -46,7 +47,7 @@ describe("c8ypactmatcher", () => {
       const pact = _.cloneDeep(obj1);
       pact.duration = "1212121";
       expect(() => matcher.match(obj1, pact)).to.throw(
-        "Pact validation failed for duration with propertyMatcher [object Object]"
+        `Pact validation failed! Values for "duration" do not match.`
       );
     });
 
@@ -66,14 +67,15 @@ describe("c8ypactmatcher", () => {
       obj.body = "hello world";
       pact.body = "hello my world";
       expect(() => matcher.match(obj, pact)).to.throw(
-        "Pact validation failed! Response bodies not matching."
+        `Pact validation failed! "body" text did not match.`
       );
     });
 
     it("should match managed object", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
-      const obj = _.cloneDeep(obj2);
+      const obj = _.cloneDeep(obj1);
+      expect(_.isEqual(obj, pact)).to.be.true;
       expect(matcher.match(obj, pact)).to.be.true;
     });
 
@@ -99,8 +101,24 @@ describe("c8ypactmatcher", () => {
       const pact = { body: { id: "212123" } };
       const obj = { body: { id: 9299299 } };
       expect(() => matcher.match(obj, pact)).to.throw(
-        "Pact validation failed for id with propertyMatcher [object Object]"
+        `Pact validation failed! Values for "body > id" do not match.`
       );
+    });
+
+    it("should not match managed objects with different number of objects", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const pact = _.cloneDeep(obj1);
+      const obj = _.cloneDeep(obj1);
+      const expectedError = `Pact validation failed! Values for "body > managedObjects" do not match.`;
+
+      obj.body.managedObjects[0].description = "Some random text...";
+      expect(() => matcher.match(obj, pact)).to.throw(expectedError);
+
+      obj.body.managedObjects.pop();
+      expect(() => matcher.match(obj, pact)).to.throw(expectedError);
+
+      obj.body.managedObjects = [];
+      expect(() => matcher.match(obj, pact)).to.throw(expectedError);
     });
   });
 

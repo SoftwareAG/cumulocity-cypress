@@ -2,6 +2,7 @@ const { _ } = Cypress;
 
 export class C8yDefaultPactMatcher {
   private propertyMatchers: { [key: string]: C8yPactMatcher } = {};
+  private parents: string[] = [];
 
   constructor(
     propertyMatchers: { [key: string]: C8yPactMatcher } = {
@@ -29,10 +30,11 @@ export class C8yDefaultPactMatcher {
     }
 
     const throwPactError = (message: string, key?: string) => {
-      const newErr = new Error(message);
+      const errorMessage = `Pact validation failed! ${message}`;
+      const newErr = new Error(errorMessage);
       newErr.name = "C8yPactError";
       if (consoleProps) {
-        consoleProps.error = message;
+        consoleProps.error = errorMessage;
         consoleProps.key = key;
         consoleProps.objects =
           key && _.isPlainObject(obj1) && _.isPlainObject(obj2)
@@ -42,13 +44,28 @@ export class C8yDefaultPactMatcher {
       throw newErr;
     };
 
+    const keyPath = (k?: string) => {
+      return `${[...this.parents, ...(k ? [k] : [])].join(" > ")}`;
+    };
+
+    const isArrayOfPrimitives = (value: any) => {
+      if (!_.isArray(value)) {
+        return false;
+      }
+      const primitiveTypes = ["undefined", "boolean", "number", "string"];
+      return (
+        value.filter((p) => primitiveTypes.includes(typeof p)).length ===
+        value.length
+      );
+    };
+
     if (_.isString(obj1) && _.isString(obj2) && !_.isEqual(obj1, obj2)) {
-      throwPactError("Pact validation failed! Response bodies not matching.");
+      throwPactError(`"${keyPath()}" text did not match.`);
     }
 
     if (!_.isObject(obj1) || !_.isObject(obj2)) {
       throwPactError(
-        "Pact validation failed! Expected 2 objects as input for matching."
+        `Expected 2 objects as input for matching, but got "${typeof obj1}" and ${typeof obj2}".`
       );
     }
 
@@ -56,7 +73,9 @@ export class C8yDefaultPactMatcher {
     const keys2 = Object.keys(obj2);
     if (keys1.length !== keys2.length) {
       throwPactError(
-        "Pact validation failed! Objects have different number of keys."
+        `"${keyPath()}" objects have different number of keys (${
+          keys1.length
+        } and ${keys2.length}).`
       );
     }
 
@@ -69,25 +88,20 @@ export class C8yDefaultPactMatcher {
       const value2 = obj2[key];
 
       if (!keys2.includes(key)) {
-        throwPactError(
-          `Pact validation failed! Pact does not have key: "${key}".`
-        );
+        throwPactError(`"${keyPath(key)}" not found in pact object.`);
       }
       if (this.propertyMatchers[key]) {
+        // @ts-ignore
+        this.propertyMatchers[key].parents = [...this.parents, key];
         if (!this.propertyMatchers[key].match(value1, value2, consoleProps)) {
-          throwPactError(
-            `Pact validation failed for key "${key}" with propertyMatcher ${this.propertyMatchers[key]}`,
-            key
-          );
+          throwPactError(`Values for "${keyPath(key)}" do not match.`, key);
         }
       } else if (_.isPlainObject(value1) && _.isPlainObject(value2)) {
-        if (!this.match(value1, value2, consoleProps)) {
-          throwPactError(
-            `Pact validation of objects failed for key: "${key}"`,
-            key
-          );
+        this.parents.push(key);
+        if (this.match(value1, value2, consoleProps)) {
+          this.parents.pop();
         }
-      } else if (_.isArray(value1) && _.isArray(value2)) {
+      } else if (isArrayOfPrimitives(value1) && isArrayOfPrimitives(value2)) {
         const v = [value1, value2].sort(
           (a1: any[], a2: any[]) => a2.length - a1.length
         );
@@ -96,16 +110,13 @@ export class C8yDefaultPactMatcher {
           continue;
         } else {
           throwPactError(
-            `Pact validation failed for array with key "${key}". Different values are ${diff}.`,
+            `Array with key "${keyPath(key)}" has unexpected values "${diff}".`,
             key
           );
         }
       } else {
         if (!_.isEqual(value1, value2)) {
-          throwPactError(
-            `Pact validation failed for key: "${key}". Values ${value1} and ${value2} are not equal.`,
-            key
-          );
+          throwPactError(`Values for "${keyPath(key)}" do not match.`, key);
         }
       }
     }
