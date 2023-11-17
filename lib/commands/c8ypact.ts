@@ -35,6 +35,7 @@ declare global {
     isEnabled: () => boolean;
     isRecordingEnabled: () => boolean;
     failOnMissingPacts: boolean;
+    strictMatching: boolean;
   }
 
   interface C8yPactMatcher {
@@ -57,6 +58,7 @@ Cypress.c8ypact = {
   isEnabled,
   matcher: new C8yDefaultPactMatcher(),
   failOnMissingPacts: false,
+  strictMatching: true,
 };
 
 before(() => {

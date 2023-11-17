@@ -12,6 +12,7 @@ describe("c8ypactmatcher", () => {
     let obj1: Cypress.Response<any>, obj2: Cypress.Response<any>;
 
     beforeEach(() => {
+      Cypress.c8ypact.strictMatching = true;
       cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
         obj1 = pacts[0];
         obj2 = pacts[1];
@@ -48,6 +49,30 @@ describe("c8ypactmatcher", () => {
       pact.duration = "1212121";
       expect(() => matcher.match(obj1, pact)).to.throw(
         `Pact validation failed! Values for "duration" do not match.`
+      );
+    });
+
+    it("should fail if ignored porperty is missing", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const pact = _.cloneDeep(obj1);
+      delete pact.url;
+      expect(() => matcher.match(obj1, pact)).to.throw(
+        `Pact validation failed! objects have different number of keys (9 and 8).`
+      );
+    });
+
+    it("should fail if ignored porperty is missing with strictMode disabled", function () {
+      Cypress.c8ypact.strictMatching = false;
+      const matcher = new C8yDefaultPactMatcher();
+      const obj = _.cloneDeep(obj1);
+      delete obj.url;
+      const pact = {
+        status: 201,
+        isOkStatusCode: true,
+        url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
+      };
+      expect(() => matcher.match(obj, pact)).to.throw(
+        `Pact validation failed! "url" not found in response object.`
       );
     });
 
@@ -105,7 +130,7 @@ describe("c8ypactmatcher", () => {
       );
     });
 
-    it("should not match managed objects with different number of objects", function () {
+    it("should not match managed objects", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
       const obj = _.cloneDeep(obj1);
@@ -119,6 +144,17 @@ describe("c8ypactmatcher", () => {
 
       obj.body.managedObjects = [];
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);
+    });
+
+    it("should match strictMatching disabled", function () {
+      Cypress.c8ypact.strictMatching = false;
+      const matcher = new C8yDefaultPactMatcher();
+      const obj = _.cloneDeep(obj1);
+      const pact = {
+        status: 201,
+        isOkStatusCode: true,
+      };
+      expect(matcher.match(obj, pact)).to.be.true;
     });
   });
 

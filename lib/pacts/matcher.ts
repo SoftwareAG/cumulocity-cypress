@@ -69,13 +69,16 @@ export class C8yDefaultPactMatcher {
       );
     }
 
+    const strictMode = Cypress.c8ypact.strictMatching;
     const keys1 = Object.keys(obj1);
     const keys2 = Object.keys(obj2);
-    if (keys1.length !== keys2.length) {
+    if (keys1.length !== keys2.length && strictMode) {
       throwPactError(
-        `"${keyPath()}" objects have different number of keys (${
-          keys1.length
-        } and ${keys2.length}).`
+        `${
+          keyPath() ? '"' + keyPath() + '" ' : ""
+        }objects have different number of keys (${keys1.length} and ${
+          keys2.length
+        }).`
       );
     }
 
@@ -83,12 +86,14 @@ export class C8yDefaultPactMatcher {
       return true;
     }
 
-    for (const key of keys1) {
-      const value1 = obj1[key];
-      const value2 = obj2[key];
+    // if strictMatching is disabled, only check properties of the pact
+    const keys = !strictMode ? keys2 : keys1;
+    for (const key of keys) {
+      const value1 = (strictMode ? obj1 : obj2)[key];
+      const value2 = (strictMode ? obj2 : obj1)[key];
 
-      if (!keys2.includes(key)) {
-        throwPactError(`"${keyPath(key)}" not found in pact object.`);
+      if (!(strictMode ? keys2 : keys1).includes(key)) {
+        throwPactError(`"${keyPath(key)}" not found in ${strictMode ? 'pact' : 'response'} object.`);
       }
       if (this.propertyMatchers[key]) {
         // @ts-ignore
