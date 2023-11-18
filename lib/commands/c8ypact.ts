@@ -1,5 +1,6 @@
 import { C8yDefaultPactMatcher } from "../pacts/matcher";
 import { C8yPactDefaultPreprocessor } from "../pacts/preprocessor";
+const { _ } = Cypress;
 
 declare global {
   namespace Cypress {
@@ -113,12 +114,13 @@ function savePact(response: Cypress.Response<any>) {
   const pact = Cypress.c8ypact.currentPactIdentifier();
   if (pact) {
     const folder = Cypress.config().fixturesFolder;
-    Cypress.c8ypact.preprocessor.preprocess(response);
+    const preprocessedResponse = _.cloneDeep(response);
+    Cypress.c8ypact.preprocessor.preprocess(preprocessedResponse);
     cy.task(
       "c8ypact:save",
       {
         pact,
-        response,
+        response: preprocessedResponse,
         folder,
       },
       { log: logTasks }

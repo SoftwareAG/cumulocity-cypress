@@ -233,7 +233,7 @@ describe("c8yclient", () => {
       expect(obj.body.password).to.eq("********");
     });
 
-    it("should replace Authorization header and password in body", function () {
+    it("should preprocess response when saving response", function () {
       stubResponses([
         new window.Response(JSON.stringify({ password: "sdqadasdadasd" }), {
           status: 200,
@@ -245,9 +245,15 @@ describe("c8yclient", () => {
         user: "admin",
         password: "mypassword",
         tenant: "t123",
-      }).c8yclient<IManagedObject>((c) => {
-        return c.inventory.detail(1, { withChildren: false });
-      });
+      })
+        .c8yclient<IManagedObject>((c) => {
+          return c.inventory.detail(1, { withChildren: false });
+        })
+        .then((response) => {
+          expect(response.body.password).to.eq("sdqadasdadasd");
+          expect(response.requestHeaders.Authorization).to.not.eq("Basic ********");
+        });
+
       Cypress.c8ypact.currentNextPact().then((pact) => {
         expect(pact).to.not.be.null;
         expect(pact.requestHeaders.Authorization).to.eq("Basic ********");
