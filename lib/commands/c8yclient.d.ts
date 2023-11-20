@@ -127,6 +127,7 @@ declare global {
     auth: IAuthentication;
     baseUrl: string;
     client: Client;
+    pact: any;
     preferBasicAuth: boolean;
     skipClientAuthenication: boolean;
     failOnPactValidation: boolean;

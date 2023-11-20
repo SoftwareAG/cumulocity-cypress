@@ -62,6 +62,25 @@ describe("login", () => {
       });
     });
 
+    it("login with test annotation", { auth: "testadmin" }, () => {
+      Cypress.env("testadmin_username", "testuser");
+      Cypress.env("testadmin_password", "testpasswd");
+
+      cy.getAuth()
+        .login({
+          useSession: false,
+          validationFn: cy.stub(() => {}),
+        })
+        .then((auth) => {
+          expect(auth.user).to.eq("testuser");
+          expect(auth.password).to.eq("testpasswd");
+          expect(auth.userAlias).to.eq("testadmin");
+
+          expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("testuser");
+          expect(Cypress.env("C8Y_LOGGED_IN_USER_ALIAS")).to.eq("testadmin");
+        });
+    });
+
     it("login reset c8yclient", () => {
       cy.getAuth({
         user: "admin",
@@ -267,6 +286,7 @@ describe("login", () => {
           expect(result.user).to.eq("myauthuser");
           expect(result.password).to.eq("myadminpassword");
           expect(result.tenant).to.eq("t1234567");
+          expect(result.userAlias).to.eq("myauthuser");
         });
       }
     );

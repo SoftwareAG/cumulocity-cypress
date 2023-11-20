@@ -2,6 +2,8 @@
   "compilerOptions": {
     "rootDir": "./",
     "strictNullChecks": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "target": "es5",
     "lib": ["es5", "dom"],
     "types": ["cypress", "node"],

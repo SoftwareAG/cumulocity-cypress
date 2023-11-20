@@ -61,7 +61,7 @@ describe("c8yclient", () => {
 
     it("should create pact identifier from test case name", function () {
       expect(Cypress.c8ypact.currentPactIdentifier()).to.equal(
-        "c8yclient--c8ypact_recording--should_create_pact_identifier_from_test_case_name"
+        "c8yclient__c8ypact_recording__should_create_pact_identifier_from_test_case_name"
       );
     });
 

@@ -15,8 +15,12 @@ export class C8yDefaultPactMatcher {
     this.addPropertyMatcher("duration", new C8yNumberMatcher());
     this.addPropertyMatcher("date", new C8yIgnoreMatcher());
     this.addPropertyMatcher("Authorization", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("auth", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("options", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("createdObject", new C8yIgnoreMatcher());
     this.addPropertyMatcher("location", new C8yIgnoreMatcher());
     this.addPropertyMatcher("url", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("X-XSRF-TOKEN", new C8yIgnoreMatcher());
     this.addPropertyMatcher("lastMessage", new C8yISODateStringMatcher());
   }
 
@@ -148,6 +152,8 @@ export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
     this.addPropertyMatcher("next", new C8yIgnoreMatcher());
     this.addPropertyMatcher("self", new C8yIgnoreMatcher());
     this.addPropertyMatcher("password", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("owner", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("tenantId", new C8yIgnoreMatcher());
   }
 }
 
