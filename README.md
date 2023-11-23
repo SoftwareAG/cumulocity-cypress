@@ -28,6 +28,7 @@ Contribute by raising pull requests. All commands must be documented and, if pos
     - [Test access of DOM elements](#test-access-of-dom-elements)
     - [Test requests](#test-requests)
     - [Test interceptions](#test-interceptions)
+- [Useful links](#useful-links)
 - [Disclaimer](#disclaimer)
 
 # Overview of commands
