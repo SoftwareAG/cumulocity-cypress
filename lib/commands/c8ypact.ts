@@ -10,6 +10,10 @@ declare global {
       c8ypact: C8yPact;
     }
 
+    interface SuiteConfigOverrides {
+      c8ypact?: C8yPactConfigOptions;
+    }
+
     interface TestConfigOverrides {
       c8ypact?: C8yPactConfigOptions;
     }
@@ -21,9 +25,12 @@ declare global {
 
   interface C8yPactConfigOptions {
     id?: string;
-    ignore?: boolean;
     log?: boolean;
     matcher?: C8yPactMatcher;
+    producer?: string;
+    consumer?: string;
+    tags?: string[];
+    description?: string;
   }
 
   interface C8yPact {
@@ -115,6 +122,10 @@ function savePact(response: Cypress.Response<any>, client?: Client) {
     const info = {
       title: Cypress.currentTest?.titlePath || [],
       id: pact,
+      consumer: Cypress.config().c8ypact?.consumer,
+      producer: Cypress.config().c8ypact?.producer,
+      description: Cypress.config().c8ypact?.description,
+      tags: Cypress.config().c8ypact?.tags,
       tenant: client.core.tenant || Cypress.env("C8Y_TENANT"),
       baseUrl: Cypress.config().baseUrl,
     };

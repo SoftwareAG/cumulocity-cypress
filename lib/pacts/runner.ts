@@ -1,8 +1,13 @@
 const { _ } = Cypress;
 
 declare global {
+  interface C8yPactRunnerOptions {
+    consumer?: string;
+    producer?: string;
+  }
+
   interface C8yPactRunner {
-    run: (pacts: any) => void;
+    run: (pacts: any, options?: C8yPactRunnerOptions) => void;
     runTest: (title: string, pact: any, info: any) => void;
   }
 }
@@ -12,7 +17,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
   protected idMapper: { [key: string]: string } = {};
 
-  run(pacts: any): void {
+  run(pacts: any, options: C8yPactRunnerOptions = {}): void {
     this.idMapper = {};
 
     if (!_.isPlainObject(pacts)) return;
@@ -26,6 +31,14 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
         continue;
       }
 
+      if (_.isString(options.consumer) && info.consumer !== options.consumer) {
+        continue;
+      }
+
+      if (_.isString(options.producer) && info.producer !== options.producer) {
+        continue;
+      }
+
       const titlePath: string[] = info?.title || info?.id?.split("__");
       tests.push({ info, pact, id, title: titlePath });
     }
@@ -34,15 +47,15 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     this.createTestsFromHierarchy(testHierarchy);
   }
 
-  protected buildTestHierarchy(pacts: any) {
+  protected buildTestHierarchy(tests: any) {
     const tree = {};
-    pacts.forEach((obj: any) => {
-      const titles = obj.title;
+    tests.forEach((test: any) => {
+      const titles = test.title;
 
       let currentNode: any = tree;
       titles.forEach((title: any, index: any) => {
         if (!currentNode[title]) {
-          currentNode[title] = index === titles.length - 1 ? obj : {};
+          currentNode[title] = index === titles.length - 1 ? test : {};
         }
         currentNode = currentNode[title];
       });
