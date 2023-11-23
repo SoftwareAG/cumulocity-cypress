@@ -1,0 +1,16 @@
+{
+  // More information https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Chrome",
+      "port": 9222,
+      "request": "attach",
+      "type": "chrome",
+      "webRoot": "${workspaceFolder}/app",
+      "sourceMaps": true,
+      "skipFiles": ["cypress_runner.js"],
+      "urlFilter": "http://localhost*"
+    }
+  ]
+}
