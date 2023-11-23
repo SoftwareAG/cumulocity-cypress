@@ -1,5 +1,11 @@
 const { _ } = Cypress;
 
+declare global {
+  interface C8yPactPreprocessor {
+    preprocess: (obj: unknown) => void;
+  }
+}
+
 export class C8yPactDefaultPreprocessor implements C8yPactPreprocessor {
   constructor() {}
 

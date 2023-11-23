@@ -1,5 +1,15 @@
 const { _ } = Cypress;
 
+declare global {
+  interface C8yPactMatcher {
+    match: (
+      obj1: unknown,
+      obj2: unknown,
+      loggerProps?: { [key: string]: any }
+    ) => boolean;
+  }
+}
+
 export class C8yDefaultPactMatcher {
   private propertyMatchers: { [key: string]: C8yPactMatcher } = {};
   private parents: string[] = [];
@@ -97,7 +107,11 @@ export class C8yDefaultPactMatcher {
       const value2 = (strictMode ? obj2 : obj1)[key];
 
       if (!(strictMode ? keys2 : keys1).includes(key)) {
-        throwPactError(`"${keyPath(key)}" not found in ${strictMode ? 'pact' : 'response'} object.`);
+        throwPactError(
+          `"${keyPath(key)}" not found in ${
+            strictMode ? "pact" : "response"
+          } object.`
+        );
       }
       if (this.propertyMatchers[key]) {
         // @ts-ignore
