@@ -31,6 +31,7 @@ declare global {
     consumer?: string;
     tags?: string[];
     description?: string;
+    ignore?: boolean;
   }
 
   interface C8yPact {
@@ -128,7 +129,11 @@ function savePact(response: Cypress.Response<any>, client?: Client) {
       tags: Cypress.config().c8ypact?.tags,
       tenant: client.core.tenant || Cypress.env("C8Y_TENANT"),
       baseUrl: Cypress.config().baseUrl,
+      version: Cypress.env("C8Y_VERSION") && {
+        system: Cypress.env("C8Y_VERSION"),
+      },
     };
+
     const folder = Cypress.config().fixturesFolder;
     const preprocessedResponse = _.cloneDeep(response);
     Cypress.c8ypact.preprocessor.preprocess(preprocessedResponse);
