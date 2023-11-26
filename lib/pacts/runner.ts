@@ -21,10 +21,9 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     this.idMapper = {};
 
     if (!_.isPlainObject(pacts)) return;
-    if (!Cypress.c8ypact.isRunnerEnabled) return;
-
     const tests = [];
     const keys = Object.keys(pacts);
+
     for (const key of keys) {
       const { info, pact, id } = pacts[key];
       if (!_.isPlainObject(info) || !_.isArray(pact) || !_.isString(id)) {
@@ -90,7 +89,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     for (const currentPact of pact) {
       cy.then(() => {
         const url = this.createURL(currentPact, info);
-        const options = this.createFetchOptions(currentPact, info);
+        const clientFetchOptions = this.createFetchOptions(currentPact, info);
 
         let user = currentPact.auth.userAlias || currentPact.auth.user;
         if (user.split("/").length > 1) {
@@ -126,19 +125,19 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
             const newId = response.body.id;
             if (newId) {
               this.idMapper[currentPact.createdObject] = newId;
-              console.log(this.idMapper);
             }
           }
         };
 
         if (currentPact.auth && currentPact.auth.type === "CookieAuth") {
           cy.getAuth(user).login();
-          cy.c8yclient((c) => c.core.fetch(url, options), cOpts).then(
-            responseFn
-          );
+          cy.c8yclient(
+            (c) => c.core.fetch(url, clientFetchOptions),
+            cOpts
+          ).then(responseFn);
         } else {
           cy.getAuth(user)
-            .c8yclient((c) => c.core.fetch(url, options), cOpts)
+            .c8yclient((c) => c.core.fetch(url, clientFetchOptions), cOpts)
             .then(responseFn);
         }
       });
