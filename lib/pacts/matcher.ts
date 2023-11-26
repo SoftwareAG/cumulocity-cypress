@@ -159,7 +159,7 @@ export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
   constructor(propertyMatchers = {}) {
     super(propertyMatchers);
 
-    this.addPropertyMatcher("id", new C8yStringMatcher());
+    this.addPropertyMatcher("id", new C8yIgnoreMatcher());
     this.addPropertyMatcher("statistics", new C8yIgnoreMatcher());
     this.addPropertyMatcher("lastUpdated", new C8yISODateStringMatcher());
     this.addPropertyMatcher("creationTime", new C8yISODateStringMatcher());
@@ -168,6 +168,7 @@ export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
     this.addPropertyMatcher("password", new C8yIgnoreMatcher());
     this.addPropertyMatcher("owner", new C8yIgnoreMatcher());
     this.addPropertyMatcher("tenantId", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("lastPasswordChange", new C8yISODateStringMatcher());
   }
 }
 

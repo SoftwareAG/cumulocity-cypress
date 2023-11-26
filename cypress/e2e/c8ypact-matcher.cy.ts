@@ -121,7 +121,8 @@ describe("c8ypactmatcher", () => {
       // );
     });
 
-    it("should not match managed objects with different id types", function () {
+    // disabled as now C8yIgnoreMatcher is used. some services seem to return id as number
+    it.skip("should not match managed objects with different id types", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = { body: { id: "212123" } };
       const obj = { body: { id: 9299299 } };
