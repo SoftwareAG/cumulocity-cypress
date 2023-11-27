@@ -395,6 +395,25 @@ describe("login", () => {
       }
     );
 
+    it(
+      "should use previousSubject instead of annotation",
+      { auth: "myauthuser" },
+      () => {
+        cy.getAuth().then((result) => {
+          expect(result.user).to.eq("myauthuser");
+          expect(result.password).to.eq("myadminpassword");
+          expect(result.tenant).to.eq("t1234567");
+        });
+
+        cy.getAuth({ user: "test", password: "test" }).useAuth();
+
+        cy.getAuth().then((result) => {
+          expect(result.user).to.eq("test");
+          expect(result.password).to.eq("test");
+        });
+      }
+    );
+
     it("should throw if no auth options found", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("No valid C8yAuthOptions found");
