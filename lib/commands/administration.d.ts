@@ -1,4 +1,4 @@
-import { IUser, IApplication, ICurrentTenant } from "@c8y/client";
+import { IUser, IApplication, ICurrentTenant, IDeviceCredentials } from "@c8y/client";
 
 declare global {
   namespace Cypress {
@@ -115,6 +115,28 @@ declare global {
         authOptions?: C8yAuthOptions,
         c8yoptions?: C8yClientOptions
       ): Chainable<string>;
+
+      /**
+       * Bootstrap device credentials. Doing the same as c.deviceRegistration.bootstrap(), but works
+       * with getAuth(). Requires bootstrap credentials to be passed via getAuth().
+       * 
+       * @example
+       * cy.getAuth("devicebootstrap")
+       *   .bootstrapDeviceCredentials(id)
+       *   .useAuth()
+       *
+       * @param {C8yAuthOptions} options - The authentication options including username and password
+       * @returns {Chainable<IDeviceCredentials | undefined>}
+       */
+      bootstrapDeviceCredentials(
+        ...args:
+          | [id: string | IUser, c8yoptions?: C8yClientOptions]
+          | [
+              authOptions: C8yAuthOptions,
+              id: string,
+              c8yoptions?: C8yClientOptions
+            ]
+      ): Chainable<IDeviceCredentials>;
     }
   }
 }
