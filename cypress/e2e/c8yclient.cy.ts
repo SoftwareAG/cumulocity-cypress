@@ -119,6 +119,51 @@ describe("c8yclient", () => {
         });
     });
 
+    it(
+      "should update auth of restored client",
+      { auth: { user: "admin", password: "mypassword", tenant: "t1234" } },
+      () => {
+        const bootstrap = {
+          user: "bootstrap",
+          password: "bootstrapassword",
+          tenant: "t1234",
+        };
+        const recreateStub = (status: number) => {
+          window.fetchStub.reset();
+          stubResponse(
+            new window.Response("{}", {
+              status: status,
+              statusText: "OK",
+              headers: { "content-type": "application/json" },
+            })
+          );
+        };
+
+        recreateStub(200);
+        cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
+          (response) => {
+            expect(response.status).to.eq(200);
+            expectC8yClientRequest(requestOptions);
+            recreateStub(201);
+          }
+        );
+        cy.getAuth(bootstrap)
+          .c8yclient<ICurrentTenant>((client) => client.tenant.current())
+          .then((response) => {
+            expect(response.status).to.eq(201);
+            expectC8yClientRequest({ ...requestOptions, auth: bootstrap });
+            recreateStub(202);
+          });
+
+        cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
+          (response) => {
+            expect(response.status).to.eq(202);
+            expectC8yClientRequest(requestOptions);
+          }
+        );
+      }
+    );
+
     it("should use auth from options", () => {
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
         auth: new BasicAuth({
@@ -133,19 +178,14 @@ describe("c8yclient", () => {
     });
 
     it("should use client from options", () => {
-      const client = new Client(
-        new BasicAuth({
-          user: "admin12",
-          password: "password",
-          tenant: "t12345",
-        })
-      );
       const expectedOptions = _.cloneDeep(requestOptions);
       expectedOptions.auth = {
         user: "admin12",
         password: "password",
         tenant: "t12345",
       };
+      const client = new Client(new BasicAuth(expectedOptions.auth));
+
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
         client,
       }).then((response) => {
@@ -153,6 +193,39 @@ describe("c8yclient", () => {
         expect(_.get(response.requestHeaders, "X-XSRF-TOKEN")).to.be.undefined;
         expectC8yClientRequest(expectedOptions);
       });
+    });
+
+    it("useAuth should not overwrite auth from client in options", () => {
+      const expectedOptions = _.cloneDeep(requestOptions);
+      expectedOptions.auth = {
+        user: "admin12",
+        password: "password",
+        tenant: "t12345",
+      };
+      const client = new Client(new BasicAuth(expectedOptions.auth));
+
+      cy.useAuth({ user: "test", password: "test", tenant: "t287364872364" });
+      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
+        client,
+      }).then((response) => {
+        expectC8yClientRequest(expectedOptions);
+      });
+    });
+
+    it("getAuth should not overwrite auth from client in options", () => {
+      const expectedOptions = _.cloneDeep(requestOptions);
+      const cAuth = { user: "admin12", password: "password", tenant: "t1" };
+      const client = new Client(new BasicAuth(cAuth));
+      
+      const auth = { user: "test", password: "test", tenant: "t287364872364" };
+      expectedOptions.auth = auth;
+      cy.getAuth(auth)
+        .c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
+          client,
+        })
+        .then((response) => {
+          expectC8yClientRequest(expectedOptions);
+        });
     });
 
     it("should not use basic auth if cookie auth is available", () => {
