@@ -100,7 +100,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
         }
 
         const cOpts = {
-          pact: currentPact,
+          pact: { pact: currentPact, info },
           ..._.pick(currentPact.options, [
             "skipClientAuthenication",
             "preferBasicAuth",

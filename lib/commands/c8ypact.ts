@@ -39,15 +39,15 @@ declare global {
     preprocessor: C8yPactPreprocessor;
     currentPactIdentifier: () => string;
     currentPactFilename: () => string;
-    currentNextPact: <
-      T = any
-    >() => Cypress.Chainable<Cypress.Response<T> | null>;
+    currentNextPact: <T = any>() => Cypress.Chainable<{
+      pact: Cypress.Response<T>;
+      info: any;
+    } | null>;
     currentPacts: () => Cypress.Chainable<Cypress.Response<any>[] | null>;
     currentMatcher: () => C8yPactMatcher;
     savePact: (response: Cypress.Response<any>) => void;
     isEnabled: () => boolean;
     isRecordingEnabled: () => boolean;
-    isRunnerEnabled: () => boolean;
     failOnMissingPacts: boolean;
     strictMatching: boolean;
     pactRunner: C8yPactRunner;
@@ -61,7 +61,6 @@ Cypress.c8ypact = {
   currentPactFilename,
   currentNextPact: getNextPact,
   isRecordingEnabled,
-  isRunnerEnabled,
   savePact,
   isEnabled,
   matcher: new C8yDefaultPactMatcher(),
@@ -75,13 +74,13 @@ const logTasks = false;
 
 before(() => {
   const pacter = Cypress.c8ypact;
-  if (!pacter.isRecordingEnabled() && !pacter.isRunnerEnabled()) {
+  if (!pacter.isRecordingEnabled()) {
     cy.task("c8ypact:load", Cypress.config().fixturesFolder, { log: logTasks });
   }
 });
 
 beforeEach(() => {
-  if (Cypress.c8ypact.isEnabled() && Cypress.c8ypact.isRecordingEnabled()) {
+  if (Cypress.c8ypact.isRecordingEnabled()) {
     cy.task("c8ypact:remove", Cypress.c8ypact.currentPactIdentifier(), {
       log: logTasks,
     });
@@ -110,44 +109,46 @@ function isRecordingEnabled(): boolean {
   return isEnabled() && Cypress.env("C8Y_PACT_MODE") === "recording";
 }
 
-function isRunnerEnabled(): boolean {
-  return isEnabled() && Cypress.env("C8Y_PACT_MODE") === "runner";
-}
-
 function savePact(response: Cypress.Response<any>, client?: Client) {
-  if (!isEnabled()) {
-    return;
-  }
-  const pact = Cypress.c8ypact.currentPactIdentifier();
-  if (pact) {
-    const info = {
-      title: Cypress.currentTest?.titlePath || [],
-      id: pact,
-      consumer: Cypress.config().c8ypact?.consumer,
-      producer: Cypress.config().c8ypact?.producer,
-      description: Cypress.config().c8ypact?.description,
-      tags: Cypress.config().c8ypact?.tags,
-      tenant: client.core.tenant || Cypress.env("C8Y_TENANT"),
-      baseUrl: Cypress.config().baseUrl,
-      version: Cypress.env("C8Y_VERSION") && {
-        system: Cypress.env("C8Y_VERSION"),
-      },
-    };
+  if (!isEnabled()) return;
 
-    const folder = Cypress.config().fixturesFolder;
-    const preprocessedResponse = _.cloneDeep(response);
-    Cypress.c8ypact.preprocessor.preprocess(preprocessedResponse);
-    cy.task(
-      "c8ypact:save",
-      {
-        pact,
-        response: preprocessedResponse,
-        folder,
-        info,
-      },
-      { log: logTasks }
-    );
-  }
+  const pact = Cypress.c8ypact.currentPactIdentifier();
+  if (!pact) return;
+
+  const info = {
+    title: Cypress.currentTest?.titlePath || [],
+    id: pact,
+    preprocessor: {
+      obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE") || [],
+      ignore: Cypress.env("C8Y_PACT_IGNORE") || [],
+      obfuscationPattern:
+        Cypress.c8ypact.preprocessor.defaultObfuscationPattern,
+    },
+    consumer: Cypress.config().c8ypact?.consumer,
+    producer: Cypress.config().c8ypact?.producer,
+    description: Cypress.config().c8ypact?.description,
+    tags: Cypress.config().c8ypact?.tags,
+    tenant: client.core.tenant || Cypress.env("C8Y_TENANT"),
+    baseUrl: Cypress.config().baseUrl,
+    version: Cypress.env("C8Y_VERSION") && {
+      system: Cypress.env("C8Y_VERSION"),
+    },
+  };
+
+  const folder = Cypress.config().fixturesFolder;
+  const preprocessedResponse = _.cloneDeep(response);
+  Cypress.c8ypact.preprocessor.preprocess(preprocessedResponse);
+
+  cy.task(
+    "c8ypact:save",
+    {
+      pact,
+      response: preprocessedResponse,
+      folder,
+      info,
+    },
+    { log: logTasks }
+  );
 }
 
 function currentPacts(): Cypress.Chainable<Cypress.Response<any>[] | null> {
@@ -167,9 +168,15 @@ function currentPactFilename(): string {
   return `${Cypress.config().fixturesFolder}/c8ypact/${pactId}.json`;
 }
 
-function getNextPact(): Cypress.Chainable<Cypress.Response<any> | null> {
+function getNextPact(): Cypress.Chainable<{
+  pact: Cypress.Response<any>;
+  info: any;
+} | null> {
   return !isEnabled()
-    ? cy.wrap<Cypress.Response<any> | null>(null)
+    ? cy.wrap<{
+        pact: Cypress.Response<any>;
+        info: any;
+      } | null>(null)
     : cy.task("c8ypact:next", Cypress.c8ypact.currentPactIdentifier(), {
         log: logTasks,
       });

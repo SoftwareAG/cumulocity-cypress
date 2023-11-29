@@ -159,7 +159,7 @@ export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
   constructor(propertyMatchers = {}) {
     super(propertyMatchers);
 
-    this.addPropertyMatcher("id", new C8yIgnoreMatcher());
+    this.addPropertyMatcher("id", new C8ySameTypeMatcher());
     this.addPropertyMatcher("statistics", new C8yIgnoreMatcher());
     this.addPropertyMatcher("lastUpdated", new C8yISODateStringMatcher());
     this.addPropertyMatcher("creationTime", new C8yISODateStringMatcher());
@@ -194,9 +194,16 @@ export class C8yStringMatcher implements C8yPactMatcher {
     return _.isString(obj1) && _.isString(obj2);
   }
 }
+
 export class C8yIgnoreMatcher implements C8yPactMatcher {
   match(obj1: any, obj2: any): boolean {
     return true;
+  }
+}
+
+export class C8ySameTypeMatcher implements C8yPactMatcher {
+  match(obj1: any, obj2: any): boolean {
+    return typeof obj1 === typeof obj2;
   }
 }
 

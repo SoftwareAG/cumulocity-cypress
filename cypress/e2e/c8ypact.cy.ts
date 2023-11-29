@@ -121,7 +121,6 @@ describe("c8yclient", () => {
     it(
       "should fail for missing pact - failOnMissingPacts enabled",
       { c8ypact: { id: "non-existing-pact-id" } },
-
       function (done) {
         Cypress.c8ypact.failOnMissingPacts = true;
 
@@ -228,12 +227,22 @@ describe("c8yclient", () => {
           id: "abc123124",
         },
       };
-      Cypress.c8ypact.preprocessor.preprocess(obj);
-      expect(obj.requestHeaders.Authorization).to.eq("Basic ********");
-      expect(obj.body.password).to.eq("********");
+      Cypress.c8ypact.preprocessor.preprocess(obj, {
+        obfuscationPattern: "<abcdefg>",
+        obfuscate: ["requestHeaders.Authorization", "body.password"],
+      });
+      expect(obj.requestHeaders.Authorization).to.eq("<abcdefg>");
+      expect(obj.body.password).to.eq("<abcdefg>");
     });
 
     it("should preprocess response when saving response", function () {
+      const obfuscationPattern =
+        Cypress.c8ypact.preprocessor.defaultObfuscationPattern;
+      Cypress.env("C8Y_PACT_OBFUSCATE", [
+        "requestHeaders.Authorization",
+        "body.password",
+      ]);
+
       stubResponses([
         new window.Response(JSON.stringify({ password: "sdqadasdadasd" }), {
           status: 200,
@@ -251,14 +260,20 @@ describe("c8yclient", () => {
         })
         .then((response) => {
           expect(response.body.password).to.eq("sdqadasdadasd");
-          expect(response.requestHeaders.Authorization).to.not.eq("Basic ********");
+          expect(response.requestHeaders.Authorization).to.not.eq(
+            obfuscationPattern
+          );
         });
 
-      Cypress.c8ypact.currentNextPact().then((pact) => {
-        expect(pact).to.not.be.null;
-        expect(pact.requestHeaders.Authorization).to.eq("Basic ********");
-        expect(pact.body.password).to.eq("********");
-      });
+      Cypress.c8ypact
+        .currentNextPact()
+        .then((pactObject: { pact: any; info: any }) => {
+          expect(pactObject).to.not.be.null;
+          expect(pactObject.pact.requestHeaders.Authorization).to.eq(
+            obfuscationPattern
+          );
+          expect(pactObject.pact.body.password).to.eq(obfuscationPattern);
+        });
     });
 
     it("should not add preprocessed properties", function () {
@@ -275,10 +290,10 @@ describe("c8yclient", () => {
       cy.c8yclient<IManagedObject>((c) => {
         return c.inventory.detail(1, { withChildren: false });
       });
-      Cypress.c8ypact.currentNextPact().then((pact) => {
-        expect(pact).to.not.be.null;
-        expect(pact.requestHeaders.Authorization).to.be.undefined;
-        expect(pact.body.password).to.be.undefined;
+      Cypress.c8ypact.currentNextPact().then((pactObject) => {
+        expect(pactObject).to.not.be.null;
+        expect(pactObject.pact.requestHeaders.Authorization).to.be.undefined;
+        expect(pactObject.pact.body.password).to.be.undefined;
       });
     });
   });
