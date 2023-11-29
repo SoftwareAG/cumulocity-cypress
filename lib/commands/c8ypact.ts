@@ -51,6 +51,7 @@ declare global {
     failOnMissingPacts: boolean;
     strictMatching: boolean;
     pactRunner: C8yPactRunner;
+    debugLog: boolean;
   }
 }
 
@@ -68,22 +69,27 @@ Cypress.c8ypact = {
   pactRunner: new C8yDefaultPactRunner(),
   failOnMissingPacts: true,
   strictMatching: true,
+  debugLog: false,
 };
 
-const logTasks = false;
+function debugLogger(): Cypress.Loggable {
+  return { log: Cypress.c8ypact.debugLog };
+}
 
 before(() => {
   const pacter = Cypress.c8ypact;
   if (!pacter.isRecordingEnabled()) {
-    cy.task("c8ypact:load", Cypress.config().fixturesFolder, { log: logTasks });
+    cy.task("c8ypact:load", Cypress.config().fixturesFolder, debugLogger());
   }
 });
 
 beforeEach(() => {
   if (Cypress.c8ypact.isRecordingEnabled()) {
-    cy.task("c8ypact:remove", Cypress.c8ypact.currentPactIdentifier(), {
-      log: logTasks,
-    });
+    cy.task(
+      "c8ypact:remove",
+      Cypress.c8ypact.currentPactIdentifier(),
+      debugLogger()
+    );
   }
 });
 
@@ -147,19 +153,17 @@ function savePact(response: Cypress.Response<any>, client?: Client) {
       folder,
       info,
     },
-    { log: logTasks }
+    debugLogger()
   );
 }
 
 function currentPacts(): Cypress.Chainable<Cypress.Response<any>[] | null> {
   return !isEnabled()
-    ? cy.wrap<Cypress.Response<any>[] | null>(null, { log: false })
+    ? cy.wrap<Cypress.Response<any>[] | null>(null, debugLogger())
     : cy.task<Cypress.Response<any>[]>(
         "c8ypact:get",
         Cypress.c8ypact.currentPactIdentifier(),
-        {
-          log: logTasks,
-        }
+        debugLogger()
       );
 }
 
@@ -177,7 +181,9 @@ function getNextPact(): Cypress.Chainable<{
         pact: Cypress.Response<any>;
         info: any;
       } | null>(null)
-    : cy.task("c8ypact:next", Cypress.c8ypact.currentPactIdentifier(), {
-        log: logTasks,
-      });
+    : cy.task(
+        "c8ypact:next",
+        Cypress.c8ypact.currentPactIdentifier(),
+        debugLogger()
+      );
 }
