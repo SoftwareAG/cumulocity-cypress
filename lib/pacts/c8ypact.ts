@@ -1,7 +1,7 @@
 import { Client } from "@c8y/client";
-import { C8yDefaultPactMatcher } from "../pacts/matcher";
-import { C8yPactDefaultPreprocessor } from "../pacts/preprocessor";
-import { C8yDefaultPactRunner } from "../pacts/runner";
+import { C8yDefaultPactMatcher } from "./matcher";
+import { C8yPactDefaultPreprocessor } from "./preprocessor";
+import { C8yDefaultPactRunner } from "./runner";
 const { _ } = Cypress;
 
 declare global {

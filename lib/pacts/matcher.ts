@@ -1,4 +1,5 @@
 const { _ } = Cypress;
+import * as datefns from "date-fns";
 
 declare global {
   interface C8yPactMatcher {
@@ -213,8 +214,8 @@ export class C8yISODateStringMatcher implements C8yPactMatcher {
       return false;
     }
 
-    const d1 = Cypress.datefns.parseISO(obj1);
-    const d2 = Cypress.datefns.parseISO(obj2);
-    return Cypress.datefns.isValid(d1) && Cypress.datefns.isValid(d2);
+    const d1 = datefns.parseISO(obj1);
+    const d2 = datefns.parseISO(obj2);
+    return datefns.isValid(d1) && datefns.isValid(d2);
   }
 }
