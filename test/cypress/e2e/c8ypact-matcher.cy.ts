@@ -1,7 +1,7 @@
 import {
   C8yDefaultPactMatcher,
   C8yISODateStringMatcher,
-} from "../../lib/pacts/matcher";
+} from "../../../lib/pacts/matcher";
 
 const { _ } = Cypress;
 

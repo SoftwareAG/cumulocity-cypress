@@ -1,4 +1,4 @@
-import { C8yDefaultPactRunner } from "../../lib/pacts/runner";
+import { C8yDefaultPactRunner } from "../../../lib/pacts/runner";
 import { initRequestStub, stubResponses } from "../support/util";
 
 const { _ } = Cypress;
