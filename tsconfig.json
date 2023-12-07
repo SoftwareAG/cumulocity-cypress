@@ -5,7 +5,7 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "target": "es5",
-    "lib": ["es5", "dom"],
+    "lib": ["es5", "dom", "dom.iterable", "es2019"],
     "types": ["cypress", "node"],
     "declaration": true,
     "outDir": "./dist",

@@ -45,7 +45,7 @@ declare global {
     } | null>;
     currentPacts: () => Cypress.Chainable<Cypress.Response<any>[] | null>;
     currentMatcher: () => C8yPactMatcher;
-    savePact: (response: Cypress.Response<any>) => void;
+    savePact: (response: Cypress.Response<any>, client?: C8yClient) => void;
     isEnabled: () => boolean;
     isRecordingEnabled: () => boolean;
     failOnMissingPacts: boolean;
@@ -115,7 +115,7 @@ function isRecordingEnabled(): boolean {
   return isEnabled() && Cypress.env("C8Y_PACT_MODE") === "recording";
 }
 
-function savePact(response: Cypress.Response<any>, client?: Client) {
+function savePact(response: Cypress.Response<any>, client?: C8yClient) {
   if (!isEnabled()) return;
 
   const pact = Cypress.c8ypact.currentPactIdentifier();
@@ -134,7 +134,7 @@ function savePact(response: Cypress.Response<any>, client?: Client) {
     producer: Cypress.config().c8ypact?.producer,
     description: Cypress.config().c8ypact?.description,
     tags: Cypress.config().c8ypact?.tags,
-    tenant: client.core.tenant || Cypress.env("C8Y_TENANT"),
+    tenant: client?._client.core.tenant || Cypress.env("C8Y_TENANT"),
     baseUrl: Cypress.config().baseUrl,
     version: Cypress.env("C8Y_VERSION") && {
       system: Cypress.env("C8Y_VERSION"),
