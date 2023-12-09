@@ -216,7 +216,7 @@ describe("c8yclient", () => {
       const expectedOptions = _.cloneDeep(requestOptions);
       const cAuth = { user: "admin12", password: "password", tenant: "t1" };
       const client = new Client(new BasicAuth(cAuth));
-      
+
       const auth = { user: "test", password: "test", tenant: "t287364872364" };
       expectedOptions.auth = auth;
       cy.getAuth(auth)
@@ -749,6 +749,82 @@ describe("c8yclient", () => {
           expect(response.duration).to.not.be.undefined;
           expectC8yClientRequest(requestOptions);
         });
+    });
+  });
+
+  context("toCypressResponse", () => {
+    // could / should be extended. toCypressResponse() is base of all c8yclient features
+    it("should return a Cypress.Response when given a Partial<Response>", () => {
+      const partialResponse: Partial<Response> = {
+        status: 200,
+        ok: true,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        data: {},
+        requestBody: { id: "10101" },
+        method: "PUT",
+      };
+
+      const response = toCypressResponse(
+        partialResponse,
+        0,
+        {},
+        "http://example.com"
+      );
+
+      expect(response).to.have.property("status", 200);
+      expect(response).to.have.property("isOkStatusCode", true);
+      expect(response).to.have.property("statusText", "OK");
+      expect(response).to.have.property("headers").that.is.an("object");
+      expect(response).to.have.property("duration", 0);
+      expect(response).to.have.property("url", "http://example.com");
+      expect(response)
+        .to.have.property("allRequestResponses")
+        .that.is.an("array");
+      expect(response.body).to.deep.eq({});
+      expect(response.requestBody).to.deep.eq({ id: "10101" });
+      expect(response).to.have.property("method", "PUT");
+    });
+
+    it("should return responseObject Cypress.Response", () => {
+      const r: IResult<any> = {
+        // @ts-ignore
+        res: {
+          status: 200,
+          ok: true,
+          statusText: "OK",
+          data: {},
+          requestBody: {},
+          method: "GET",
+          headers: undefined,
+          arrayBuffer: function (): Promise<ArrayBuffer> {
+            throw new Error("Function not implemented.");
+          },
+          // @ts-ignore
+          responseObj: {
+            status: 404,
+            statusText: "Error",
+            isOkStatusCode: false,
+            requestBody: {},
+            method: "PUT",
+            duration: 0,
+            url: "http://example.com",
+            body: {},
+          },
+        },
+        data: {},
+      };
+
+      const response = toCypressResponse(r, 0, {}, "http://example.com");
+
+      expect(response).to.have.property("status", 404);
+      expect(response).to.have.property("isOkStatusCode", false);
+      expect(response).to.have.property("statusText", "Error");
+      expect(response).to.have.property("duration", 0);
+      expect(response).to.have.property("url", "http://example.com");
+      expect(response.body).to.deep.eq({});
+      expect(response.requestBody).to.deep.eq({});
+      expect(response).to.have.property("method", "PUT");
     });
   });
 });

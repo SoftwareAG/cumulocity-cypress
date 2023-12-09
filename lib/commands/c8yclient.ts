@@ -125,6 +125,8 @@ declare global {
 
     interface Response<T = any> {
       url?: string;
+      requestBody?: string | any;
+      method?: string;
     }
   }
 
@@ -145,27 +147,24 @@ declare global {
     previousResponse?: Cypress.Response<R>
   ) => Promise<IResultList<T>>;
 
-  type C8yClientFnArg =
-    | C8yClientServiceFn<any, any>
-    | C8yClientServiceArrayFn<any, any>[]
-    | C8yClientServiceListFn<any, any>;
+  type C8yClientFnArg<R = any, T = any> =
+    | C8yClientServiceFn<R, T>
+    | C8yClientServiceArrayFn<R, T>[]
+    | C8yClientServiceListFn<R, T>;
 
-  type C8yClientOptions = Partial<C8yOptions> &
-    // Partial<Timeoutable> &
-    Partial<Cypress.Loggable> &
+  type C8yClientOptions = Partial<Cypress.Loggable> &
     Partial<Cypress.Timeoutable> &
-    Partial<Pick<Cypress.Failable, "failOnStatusCode">>;
-
-  interface C8yOptions {
-    auth: IAuthentication;
-    baseUrl: string;
-    client: Client;
-    pact: any;
-    preferBasicAuth: boolean;
-    skipClientAuthenication: boolean;
-    failOnPactValidation: boolean;
-    ignorePact: boolean;
-  }
+    Partial<Pick<Cypress.Failable, "failOnStatusCode">> &
+    Partial<{
+      auth: IAuthentication;
+      baseUrl: string;
+      client: Client;
+      pact: any;
+      preferBasicAuth: boolean;
+      skipClientAuthenication: boolean;
+      failOnPactValidation: boolean;
+      ignorePact: boolean;
+    }>;
 
   type C8yAuthentication = IAuthentication & C8yAuthOptions;
 
@@ -180,14 +179,23 @@ declare global {
     requestBody?: string | any;
   }
 
+  // wrapper for Client to pass auth and options without extending Client
+  // using underscore to avoid name clashes with Client and misunderstandings reading the code
   interface C8yClient {
     _auth?: C8yAuthentication;
     _options?: C8yClientOptions;
     _client: Client;
   }
+
+  function toCypressResponse<T = any>(
+    obj: Partial<Response> | IFetchResponse | IResult<any> | IResultList<any>,
+    duration?: number,
+    fetchOptions?: IFetchOptions,
+    url?: RequestInfo | URL
+  ): Cypress.Response<T>;
 }
 
-const defaultOptions: C8yClientOptions = {
+const defaultClientOptions: C8yClientOptions = {
   log: true,
   timeout: Cypress.config().requestTimeout,
   failOnStatusCode: true,
@@ -280,12 +288,10 @@ window.fetch = async function (url, fetchOptions) {
   const fetchPromise: Promise<Response> = window.fetchStub(url, fetchOptions);
 
   const createFetchResponse = async (response: Response) => {
-    responseObj = await responseObject(
-      url,
-      response || {},
-      fetchOptions,
-      Date.now() - startTime
-    );
+    const duration = Date.now() - startTime;
+    responseObj = await (async () => {
+      return toCypressResponse(response, duration, fetchOptions, url);
+    })();
 
     let rawBody: string;
     if (response.data) {
@@ -343,7 +349,7 @@ window.fetch = async function (url, fetchOptions) {
 
 const c8yclientFn = (...args: any[]) => {
   const prevSubjectIsAuth = args && !_.isEmpty(args) && isAuth(args[0]);
-  let prevSubject =
+  let prevSubject: Cypress.Chainable<any> =
     args && !_.isEmpty(args) && !isAuth(args[0]) ? args[0] : undefined;
   let $args = normalizedArgumentsWithAuth(
     args && prevSubject ? args.slice(1) : args
@@ -392,7 +398,7 @@ const c8yclientFn = (...args: any[]) => {
   }
 
   let [argAuth, clientFn, argOptions] = $args;
-  const options = _.defaults(argOptions, defaultOptions);
+  const options = _.defaults(argOptions, defaultClientOptions);
 
   // force CookieAuth over BasicAuth if present and not disabled by options
   const auth: C8yAuthentication =
@@ -466,49 +472,8 @@ function runClient(
   return run(client, fns, prevSubject, client._options, baseUrl);
 }
 
-function preprocessResponseObject(
-  r: any,
-  client?: C8yClient,
-  save: boolean = true
-): void {
-  let response = (r.res && r.res.responseObj) || r.responseObj || r;
-  if (r.data) {
-    response.body = r.data;
-  }
-  response.method = (r.res && r.res.method) || r.method || "GET";
-  const requestBody = (r.res && r.res.requestBody) || r.requestBody;
-  if (requestBody) {
-    response.requestBody = requestBody;
-  }
-  response.options = client?._options;
-
-  if (client?._auth) {
-    response.auth = _.pick(client?._auth, ["user", "userAlias"]);
-    if (!response.auth.user) {
-      response.auth.user = Cypress.env("C8Y_LOGGED_IN_USER");
-    }
-    if (!response.auth.userAlias) {
-      response.auth.userAlias = Cypress.env("C8Y_LOGGED_IN_USERALIAS");
-    }
-    response.auth.type = client?._auth.constructor.name;
-  }
-
-  if (response.method === "POST") {
-    const newId = response.body.id;
-    if (newId) {
-      response.createdObject = newId;
-    }
-  }
-
-  if (save) {
-    Cypress.c8ypact.savePact(response, client);
-  }
-
-  return response;
-}
-
-// create client as done with Client.authenticate(), but also support
-// Cookie authentication. Client.authenticate() only works with BasicAuth
+// create client as Client.authenticate() does, but also support
+// Cookie authentication as Client.authenticate() only works with BasicAuth
 function authenticateClient(
   auth: C8yAuthentication,
   options: C8yClientOptions,
@@ -520,7 +485,6 @@ function authenticateClient(
       "content-type": "application/json",
     };
     const res = await clientCore.fetch("/tenant/currentTenant");
-    preprocessResponseObject(res, undefined, false);
     if (res.status !== 200) {
       throwError(makeErrorMessage(res.responseObj));
     }
@@ -599,9 +563,12 @@ function run(
         } catch (error) {
           result = error;
         }
-        result = preprocessResponseObject(result, client, savePact);
+        result = toCypressResponse(result);
         if (isErrorResponse(result)) {
           throw result;
+        }
+        if (savePact) {
+          Cypress.c8ypact.savePact(result, client);
         }
         return result;
       };
@@ -696,27 +663,6 @@ function makeErrorMessage(obj: any) {
   return message;
 }
 
-async function responseObject(
-  url: RequestInfo | URL,
-  response: Partial<Response> | { res?: Partial<Response> },
-  fetchOptions: IFetchOptions = {},
-  duration: number = 0
-): Promise<Partial<Cypress.Response<any>>> {
-  const resp: Response = _.has(response, "res")
-    ? { ...response, ..._.get(response, "res") }
-    : response;
-    debugger
-  return {
-    status: resp.status,
-    isOkStatusCode: resp.ok,
-    statusText: resp.statusText,
-    headers: Object.fromEntries(resp.headers || []),
-    requestHeaders: fetchOptions.headers,
-    duration: duration,
-    url: toUrlString(url),
-  };
-}
-
 function toUrlString(url: RequestInfo | URL): string {
   if (_.isString(url)) {
     return url;
@@ -737,13 +683,6 @@ function getDisplayUrl(
   baseUrl: string = Cypress.config().baseUrl
 ): string {
   return url.replace(baseUrl, "");
-}
-
-function isArrayOfFunctions(
-  functions: C8yClientFnArg
-): functions is Array<any> {
-  if (!functions || !_.isArray(functions)) return false;
-  return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
 }
 
 Cypress.Commands.add(
@@ -792,3 +731,59 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
     }
   }
 });
+
+global.toCypressResponse = toCypressResponse;
+function toCypressResponse(
+  obj:
+    | Partial<Response>
+    | IFetchResponse
+    | IResult<any>
+    | IResultList<any> = {},
+  duration: number = 0,
+  fetchOptions: IFetchOptions = {},
+  url?: RequestInfo | URL
+): Cypress.Response<any> {
+  let fetchResponse: Partial<Response>;
+  if (isIResult(obj)) {
+    fetchResponse = obj.res;
+  } else if (isWindowFetchResponse(obj)) {
+    fetchResponse = obj;
+  }
+  if ("responseObj" in fetchResponse) {
+    return _.get(fetchResponse, "responseObj") as Cypress.Response<any>;
+  }
+  return {
+    status: fetchResponse.status,
+    isOkStatusCode:
+      fetchResponse.ok ||
+      (fetchResponse.status > 199 && fetchResponse.status < 300),
+    statusText: fetchResponse.statusText,
+    headers: Object.fromEntries(fetchResponse.headers || []),
+    requestHeaders: fetchOptions.headers,
+    duration: duration,
+    url: toUrlString(url),
+    allRequestResponses: [],
+    body: fetchResponse.data,
+    requestBody: fetchResponse.requestBody,
+    method: fetchResponse.method || "GET",
+  };
+}
+
+function isArrayOfFunctions(
+  functions: C8yClientFnArg
+): functions is Array<any> {
+  if (!functions || !_.isArray(functions)) return false;
+  return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
+}
+
+function isWindowFetchResponse(obj: any): obj is Partial<Response> {
+  return "status" in obj && "ok" in obj; // && _.has(obj, "url");
+}
+
+function isClientFetchResponse(obj: any): obj is IFetchResponse {
+  return "arrayBuffer" in obj && _.isFunction(obj.arrayBuffer);
+}
+
+function isIResult(obj: any): obj is IResult<any> {
+  return "data" in obj && "res" in obj && isClientFetchResponse(obj.res);
+}

@@ -34,6 +34,34 @@ declare global {
     ignore?: boolean;
   }
 
+  type C8yPactID = string;
+
+  interface C8yPactFile {
+    pact: C8yPactRecord[];
+    info: any;
+    id: C8yPactID;
+  }
+
+  interface C8yPactInfo {
+    producer?: string;
+    consumer?: string;
+    tags?: string[];
+    description?: string;
+    version?: string;
+    title?: string[];
+    id?: C8yPactID;
+    baseUrl?: string;
+    tenant?: string;
+  }
+
+  interface C8yPactRecord<T = any> {
+    request: Partial<Cypress.RequestOptions>;
+    response: Partial<Cypress.Response<T>>;
+    options: C8yClientOptions;
+    auth: C8yAuthOptions;
+    createdObject: string | string[];
+  }
+
   interface C8yPact {
     matcher: C8yPactMatcher;
     preprocessor: C8yPactPreprocessor;
@@ -69,7 +97,7 @@ Cypress.c8ypact = {
   pactRunner: new C8yDefaultPactRunner(),
   failOnMissingPacts: true,
   strictMatching: true,
-  debugLog: false,
+  debugLog: true,
 };
 
 function debugLogger(): Cypress.Loggable {
@@ -118,6 +146,11 @@ function isRecordingEnabled(): boolean {
 function savePact(response: Cypress.Response<any>, client?: C8yClient) {
   if (!isEnabled()) return;
 
+  const preprocessedResponse = _.cloneDeep(response);
+  Cypress.c8ypact.preprocessor.preprocess(preprocessedResponse);
+
+  // TODO: save in pact record format
+  // const pactRecord = createPactRecord(preprocessedResponse, client);
   const pact = Cypress.c8ypact.currentPactIdentifier();
   if (!pact) return;
 
@@ -142,9 +175,6 @@ function savePact(response: Cypress.Response<any>, client?: C8yClient) {
   };
 
   const folder = Cypress.config().fixturesFolder;
-  const preprocessedResponse = _.cloneDeep(response);
-  Cypress.c8ypact.preprocessor.preprocess(preprocessedResponse);
-
   cy.task(
     "c8ypact:save",
     {
@@ -186,4 +216,49 @@ function getNextPact(): Cypress.Chainable<{
         Cypress.c8ypact.currentPactIdentifier(),
         debugLogger()
       );
+}
+
+function createPactRecord(
+  r: Cypress.Response<any>,
+  client: C8yClient = null
+): C8yPactRecord {
+  const pact: C8yPactRecord = {
+    request: {
+      method: r.method,
+      url: r.url,
+      body: r.requestBody,
+      headers: r.requestHeaders,
+    },
+    response: {
+      status: r.status,
+      duration: r.duration,
+      isOkStatusCode: r.isOkStatusCode,
+      statusText: r.statusText,
+      body: r.body,
+      headers: r.headers,
+    },
+    options: client._options,
+    auth: undefined,
+    createdObject: undefined,
+  };
+
+  if (client._auth) {
+    pact.auth = _.pick(client._auth, ["user", "userAlias"]);
+    if (!pact.auth.user) {
+      pact.auth.user = Cypress.env("C8Y_LOGGED_IN_USER");
+    }
+    if (!pact.auth.userAlias) {
+      pact.auth.userAlias = Cypress.env("C8Y_LOGGED_IN_USERALIAS");
+    }
+    pact.auth.type = client._auth.constructor.name;
+  }
+
+  if (r.method === "POST") {
+    const newId = r.body.id;
+    if (newId) {
+      pact.createdObject = newId;
+    }
+  }
+
+  return pact;
 }
