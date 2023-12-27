@@ -4,8 +4,8 @@ import * as datefns from "date-fns";
 declare global {
   interface C8yPactMatcher {
     match: (
-      obj1: unknown,
-      obj2: unknown,
+      obj1: Partial<C8yPactRecord>,
+      obj2: Partial<C8yPactRecord>,
       loggerProps?: { [key: string]: any }
     ) => boolean;
   }
@@ -36,8 +36,8 @@ export class C8yDefaultPactMatcher {
   }
 
   match(
-    obj1: any,
-    obj2: any,
+    obj1: Partial<C8yPactRecord>,
+    obj2: Partial<C8yPactRecord>,
     consoleProps: { [key: string]: any } = {}
   ): boolean {
     if (obj1 === obj2) {
@@ -56,6 +56,8 @@ export class C8yDefaultPactMatcher {
             ? [_.pick(obj1, [key]), _.pick(obj2, [key])]
             : [obj1, obj2];
       }
+
+      this.parents = [];
       throw newErr;
     };
 
@@ -104,8 +106,8 @@ export class C8yDefaultPactMatcher {
     // if strictMatching is disabled, only check properties of the pact
     const keys = !strictMode ? keys2 : keys1;
     for (const key of keys) {
-      const value1 = (strictMode ? obj1 : obj2)[key];
-      const value2 = (strictMode ? obj2 : obj1)[key];
+      const value1 = _.get(strictMode ? obj1 : obj2, key);
+      const value2 = _.get(strictMode ? obj2 : obj1, key);
 
       if (!(strictMode ? keys2 : keys1).includes(key)) {
         throwPactError(
@@ -115,6 +117,9 @@ export class C8yDefaultPactMatcher {
         );
       }
       if (this.propertyMatchers[key]) {
+        if (!strictMode && !value1) {
+          continue;
+        }
         // @ts-ignore
         this.propertyMatchers[key].parents = [...this.parents, key];
         if (!this.propertyMatchers[key].match(value1, value2, consoleProps)) {
@@ -122,7 +127,15 @@ export class C8yDefaultPactMatcher {
         }
       } else if (_.isPlainObject(value1) && _.isPlainObject(value2)) {
         this.parents.push(key);
-        if (this.match(value1, value2, consoleProps)) {
+        if (
+          // if strictMatching is disabled, value1 and value2 have been swapped
+          // swap back to ensure swapping in next iteration works as expected
+          this.match(
+            strictMode ? value1 : value2,
+            strictMode ? value2 : value1,
+            consoleProps
+          )
+        ) {
           this.parents.pop();
         }
       } else if (isArrayOfPrimitives(value1) && isArrayOfPrimitives(value2)) {
@@ -139,11 +152,13 @@ export class C8yDefaultPactMatcher {
           );
         }
       } else {
-        if (!_.isEqual(value1, value2)) {
+        if (value1 && value2 && !_.isEqual(value1, value2)) {
           throwPactError(`Values for "${keyPath(key)}" do not match.`, key);
         }
       }
     }
+
+    this.parents = [];
     return true;
   }
 
@@ -169,7 +184,10 @@ export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
     this.addPropertyMatcher("password", new C8yIgnoreMatcher());
     this.addPropertyMatcher("owner", new C8yIgnoreMatcher());
     this.addPropertyMatcher("tenantId", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("lastPasswordChange", new C8yISODateStringMatcher());
+    this.addPropertyMatcher(
+      "lastPasswordChange",
+      new C8yISODateStringMatcher()
+    );
   }
 }
 

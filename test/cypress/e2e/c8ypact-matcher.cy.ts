@@ -1,22 +1,109 @@
+import { C8yDefaultPactRecord } from "../../../lib/pacts/c8ypact";
 import {
   C8yDefaultPactMatcher,
   C8yISODateStringMatcher,
 } from "../../../lib/pacts/matcher";
+import { SinonSpy } from "cypress/types/sinon";
 
 const { _ } = Cypress;
 
 describe("c8ypactmatcher", () => {
-  beforeEach(() => {});
+  let obj1: C8yPactRecord, obj2: C8yPactRecord;
+
+  beforeEach(() => {
+    cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
+      obj1 = C8yDefaultPactRecord.from(pacts[0]);
+      obj2 = C8yDefaultPactRecord.from(pacts[1]);
+    });
+  });
+
+  context("cy.c8ymatch", function () {
+    it("should clone arguments and not preprocess source objects", function () {
+      // @ts-ignore
+      const obj: Cypress.Response<any> = {
+        requestHeaders: {
+          Authorization: "asdasdasdasd",
+        },
+        body: {
+          password: "abasasapksasas",
+        },
+      };
+      const pact = C8yDefaultPactRecord.from(obj);
+      // c8ymatch should not modify obj when preprocessing
+      cy.c8ymatch(obj, pact, {}, { failOnPactValidation: true });
+      expect(obj.requestHeaders.Authorization).to.eq("asdasdasdasd");
+      expect(obj.body.password).to.eq("abasasapksasas");
+    });
+
+    it("should preprocess response before matching against contract", function (done) {
+      // @ts-ignore
+      const obj: Cypress.Response<any> = {
+        requestHeaders: {
+          Test: "testauth",
+        },
+        body: {
+          Test: "testpassword",
+        },
+      };
+
+      const pactSourceObj = _.cloneDeep(obj);
+      const preprocessor = {
+        obfuscationPattern: "********",
+        obfuscate: ["requestHeaders.Test", "body.Test"],
+      };
+
+      Cypress.c8ypact.preprocessor.apply(pactSourceObj, preprocessor);
+      // preprocessor does not change source object
+      expect(obj.requestHeaders.Test).to.eq("testauth");
+      expect(obj.body.Test).to.eq("testpassword");
+
+      const pact = C8yDefaultPactRecord.from(pactSourceObj);
+      // @ts-ignore
+      expect(pact.request.headers.Test).to.eq(preprocessor.obfuscationPattern);
+      expect(pact.response.body.Test).to.eq(preprocessor.obfuscationPattern);
+
+      cy.c8ymatch(obj, pact, { preprocessor }, { failOnPactValidation: true });
+
+      // expect to fail as obj is not obfuscated and pact has been obfuscated
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("Pact validation failed!");
+        done();
+      });
+      cy.c8ymatch(obj, pact, {}, { failOnPactValidation: true });
+    });
+
+    it("should match with request and response only", function () {
+      cy.spy(Cypress.c8ypact.matcher, "match").log(false);
+      // @ts-ignore
+      const response: Cypress.Response = {
+        status: 201,
+        requestBody: "test",
+      };
+      const pact = C8yDefaultPactRecord.from(response);
+      // init additional properties to test if they are ignored
+      pact.createdObject = "123";
+      pact.options = {
+        failOnStatusCode: false,
+      };
+      pact.auth = {
+        user: "test",
+      };
+
+      const matchKeys = ["request", "response"];
+      cy.c8ymatch(response, pact, {}, { failOnPactValidation: true }).then(
+        () => {
+          const spy = Cypress.c8ypact.matcher.match as SinonSpy;
+          expect(spy).to.have.been.called;
+          expect(Object.keys(spy.getCall(0).args[0])).to.deep.eq(matchKeys);
+          expect(Object.keys(spy.getCall(0).args[1])).to.deep.eq(matchKeys);
+        }
+      );
+    });
+  });
 
   context("C8yDefaultPactMatcher", function () {
-    let obj1: Cypress.Response<any>, obj2: Cypress.Response<any>;
-
     beforeEach(() => {
       Cypress.c8ypact.strictMatching = true;
-      cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
-        obj1 = pacts[0];
-        obj2 = pacts[1];
-      });
     });
 
     it("should match cloned object", function () {
@@ -28,7 +115,7 @@ describe("c8ypactmatcher", () => {
     it("should match requestHeader with different order", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
-      pact.requestHeaders = {
+      pact.request.headers = {
         "content-type": "application/json",
         UseXBasic: true,
         accept: "application/json",
@@ -39,40 +126,47 @@ describe("c8ypactmatcher", () => {
     it("should match duration only as number", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
-      pact.duration = 101;
+      pact.response.duration = 101;
       expect(matcher.match(obj1, pact)).to.be.true;
     });
 
     it("should fail if duration is not a number", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
-      pact.duration = "1212121";
+      pact.response.duration = "1212121";
       expect(() => matcher.match(obj1, pact)).to.throw(
-        `Pact validation failed! Values for "duration" do not match.`
+        `Pact validation failed! Values for "response > duration" do not match.`
       );
     });
 
     it("should fail if ignored porperty is missing", function () {
       const matcher = new C8yDefaultPactMatcher();
+      const c = Object.keys(obj1.request).length;
       const pact = _.cloneDeep(obj1);
-      delete pact.url;
+      delete pact.request.url;
       expect(() => matcher.match(obj1, pact)).to.throw(
-        `Pact validation failed! objects have different number of keys (9 and 8).`
+        `Pact validation failed! "request" objects have different number of keys (${c} and ${
+          c - 1
+        }).`
       );
     });
 
-    it("should fail if ignored porperty is missing with strictMode disabled", function () {
+    it("should fail if ignored porperty is missing with strictMatching disabled", function () {
       Cypress.c8ypact.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
       const obj = _.cloneDeep(obj1);
-      delete obj.url;
+      delete obj.request.url;
       const pact = {
-        status: 201,
-        isOkStatusCode: true,
-        url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
+        response: {
+          status: 201,
+          isOkStatusCode: true,
+        },
+        request: {
+          url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
+        },
       };
       expect(() => matcher.match(obj, pact)).to.throw(
-        `Pact validation failed! "url" not found in response object.`
+        `Pact validation failed! "request > url" not found in response object.`
       );
     });
 
@@ -80,8 +174,8 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
       const obj = _.cloneDeep(obj1);
-      obj.body = "hello world";
-      pact.body = "hello world";
+      obj.response.body = "hello world";
+      pact.response.body = "hello world";
       expect(matcher.match(obj, pact)).to.be.true;
     });
 
@@ -89,10 +183,10 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
       const obj = _.cloneDeep(obj1);
-      obj.body = "hello world";
-      pact.body = "hello my world";
+      obj.response.body = "hello world";
+      pact.response.body = "hello my world";
       expect(() => matcher.match(obj, pact)).to.throw(
-        `Pact validation failed! "body" text did not match.`
+        `Pact validation failed! "response > body" text did not match.`
       );
     });
 
@@ -106,15 +200,15 @@ describe("c8ypactmatcher", () => {
 
     it("should match managed objects with different ids", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const pact = { body: { id: "212123" } };
-      const obj = { body: { id: "9299299" } };
+      const pact = { response: { body: { id: "212123" } } };
+      const obj = { response: { body: { id: "9299299" } } };
       expect(matcher.match(obj, pact)).to.be.true;
     });
 
     it("should match managed objects with non-numeric ids", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const pact = { body: { id: "212123" } };
-      const obj = { body: { id: "92992asdasdasd99" } };
+      const pact = { response: { body: { id: "212123" } } };
+      const obj = { response: { body: { id: "92992asdasdasd99" } } };
       expect(matcher.match(obj, pact)).to.be.true;
       // expect(() => matcher.match(obj, pact)).to.throw(
       //   "Pact validation failed for id with propertyMatcher [object Object]"
@@ -124,10 +218,10 @@ describe("c8ypactmatcher", () => {
     // disabled as now C8yIgnoreMatcher is used. some services seem to return id as number
     it.skip("should not match managed objects with different id types", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const pact = { body: { id: "212123" } };
-      const obj = { body: { id: 9299299 } };
+      const pact = { response: { body: { id: "212123" } } };
+      const obj = { response: { body: { id: 9299299 } } };
       expect(() => matcher.match(obj, pact)).to.throw(
-        `Pact validation failed! Values for "body > id" do not match.`
+        `Pact validation failed! Values for "response > body > id" do not match.`
       );
     });
 
@@ -135,15 +229,15 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
       const obj = _.cloneDeep(obj1);
-      const expectedError = `Pact validation failed! Values for "body > managedObjects" do not match.`;
+      const expectedError = `Pact validation failed! Values for "response > body > managedObjects" do not match.`;
 
-      obj.body.managedObjects[0].description = "Some random text...";
+      obj.response.body.managedObjects[0].description = "Some random text...";
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);
 
-      obj.body.managedObjects.pop();
+      obj.response.body.managedObjects.pop();
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);
 
-      obj.body.managedObjects = [];
+      obj.response.body.managedObjects = [];
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);
     });
 
@@ -151,11 +245,21 @@ describe("c8ypactmatcher", () => {
       Cypress.c8ypact.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
       const obj = _.cloneDeep(obj1);
-      const pact = {
+
+      // @ts-ignore - ignore missing properties
+      const pact = C8yDefaultPactRecord.from({
         status: 201,
         isOkStatusCode: true,
-      };
+      });
       expect(matcher.match(obj, pact)).to.be.true;
+
+      const plainObjPact = {
+        response: {
+          status: 201,
+          isOkStatusCode: true,
+        },
+      };
+      expect(matcher.match(obj, plainObjPact)).to.be.true;
     });
   });
 

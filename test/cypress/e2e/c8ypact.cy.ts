@@ -1,6 +1,7 @@
-import { IManagedObject } from "@c8y/client";
+import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses } from "../support/util";
 import { SinonSpy } from "cypress/types/sinon";
+import { C8yDefaultPactRecord } from "../../../lib/pacts/c8ypact";
 
 const { _ } = Cypress;
 
@@ -28,6 +29,165 @@ describe("c8yclient", () => {
         headers: { "content-type": "application/json" },
       }),
     ]);
+  });
+
+  context("C8yDefaultPactRecord", function () {
+    it("from() should create C8yDefaultPactRecord from Cypress.Response", function () {
+      const response: Cypress.Response<any> = {
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "application/json" },
+        body: { name: "t123456789" },
+        duration: 100,
+        requestHeaders: { "content-type": "application/json2" },
+        requestBody: { id: "abc123124" },
+        allRequestResponses: [],
+        isOkStatusCode: false,
+        method: "PUT",
+        url: "http://localhost:4200",
+      };
+
+      const pactRecord = C8yDefaultPactRecord.from(response);
+
+      expect(pactRecord.response.status).to.equal(200);
+      expect(pactRecord.response.statusText).to.equal("OK");
+      expect(pactRecord.response.headers).to.deep.equal({
+        "content-type": "application/json",
+      });
+      expect(pactRecord.response.body).to.deep.equal({ name: "t123456789" });
+      expect(pactRecord.response.duration).to.equal(100);
+      expect(pactRecord.request.url).to.equal("http://localhost:4200");
+      expect(pactRecord.request.method).to.equal("PUT");
+      expect(pactRecord.request.body).to.deep.equal({ id: "abc123124" });
+      expect(pactRecord.request.headers).to.deep.equal({
+        "content-type": "application/json2",
+      });
+
+      expect(_.has(pactRecord, "auth")).to.be.false;
+      expect(_.has(pactRecord, "options")).to.be.false;
+      expect(_.has(pactRecord, "createdObject")).to.be.false;
+    });
+
+    it("from() should create from cloned source objects", function () {
+      // @ts-ignore
+      const obj: Cypress.Response<any> = {
+        body: {
+          id: "12312312",
+        },
+      };
+      const pact = C8yDefaultPactRecord.from(obj);
+      obj.body.test = "test";
+      // c8ymatch should not modify obj when preprocessing
+      expect(obj.body.test).to.eq("test");
+      expect(pact.response.body.test).to.be.undefined;
+    });
+
+    it("from() should create C8yDefaultPactRecord without optional properties if undefined", function () {
+      // @ts-ignore
+      let response: Cypress.Response<any> = {};
+      let pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.response).to.deep.equal({});
+      expect(pactRecord.request).to.deep.equal({});
+      expect(_.has(pactRecord, "auth")).to.be.false;
+      expect(_.has(pactRecord, "options")).to.be.false;
+      expect(_.has(pactRecord, "createdObject")).to.be.false;
+
+      // @ts-ignore
+      response = Cypress.Response<any> = {
+        status: 200,
+        requestBody: "test",
+      };
+      pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.response).to.deep.equal({ status: 200 });
+      expect(pactRecord.request).to.deep.equal({ body: "test" });
+      expect(_.has(pactRecord, "auth")).to.be.false;
+      expect(_.has(pactRecord, "options")).to.be.false;
+      expect(_.has(pactRecord, "createdObject")).to.be.false;
+    });
+
+    it("from() should create C8yDefaultPactRecord with auth from env", function () {
+      Cypress.env("C8Y_LOGGED_IN_USER", "admin");
+      Cypress.env("C8Y_LOGGED_IN_USERALIAS", "alias");
+
+      // @ts-ignore
+      let response: Cypress.Response<any> = {};
+      let pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.auth).to.deep.equal({
+        user: "admin",
+        userAlias: "alias",
+      });
+    });
+
+    it("from() should use C8yClient auth", function () {
+      // setting env variables to ensure client auth overrides env auth
+      Cypress.env("C8Y_LOGGED_IN_USER", "admin");
+      Cypress.env("C8Y_LOGGED_IN_USERALIAS", "alias");
+      const auth: C8yAuthentication = new BasicAuth({
+        user: "admin2",
+        password: "mypassword",
+      });
+      auth.userAlias = "alias2";
+      const client: C8yClient = {
+        _auth: auth,
+        _client: new Client(auth),
+      };
+      // @ts-ignore
+      let response: Cypress.Response<any> = {};
+      let pactRecord = C8yDefaultPactRecord.from(response, client);
+      expect(pactRecord.auth).to.deep.equal({
+        user: "admin2",
+        userAlias: "alias2",
+        type: "BasicAuth",
+      });
+    });
+
+    it("from() should create C8yDefaultPactRecord with createdObject", function () {
+      // @ts-ignore
+      const response: Cypress.Response<any> = {
+        method: "POST",
+        body: {
+          id: "12312312",
+        },
+      };
+      const pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.createdObject).to.equal("12312312");
+    });
+
+    it("toCypressResponse() should create Response from record", function () {
+      const response: Cypress.Response<any> = {
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "application/json" },
+        body: { name: "t123456789" },
+        duration: 100,
+        requestHeaders: { "content-type": "application/json2" },
+        requestBody: { id: "abc123124" },
+        allRequestResponses: [],
+        isOkStatusCode: true,
+        method: "PUT",
+        url: "http://localhost:4200",
+      };
+
+      const pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.toCypressResponse()).to.deep.equal(response);
+    });
+
+    it("toCypressResponse() should create Response without adding defaults", function () {
+      // @ts-ignore
+      const response: Cypress.Response<any> = {
+        statusText: "OK",
+        headers: { "content-type": "application/json" },
+        body: { name: "t123456789" },
+        duration: 100,
+        requestHeaders: { "content-type": "application/json2" },
+        requestBody: { id: "abc123124" },
+        method: "PUT",
+        url: "http://localhost:4200",
+      };
+
+      const pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.toCypressResponse()).to.deep.equal(response);
+    });
   });
 
   context("c8ypact recording", function () {
@@ -77,13 +237,13 @@ describe("c8yclient", () => {
 
     it("should record c8ypacts if recording is enabled in environment", function () {
       Cypress.env("C8Y_TENANT", undefined);
-      cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
+      cy.spy(Cypress.c8ypact, "currentNextRecord").log(false);
 
       cy.then(() => {
         expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
       });
-      Cypress.c8ypact.currentPacts().then((pacts) => {
-        expect(pacts).to.be.null;
+      Cypress.c8ypact.currentPacts().then((pact) => {
+        expect(pact).to.be.null;
       });
 
       cy.getAuth({ user: "admin", password: "mypassword" })
@@ -97,7 +257,7 @@ describe("c8yclient", () => {
         .then((response) => {
           expect(response.status).to.eq(202);
           // pacts are not validated when recording
-          const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
+          const spy = Cypress.c8ypact.currentNextRecord as SinonSpy;
           expect(spy).to.not.have.been.called;
         });
 
@@ -124,12 +284,12 @@ describe("c8yclient", () => {
       function (done) {
         Cypress.c8ypact.failOnMissingPacts = true;
 
-        cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
+        cy.spy(Cypress.c8ypact, "currentNextRecord").log(false);
         Cypress.once("fail", (err) => {
           expect(err.message).to.contain(
             "non-existing-pact-id not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore."
           );
-          const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
+          const spy = Cypress.c8ypact.currentNextRecord as SinonSpy;
           expect(spy).to.have.been.calledOnce;
           done();
         });
@@ -150,7 +310,7 @@ describe("c8yclient", () => {
       function () {
         Cypress.c8ypact.failOnMissingPacts = false;
 
-        cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
+        cy.spy(Cypress.c8ypact, "currentNextRecord").log(false);
 
         cy.getAuth({ user: "admin", password: "mypassword" })
           .c8yclient<IManagedObject>([
@@ -159,7 +319,7 @@ describe("c8yclient", () => {
           ])
           .then((response) => {
             expect(response.status).to.eq(202);
-            const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
+            const spy = Cypress.c8ypact.currentNextRecord as SinonSpy;
             expect(spy).to.have.been.calledTwice;
             // plugins must return null, do not test for undefined
             spy.getCall(0).returnValue.then((r) => {
@@ -176,7 +336,7 @@ describe("c8yclient", () => {
       "should match with existing pact",
       { c8ypact: { id: "fixture-c8ypact-matching" } },
       function () {
-        cy.spy(Cypress.c8ypact, "currentNextPact").log(false);
+        cy.spy(Cypress.c8ypact, "currentNextRecord").log(false);
 
         cy.getAuth({ user: "admin", password: "mypassword" })
           .c8yclient<IManagedObject>([
@@ -185,7 +345,7 @@ describe("c8yclient", () => {
           ])
           .then((response) => {
             expect(response.status).to.eq(202);
-            const spy = Cypress.c8ypact.currentNextPact as SinonSpy;
+            const spy = Cypress.c8ypact.currentNextRecord as SinonSpy;
             expect(spy).to.have.been.calledTwice;
           });
       }
@@ -198,7 +358,7 @@ describe("c8yclient", () => {
     });
 
     it("should replace Authorization header and password in body", function () {
-      const obj = {
+      const obj: Cypress.Response<any> = {
         status: 201,
         isOkStatusCode: true,
         statusText: "Created",
@@ -212,7 +372,7 @@ describe("c8yclient", () => {
           Authorization: "asdasdasdasd",
           "content-type": "application/json",
           accept: "application/json",
-          UseXBasic: true,
+          UseXBasic: "true",
         },
         duration: 35,
         url: "https://oee-dev.eu-latest.cumulocity.com/devicecontrol/newDeviceRequests",
@@ -226,8 +386,9 @@ describe("c8yclient", () => {
         requestBody: {
           id: "abc123124",
         },
+        allRequestResponses: [],
       };
-      Cypress.c8ypact.preprocessor.preprocess(obj, {
+      Cypress.c8ypact.preprocessor.apply(obj, {
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["requestHeaders.Authorization", "body.password"],
       });
@@ -265,15 +426,15 @@ describe("c8yclient", () => {
           );
         });
 
-      Cypress.c8ypact
-        .currentNextPact()
-        .then((pactObject: { pact: any; info: any }) => {
-          expect(pactObject).to.not.be.null;
-          expect(pactObject.pact.requestHeaders.Authorization).to.eq(
-            obfuscationPattern
-          );
-          expect(pactObject.pact.body.password).to.eq(obfuscationPattern);
-        });
+      Cypress.c8ypact.currentNextRecord().then(({ record }) => {
+        expect(record).to.not.be.null;
+        expect(_.get(record, "request.headers.Authorization")).to.eq(
+          obfuscationPattern
+        );
+        expect(_.get(record, "response.body.password")).to.eq(
+          obfuscationPattern
+        );
+      });
     });
 
     it("should not add preprocessed properties", function () {
@@ -290,11 +451,29 @@ describe("c8yclient", () => {
       cy.c8yclient<IManagedObject>((c) => {
         return c.inventory.detail(1, { withChildren: false });
       });
-      Cypress.c8ypact.currentNextPact().then((pactObject) => {
-        expect(pactObject).to.not.be.null;
-        expect(pactObject.pact.requestHeaders.Authorization).to.be.undefined;
-        expect(pactObject.pact.body.password).to.be.undefined;
+      Cypress.c8ypact.currentNextRecord().then(({ record }) => {
+        expect(record).to.not.be.null;
+        expect(_.has(record, "request.headers.Authorization")).to.be.false;
+        expect(record.response.body.password).to.be.undefined;
       });
+    });
+  });
+
+  context("c8ypact validation", function () {
+    it("isPactRecord validates pact object", function () {
+      const pact = {
+        response: {
+          status: 201,
+          isOkStatusCode: true,
+        },
+        request: {
+          url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
+        },
+        toCypressResponse: (obj) => {
+          return true;
+        },
+      };
+      expect(isPactRecord(pact)).to.be.true;
     });
   });
 });

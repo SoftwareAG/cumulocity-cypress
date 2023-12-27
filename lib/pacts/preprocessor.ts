@@ -2,7 +2,7 @@ const { _ } = Cypress;
 
 declare global {
   interface C8yPactPreprocessor {
-    preprocess: (obj: unknown, options?: C8yPactPreprocessorOptions) => void;
+    apply: (obj: Cypress.Response, options?: C8yPactPreprocessorOptions) => void;
     defaultObfuscationPattern: string;
   }
 
@@ -18,7 +18,7 @@ export class C8yPactDefaultPreprocessor implements C8yPactPreprocessor {
 
   defaultObfuscationPattern = "********";
 
-  preprocess(obj?: any, options: C8yPactPreprocessorOptions = {}): void {
+  apply(obj?: Cypress.Response, options: C8yPactPreprocessorOptions = {}): void {
     if (!obj || !_.isPlainObject(obj)) return;
     const reservedKeys = ["id", "pact"];
 

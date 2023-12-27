@@ -21,6 +21,7 @@ import {
   IResult,
   IResultList,
 } from "@c8y/client";
+import { C8yDefaultPactRecord } from "../pacts/c8ypact";
 
 declare global {
   namespace Cypress {
@@ -116,9 +117,9 @@ declare global {
       ): Chainable<Response<T[]>>;
 
       c8ymatch(
-        response: any,
-        pact: any,
-        info?: any,
+        response: Cypress.Response<any>,
+        record: Partial<C8yPactRecord>,
+        info?: C8yPactInfo,
         options?: C8yClientOptions
       ): Cypress.Chainable<void>;
     }
@@ -188,11 +189,24 @@ declare global {
   }
 
   function toCypressResponse<T = any>(
-    obj: Partial<Response> | IFetchResponse | IResult<any> | IResultList<any>,
+    obj:
+      | Partial<Response>
+      | IFetchResponse
+      | IResult<any>
+      | IResultList<any>
+      | C8yPactRecord,
     duration?: number,
     fetchOptions?: IFetchOptions,
     url?: RequestInfo | URL
   ): Cypress.Response<T>;
+
+  /**
+   * Checks if the given object is a Cypress.Response.
+   *
+   * @param obj The object to check.
+   * @returns True if the object is a Cypress.Response, false otherwise.
+   */
+  function isCypressResponse(obj: any): obj is Cypress.Response<any>;
 }
 
 const defaultClientOptions: C8yClientOptions = {
@@ -522,13 +536,13 @@ function run(
         for (const r of _.isArray(response) ? response : [response]) {
           (options.pact != null
             ? cy.wrap(options.pact, { log: Cypress.c8ypact.debugLog })
-            : Cypress.c8ypact.currentNextPact()
+            : Cypress.c8ypact.currentNextRecord()
           )
             // @ts-ignore
             .then((pactObject: any) => {
               if (pactObject != null && !ignore) {
-                const { pact, info } = pactObject;
-                cy.c8ymatch(r, pact, info, options);
+                const { record, info } = pactObject;
+                cy.c8ymatch(r, record, info, options);
               } else {
                 if (
                   pactObject == null &&
@@ -705,11 +719,14 @@ Cypress.Commands.add(
 Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
 
 Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
-  const matcher = Cypress.c8ypact.matcher;
-  const consoleProps = {
-    response,
-    pact,
+  const matcher = Cypress.c8ypact.currentMatcher();
+  const matchingProperties = ["request", "response"];
+  const pactToMatch = _.pick(pact, matchingProperties);
+
+  const consoleProps: any = {
     matcher,
+    response,
+    pact: pactToMatch,
   };
   const logger = Cypress.log({
     autoEnd: false,
@@ -718,11 +735,15 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   });
   try {
     const preprocessedResponse = _.cloneDeep(response);
-    Cypress.c8ypact.preprocessor.preprocess(
-      preprocessedResponse,
-      info.preprocessor
+    Cypress.c8ypact.preprocessor.apply(preprocessedResponse, info.preprocessor);
+
+    const responseAsRecord = _.pick(
+      C8yDefaultPactRecord.from(preprocessedResponse),
+      matchingProperties
     );
-    matcher.match(preprocessedResponse, pact, consoleProps);
+    consoleProps.responseAsRecord = responseAsRecord;
+
+    matcher.match(responseAsRecord, pactToMatch, consoleProps);
     logger.end();
   } catch (error) {
     logger.end();
@@ -738,11 +759,15 @@ function toCypressResponse(
     | Partial<Response>
     | IFetchResponse
     | IResult<any>
-    | IResultList<any> = {},
+    | IResultList<any>
+    | C8yPactRecord = {},
   duration: number = 0,
   fetchOptions: IFetchOptions = {},
   url?: RequestInfo | URL
 ): Cypress.Response<any> {
+  if (isPactRecord(obj)) {
+    return obj.toCypressResponse();
+  }
   let fetchResponse: Partial<Response>;
   if (isIResult(obj)) {
     fetchResponse = obj.res;
@@ -767,6 +792,16 @@ function toCypressResponse(
     requestBody: fetchResponse.requestBody,
     method: fetchResponse.method || "GET",
   };
+}
+
+global.isCypressResponse = isCypressResponse;
+function isCypressResponse(obj: any): obj is Cypress.Response {
+  return (
+    _.isObject(obj) &&
+    _.has(obj, "body") &&
+    _.has(obj, "status") &&
+    _.has(obj, "headers")
+  );
 }
 
 function isArrayOfFunctions(
