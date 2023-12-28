@@ -1,0 +1,32 @@
+{
+  "name": "cumulocity-cypress-runner",
+  "version": "0.2.4",
+  "description": "Cypress runner for Cumulocity pact recordings",
+  "scripts": {
+    "test": "cypress run --config-file cypress.config.js --spec cypress/e2e/pact-runner.cy.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SoftwareAG/cumulocity-cypress.git"
+  },
+  "keywords": [
+    "Cypress",
+    "Cumulocity",
+    "IoT",
+    "Test"
+  ],
+  "author": "twi@softwareag.com",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/SoftwareAG/cumulocity-cypress/issues"
+  },
+  "dependencies": {
+    "@c8y/client": "^1017.0.374",
+    "date-fns": "^2.30.0",
+    "semver": "^7.5.2",
+    "cypress": "^13.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.2"
+  }
+}

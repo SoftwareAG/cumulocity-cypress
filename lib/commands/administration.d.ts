@@ -1,4 +1,4 @@
-import { IUser, IApplication, ICurrentTenant } from "@c8y/client";
+import { IUser, IApplication, ICurrentTenant, IDeviceCredentials } from "@c8y/client";
 
 declare global {
   namespace Cypress {
@@ -25,7 +25,7 @@ declare global {
        * @param {string[]} permissions the permissions to be assigned to the user
        * @param {string[] | IApplication[]} applications the name of applications to subscribe the user to
        * @param {C8yClientOptions} c8yoptions the C8yClientOptions options passed to cy.c8yclient
-       * 
+       *
        * @returns {[C8yAuthOptions, string]} the auth options and id of the user created for chaining
        */
       createUser(
@@ -64,7 +64,11 @@ declare global {
       deleteUser(
         ...args:
           | [username: string | IUser, c8yoptions?: C8yClientOptions]
-          | [authOptions: C8yAuthOptions, username: string | IUser, c8yoptions?: C8yClientOptions]
+          | [
+              authOptions: C8yAuthOptions,
+              username: string | IUser,
+              c8yoptions?: C8yClientOptions
+            ]
       ): Chainable<Cypress.Response<null>>;
 
       /**
@@ -79,15 +83,18 @@ declare global {
        * @param {C8yAuthOptions} authOptions the C8yAuthOptions authentication options including username and password
        * @param {C8yClientOptions} c8yoptions the C8yClientOptions options passed to cy.c8yclient
        */
-      getCurrentTenant(authOptions?: C8yAuthOptions, c8yoptions?: C8yClientOptions): Chainable<Cypress.Response<ICurrentTenant>>;
+      getCurrentTenant(
+        authOptions?: C8yAuthOptions,
+        c8yoptions?: C8yClientOptions
+      ): Chainable<Cypress.Response<ICurrentTenant>>;
 
       /**
-       * Convenience getter for name of the current tenant. 
-       * 
-       * If no authentication session cookie is used. 
-       * 
-       * Tenant id is stored in C8Y_TENANT environment variable. C8Y_TENANT is used 
-       * internally and checked before quering current tenant for it's id. 
+       * Convenience getter for name of the current tenant.
+       *
+       * If no authentication session cookie is used.
+       *
+       * Tenant id is stored in C8Y_TENANT environment variable. C8Y_TENANT is used
+       * internally and checked before quering current tenant for it's id.
        *
        * @example
        * cy.getTenantId();
@@ -97,6 +104,39 @@ declare global {
        * @returns {Chainable<string>}
        */
       getTenantId(authOptions?: C8yAuthOptions): Chainable<string>;
+
+      /**
+       * Get Cumulocity system version. Requires bootstrap credentials.
+       *
+       * @param {C8yAuthOptions} options - The authentication options including username and password
+       * @returns {Chainable<string>}
+       */
+      getSystemVersion(
+        authOptions?: C8yAuthOptions,
+        c8yoptions?: C8yClientOptions
+      ): Chainable<string>;
+
+      /**
+       * Bootstrap device credentials. Doing the same as c.deviceRegistration.bootstrap(), but works
+       * with getAuth(). Requires bootstrap credentials to be passed via getAuth().
+       * 
+       * @example
+       * cy.getAuth("devicebootstrap")
+       *   .bootstrapDeviceCredentials(id)
+       *   .useAuth()
+       *
+       * @param {C8yAuthOptions} options - The authentication options including username and password
+       * @returns {Chainable<IDeviceCredentials | undefined>}
+       */
+      bootstrapDeviceCredentials(
+        ...args:
+          | [id: string | IUser, c8yoptions?: C8yClientOptions]
+          | [
+              authOptions: C8yAuthOptions,
+              id: string,
+              c8yoptions?: C8yClientOptions
+            ]
+      ): Chainable<IDeviceCredentials>;
     }
   }
 }

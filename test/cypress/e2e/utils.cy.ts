@@ -1,4 +1,4 @@
-import { normalizedArguments, getAuthOptions } from "../../lib/commands/utils";
+import { normalizedArguments, getAuthOptions } from "../../../lib/commands/utils";
 
 describe("utils", () => {
   beforeEach(() => {

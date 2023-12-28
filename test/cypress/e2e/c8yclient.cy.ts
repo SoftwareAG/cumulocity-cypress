@@ -26,6 +26,7 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
+    Cypress.env("C8Y_PACT_ENABLED", undefined);
 
     initRequestStub();
     stubResponses([
@@ -118,6 +119,51 @@ describe("c8yclient", () => {
         });
     });
 
+    it(
+      "should update auth of restored client",
+      { auth: { user: "admin", password: "mypassword", tenant: "t1234" } },
+      () => {
+        const bootstrap = {
+          user: "bootstrap",
+          password: "bootstrapassword",
+          tenant: "t1234",
+        };
+        const recreateStub = (status: number) => {
+          window.fetchStub.reset();
+          stubResponse(
+            new window.Response("{}", {
+              status: status,
+              statusText: "OK",
+              headers: { "content-type": "application/json" },
+            })
+          );
+        };
+
+        recreateStub(200);
+        cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
+          (response) => {
+            expect(response.status).to.eq(200);
+            expectC8yClientRequest(requestOptions);
+            recreateStub(201);
+          }
+        );
+        cy.getAuth(bootstrap)
+          .c8yclient<ICurrentTenant>((client) => client.tenant.current())
+          .then((response) => {
+            expect(response.status).to.eq(201);
+            expectC8yClientRequest({ ...requestOptions, auth: bootstrap });
+            recreateStub(202);
+          });
+
+        cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
+          (response) => {
+            expect(response.status).to.eq(202);
+            expectC8yClientRequest(requestOptions);
+          }
+        );
+      }
+    );
+
     it("should use auth from options", () => {
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
         auth: new BasicAuth({
@@ -132,19 +178,14 @@ describe("c8yclient", () => {
     });
 
     it("should use client from options", () => {
-      const client = new Client(
-        new BasicAuth({
-          user: "admin12",
-          password: "password",
-          tenant: "t12345",
-        })
-      );
       const expectedOptions = _.cloneDeep(requestOptions);
       expectedOptions.auth = {
         user: "admin12",
         password: "password",
         tenant: "t12345",
       };
+      const client = new Client(new BasicAuth(expectedOptions.auth));
+
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
         client,
       }).then((response) => {
@@ -152,6 +193,39 @@ describe("c8yclient", () => {
         expect(_.get(response.requestHeaders, "X-XSRF-TOKEN")).to.be.undefined;
         expectC8yClientRequest(expectedOptions);
       });
+    });
+
+    it("useAuth should not overwrite auth from client in options", () => {
+      const expectedOptions = _.cloneDeep(requestOptions);
+      expectedOptions.auth = {
+        user: "admin12",
+        password: "password",
+        tenant: "t12345",
+      };
+      const client = new Client(new BasicAuth(expectedOptions.auth));
+
+      cy.useAuth({ user: "test", password: "test", tenant: "t287364872364" });
+      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
+        client,
+      }).then((response) => {
+        expectC8yClientRequest(expectedOptions);
+      });
+    });
+
+    it("getAuth should not overwrite auth from client in options", () => {
+      const expectedOptions = _.cloneDeep(requestOptions);
+      const cAuth = { user: "admin12", password: "password", tenant: "t1" };
+      const client = new Client(new BasicAuth(cAuth));
+
+      const auth = { user: "test", password: "test", tenant: "t287364872364" };
+      expectedOptions.auth = auth;
+      cy.getAuth(auth)
+        .c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
+          client,
+        })
+        .then((response) => {
+          expectC8yClientRequest(expectedOptions);
+        });
     });
 
     it("should not use basic auth if cookie auth is available", () => {
@@ -330,14 +404,15 @@ describe("c8yclient", () => {
         .then((response) => {
           const spy = Cypress.log as SinonSpy;
           // last log is the one from fetchStub, get the last c8yclient log
-          const args = spy.args[Math.max(spy.callCount - 2, 0)];
-          const logged = _.isArray(args) ? _.last(args) : args;
+          const args = _.findLast(
+            _.flatten(spy.args),
+            (arg) => arg.name === "c8yclient"
+          );
+          expect(args).to.not.be.undefined;
+          expect(args.consoleProps).to.not.be.undefined;
+          expect(_.isFunction(args.consoleProps)).to.be.true;
 
-          expect(logged).to.not.be.undefined;
-          expect(logged.consoleProps).to.not.be.undefined;
-          expect(_.isFunction(logged.consoleProps)).to.be.true;
-
-          const consoleProps = logged.consoleProps.call();
+          const consoleProps = args.consoleProps.call();
           expect(consoleProps.CookieAuth).to.eq(
             "XSRF-TOKEN fsETfgIBdAnEyOLbADTu22 (testuser)"
           );
@@ -609,8 +684,6 @@ describe("c8yclient", () => {
 
     // https://github.com/SoftwareAG/cumulocity-cypress/issues/1
     it("should wrap client authentication errors into CypressError", (done) => {
-      // {"responseObj":{"status":504,"isOkStatusCode":false,"statusText":"Gateway Timeout","headers":{"connection":"keep-alive","date":"Tue, 24 Oct 2023 07:57:52 GMT","keep-alive":"timeout=5","transfer-encoding":"chunked","x-powered-by":"Express"},"requestHeaders":{"Authorization":"Basic dHdpOkRlbW8yMDE5ISE=","content-type":"application/json","UseXBasic":true},"duration":92,"url":"http://localhost:9000/tenant/currentTenant","body":"Error occurred while trying to proxy: localhost:9000/tenant/currentTenant"}}'
-
       stubResponse(
         new window.Response(
           "Error occurred while trying to proxy: localhost:9000/tenant/currentTenant",
@@ -676,6 +749,82 @@ describe("c8yclient", () => {
           expect(response.duration).to.not.be.undefined;
           expectC8yClientRequest(requestOptions);
         });
+    });
+  });
+
+  context("toCypressResponse", () => {
+    // could / should be extended. toCypressResponse() is base of all c8yclient features
+    it("should return a Cypress.Response when given a Partial<Response>", () => {
+      const partialResponse: Partial<Response> = {
+        status: 200,
+        ok: true,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        data: {},
+        requestBody: { id: "10101" },
+        method: "PUT",
+      };
+
+      const response = toCypressResponse(
+        partialResponse,
+        0,
+        {},
+        "http://example.com"
+      );
+
+      expect(response).to.have.property("status", 200);
+      expect(response).to.have.property("isOkStatusCode", true);
+      expect(response).to.have.property("statusText", "OK");
+      expect(response).to.have.property("headers").that.is.an("object");
+      expect(response).to.have.property("duration", 0);
+      expect(response).to.have.property("url", "http://example.com");
+      expect(response)
+        .to.have.property("allRequestResponses")
+        .that.is.an("array");
+      expect(response.body).to.deep.eq({});
+      expect(response.requestBody).to.deep.eq({ id: "10101" });
+      expect(response).to.have.property("method", "PUT");
+    });
+
+    it("should return responseObject Cypress.Response", () => {
+      const r: IResult<any> = {
+        // @ts-ignore
+        res: {
+          status: 200,
+          ok: true,
+          statusText: "OK",
+          data: {},
+          requestBody: {},
+          method: "GET",
+          headers: undefined,
+          arrayBuffer: function (): Promise<ArrayBuffer> {
+            throw new Error("Function not implemented.");
+          },
+          // @ts-ignore
+          responseObj: {
+            status: 404,
+            statusText: "Error",
+            isOkStatusCode: false,
+            requestBody: {},
+            method: "PUT",
+            duration: 0,
+            url: "http://example.com",
+            body: {},
+          },
+        },
+        data: {},
+      };
+
+      const response = toCypressResponse(r, 0, {}, "http://example.com");
+
+      expect(response).to.have.property("status", 404);
+      expect(response).to.have.property("isOkStatusCode", false);
+      expect(response).to.have.property("statusText", "Error");
+      expect(response).to.have.property("duration", 0);
+      expect(response).to.have.property("url", "http://example.com");
+      expect(response.body).to.deep.eq({});
+      expect(response.requestBody).to.deep.eq({});
+      expect(response).to.have.property("method", "PUT");
     });
   });
 });
