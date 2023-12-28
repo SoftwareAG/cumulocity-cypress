@@ -578,11 +578,11 @@ function run(
           result = error;
         }
         result = toCypressResponse(result);
-        if (isErrorResponse(result)) {
-          throw result;
-        }
         if (savePact) {
           Cypress.c8ypact.savePact(result, client);
+        }
+        if (isErrorResponse(result)) {
+          throw result;
         }
         return result;
       };
