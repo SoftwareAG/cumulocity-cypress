@@ -51,6 +51,7 @@ export class C8yDefaultPactMatcher {
       if (consoleProps) {
         consoleProps.error = errorMessage;
         consoleProps.key = key;
+        consoleProps.keypath = keyPath(key);
         consoleProps.objects =
           key && _.isPlainObject(obj1) && _.isPlainObject(obj2)
             ? [_.pick(obj1, [key]), _.pick(obj2, [key])]

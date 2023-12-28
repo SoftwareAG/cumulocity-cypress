@@ -99,6 +99,91 @@ describe("c8ypactmatcher", () => {
         }
       );
     });
+
+    it("should throw error if response and pact do not match", function (done) {
+      // @ts-ignore
+      const response: Cypress.Response = {
+        status: 201,
+        requestBody: "test",
+      };
+      const pact = C8yDefaultPactRecord.from(response);
+      pact.response.status = 200;
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("Pact validation failed!");
+        expect(err.name).to.eq("C8yPactError");
+        done();
+      });
+      cy.c8ymatch(response, pact, {}, { failOnPactValidation: true });
+    });
+
+    it("should not throw if response and pact do not match and failOnPactValidation is false", function () {
+      // @ts-ignore
+      const response: Cypress.Response = {
+        status: 201,
+        requestBody: "test",
+      };
+      const pact = C8yDefaultPactRecord.from(response);
+      pact.response.status = 200;
+      pact.response.body = "test2";
+
+      cy.c8ymatch(response, pact, {}, { failOnPactValidation: false });
+    });
+
+    it("should pass consoleProps", function () {
+      cy.spy(Cypress.c8ypact.matcher, "match").log(false);
+      // @ts-ignore
+      const response: Cypress.Response = {
+        status: 201,
+        requestBody: "test",
+      };
+      const pact = C8yDefaultPactRecord.from(response);
+      cy.c8ymatch(response, pact, {}, { failOnPactValidation: true }).then(
+        () => {
+          const spy = Cypress.c8ypact.matcher.match as SinonSpy;
+          expect(spy).to.have.been.called;
+          expect(spy.getCall(0).args).to.have.length(3);
+          const consoleProps = spy.getCall(0).args[2];
+          expect(consoleProps).to.be.an("object");
+          expect(consoleProps).to.have.property("matcher");
+          expect(consoleProps).to.have.property("response");
+          expect(consoleProps).to.have.property("pact");
+        }
+      );
+    });
+
+    it("should add error props to consoleProps", function (done) {
+      cy.spy(Cypress.c8ypact.matcher, "match").log(false);
+      // @ts-ignore
+      const response: Cypress.Response = {
+        status: 201,
+        requestBody: { x: { y: { z: "test" } } },
+      };
+      const pact = C8yDefaultPactRecord.from(response);
+      pact.request.body = { x: { y: { z: "test2" } } };
+
+      Cypress.once("fail", () => {
+        const spy = Cypress.c8ypact.matcher.match as SinonSpy;
+        expect(spy).to.have.been.called;
+        expect(spy.getCall(0).args).to.have.length(3);
+        const consoleProps = spy.getCall(0).args[2];
+        expect(consoleProps).to.be.an("object");
+        expect(consoleProps).to.have.property("error");
+        expect(consoleProps.error).to.contain("Pact validation failed!");
+        expect(consoleProps).to.have.property("key");
+        expect(consoleProps).to.have.property("keypath");
+        expect(consoleProps.keypath).to.eq(
+          ["request", "body", "x", "y", "z"].join(" > ")
+        );
+        expect(consoleProps).to.have.property("objects");
+        expect(consoleProps.objects).to.deep.eq([
+          { z: "test" },
+          { z: "test2" },
+        ]);
+        done();
+      });
+      cy.c8ymatch(response, pact, {}, { failOnPactValidation: true });
+    });
   });
 
   context("C8yDefaultPactMatcher", function () {
