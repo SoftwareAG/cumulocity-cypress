@@ -1,15 +1,28 @@
-const fs = require("fs");
-const path = require("path");
-const glob = require("glob");
+import * as fs from "fs";
+import * as path from "path";
+import * as glob from "glob";
 
-function c8yPlugin(on, config) {
-  let pactObjects = {};
-  let pactIndex = {};
-  let pactInfo = {};
+type C8yPactPluginRecordObjects = { [key: string]: C8yPactRecord[] };
+type C8yPactPluginInfoObjects = { [key: string]: C8yPactInfo };
+type C8yPactPluginConfig = {
+  folder?: string;
+};
+
+function c8yPlugin(
+  on: Cypress.PluginEvents,
+  config: Cypress.PluginConfigOptions,
+  options: C8yPactPluginConfig = {}
+) {
+  let pactObjects: C8yPactPluginRecordObjects = {};
+  let pactIndex: { [key: string]: number } = {};
+  let pactInfo: C8yPactPluginInfoObjects = ({} = {});
+  const folder =
+    options?.folder || `${process.cwd()}${path.sep}cypress${path.sep}fixtures`;
 
   config.env.C8Y_PACT_ENABLED = "true";
 
-  function savePact({ id, records, info, folder }) {
+  function savePact(pact: C8yPact): null {
+    const { id, info, records } = pact;
     if (!id || typeof id !== "string") {
       throw new Error(`c8ypact must be a string, was ${typeof id}`);
     }
@@ -20,7 +33,7 @@ function c8yPlugin(on, config) {
         info.version = {};
       }
       info.version.runner = version;
-      info.version.pact = "1";
+      info.version.c8ypact = "1";
     }
 
     if (!pactObjects[id]) {
@@ -52,21 +65,23 @@ function c8yPlugin(on, config) {
     return null;
   }
 
-  function getPactInfo(pact) {
+  function getPactInfo(pact: string): C8yPactInfo | null {
     if (!pact || typeof pact !== "string") {
       throw new Error(`c8ypact must be a string, was ${typeof pact}`);
     }
     return pactInfo[pact] || null;
   }
 
-  function getPacts(pact) {
+  function getPacts(pact: string): C8yPactRecord[] | null {
     if (!pact || typeof pact !== "string") {
       throw new Error(`c8ypact must be a string, was ${typeof pact}`);
     }
     return pactObjects[pact] || null;
   }
 
-  function getNextPact(pact) {
+  function getNextPact(
+    pact: string
+  ): { record: C8yPactRecord; info: C8yPactInfo; id: string } | null {
     if (!pact || typeof pact !== "string") {
       throw new Error(`c8ypact must be a string, was ${typeof pact}`);
     }
@@ -77,7 +92,7 @@ function c8yPlugin(on, config) {
       : null;
   }
 
-  function loadPacts(folder) {
+  function loadPacts(folder: string): C8yPactPluginRecordObjects {
     const c8ypactFolder = `${folder}${path.sep}c8ypact`;
     const jsonFiles = loadJsonFiles(c8ypactFolder);
     pactObjects = jsonFiles.reduce((acc, obj) => {
@@ -92,12 +107,12 @@ function c8yPlugin(on, config) {
     return pactObjects || null;
   }
 
-  function removePact(pact) {
+  function removePact(pact: string): boolean {
     if (typeof pact !== "string") {
       throw new Error(`c8ypact must be a string, was ${typeof pact}`);
     }
 
-    if (!pact in pactObjects) return false;
+    if (!pactObjects[pact]) return false;
     delete pactObjects[pact];
     delete pactIndex[pact];
     delete pactInfo[pact];
@@ -105,7 +120,7 @@ function c8yPlugin(on, config) {
     return true;
   }
 
-  function clearAll() {
+  function clearAll(): C8yPactPluginRecordObjects {
     pactObjects = {};
     pactIndex = {};
     pactInfo = {};
@@ -123,7 +138,7 @@ function c8yPlugin(on, config) {
   });
 }
 
-function loadJsonFiles(folderPath) {
+function loadJsonFiles(folderPath: string) {
   const jsonFiles = glob.sync(path.join(folderPath, "*.json"));
 
   let pact = [];
@@ -131,15 +146,19 @@ function loadJsonFiles(folderPath) {
     try {
       const fileContent = fs.readFileSync(filePath, "utf8");
       pact.push(JSON.parse(fileContent));
-    } catch (error) {
-      console.error(`Error reading pact at ${filePath}: ${error.message}`);
+    } catch (error: any) {
+      console.error(
+        `Error reading pact at ${filePath}: ${
+          error.message ? error.message : error
+        }`
+      );
     }
   }
 
   return pact;
 }
 
-function createFolderRecursive(folder, absolutePath) {
+function createFolderRecursive(folder: string, absolutePath: boolean) {
   const parts = folder.split(path.sep);
 
   for (let i = 1; i <= parts.length; i++) {
@@ -150,7 +169,7 @@ function createFolderRecursive(folder, absolutePath) {
     try {
       fs.accessSync(currentPath, fs.constants.F_OK);
     } catch (err) {
-      if (err.code === "ENOENT") {
+      if (isNodeError(err, TypeError) && err.code === "ENOENT") {
         // Directory does not exist, create it
         fs.mkdirSync(currentPath);
       } else {
@@ -163,6 +182,13 @@ function createFolderRecursive(folder, absolutePath) {
 function getVersion() {
   let version = require("../../package.json").version;
   return version;
+}
+
+export function isNodeError<T extends new (...args: any) => Error>(
+  error: any,
+  type: T
+): error is InstanceType<T> & NodeJS.ErrnoException {
+  return error instanceof type;
 }
 
 module.exports = c8yPlugin;
