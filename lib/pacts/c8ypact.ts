@@ -311,7 +311,6 @@ function isPactRecord(obj: any): obj is C8yPactRecord {
     _.isPlainObject(_.get(obj, "request")) &&
     _.has(obj, "response") &&
     _.isPlainObject(_.get(obj, "response")) &&
-    _.has(obj, "toCypressResponse") &&
     _.isFunction(_.get(obj, "toCypressResponse"))
   );
 }

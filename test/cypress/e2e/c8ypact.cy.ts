@@ -475,5 +475,20 @@ describe("c8yclient", () => {
       };
       expect(isPactRecord(pact)).to.be.true;
     });
+
+    it("isPactRecord validates C8yDefaultPactRecord", function () {
+      const pact = {
+        response: {
+          status: 201,
+          isOkStatusCode: true,
+        },
+        request: {
+          url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
+        },
+      };
+      const record = new C8yDefaultPactRecord(pact.request, pact.response, {});
+      expect(isPactRecord(record)).to.be.true;
+      expect(record.toCypressResponse()).to.not.be.null;
+    });
   });
 });
