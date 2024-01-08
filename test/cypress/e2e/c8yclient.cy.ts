@@ -13,6 +13,11 @@ import {
 } from "../support/util";
 
 import { SinonSpy } from "cypress/types/sinon";
+import {
+  isArrayOfFunctions,
+  isIResult,
+  isWindowFetchResponse,
+} from "../../../lib/commands/c8yclient";
 const { _ } = Cypress;
 
 declare global {
@@ -753,6 +758,16 @@ describe("c8yclient", () => {
   });
 
   context("toCypressResponse", () => {
+    it("should not fail for undefined response", () => {
+      const response = toCypressResponse(
+        undefined,
+        0,
+        {},
+        "http://example.com"
+      );
+      expect(response).to.be.undefined;
+    });
+
     // could / should be extended. toCypressResponse() is base of all c8yclient features
     it("should return a Cypress.Response when given a Partial<Response>", () => {
       const partialResponse: Partial<Response> = {
@@ -767,16 +782,16 @@ describe("c8yclient", () => {
 
       const response = toCypressResponse(
         partialResponse,
-        0,
+        1234,
         {},
         "http://example.com"
       );
-
+      console.log(response);
       expect(response).to.have.property("status", 200);
       expect(response).to.have.property("isOkStatusCode", true);
       expect(response).to.have.property("statusText", "OK");
       expect(response).to.have.property("headers").that.is.an("object");
-      expect(response).to.have.property("duration", 0);
+      expect(response).to.have.property("duration", 1234);
       expect(response).to.have.property("url", "http://example.com");
       expect(response)
         .to.have.property("allRequestResponses")
@@ -789,34 +804,27 @@ describe("c8yclient", () => {
     it("should return responseObject Cypress.Response", () => {
       const r: IResult<any> = {
         // @ts-ignore
-        res: {
-          status: 200,
-          ok: true,
-          statusText: "OK",
-          data: {},
-          requestBody: {},
-          method: "GET",
-          headers: undefined,
-          arrayBuffer: function (): Promise<ArrayBuffer> {
-            throw new Error("Function not implemented.");
-          },
-          // @ts-ignore
-          responseObj: {
-            status: 404,
-            statusText: "Error",
-            isOkStatusCode: false,
-            requestBody: {},
-            method: "PUT",
-            duration: 0,
-            url: "http://example.com",
-            body: {},
-          },
-        },
+        res: new window.Response(JSON.stringify({ name: "t1234" }), {
+          status: 404,
+          statusText: "Error",
+          headers: { "content-type": "application/json" },
+        }),
         data: {},
       };
 
-      const response = toCypressResponse(r, 0, {}, "http://example.com");
+      r.res.responseObj = {
+        status: 404,
+        statusText: "Error",
+        isOkStatusCode: false,
+        requestBody: {},
+        method: "PUT",
+        duration: 0,
+        url: "http://example.com",
+        body: {},
+      };
 
+      const response = toCypressResponse(r, 0, {}, "http://example.com");
+      console.log(response);
       expect(response).to.have.property("status", 404);
       expect(response).to.have.property("isOkStatusCode", false);
       expect(response).to.have.property("statusText", "Error");
@@ -825,6 +833,134 @@ describe("c8yclient", () => {
       expect(response.body).to.deep.eq({});
       expect(response.requestBody).to.deep.eq({});
       expect(response).to.have.property("method", "PUT");
+    });
+
+    it("should use responseObj and include method", () => {
+      const obj = {
+        res: new window.Response(JSON.stringify({ name: "t1234" }), {
+          status: 200,
+          statusText: "OK",
+        }),
+        data: {
+          id: "abc123124",
+        },
+      };
+      obj.res.responseObj = {
+        method: "POST",
+        status: 201,
+        isOkStatusCode: true,
+        statusText: "Created",
+      };
+
+      const response = toCypressResponse(obj, 0, {}, "http://example.com");
+      expect(response).to.have.property("method", "POST");
+      expect(response).to.have.property("status", 201);
+    });
+  });
+
+  context("c8yclient typeguards", () => {
+    const windowResponse = new window.Response(
+      JSON.stringify({ name: "t1234" }),
+      {
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "application/json" },
+      }
+    );
+
+    const cypressResponse: Cypress.Response<any> = {
+      status: 200,
+      statusText: "OK",
+      headers: { "content-type": "application/json" },
+      body: {},
+      duration: 0,
+      url: "http://example.com",
+      allRequestResponses: [],
+      isOkStatusCode: true,
+      requestHeaders: {},
+    };
+
+    const iResultObject: IResult<any> = {
+      data: {},
+      res: windowResponse,
+    };
+
+    it("isCypressResponse validates undefined and empty", () => {
+      expect(isCypressResponse(undefined)).to.be.false;
+      expect(isCypressResponse({})).to.be.false;
+    });
+
+    it("isCypressResponse validates complete response object", () => {
+      expect(isCypressResponse(cypressResponse)).to.be.true;
+    });
+
+    it("isCypressResponse does not validate partial response object", () => {
+      const response: Partial<Cypress.Response<any>> = {
+        status: 200,
+        url: "http://example.com",
+        allRequestResponses: [],
+        isOkStatusCode: true,
+        requestHeaders: {},
+      };
+
+      expect(isCypressResponse(response)).to.be.false;
+    });
+
+    it("isCypressResponse does not validate window.Response and IResult", () => {
+      expect(isCypressResponse(windowResponse)).to.be.false;
+      expect(isCypressResponse(iResultObject)).to.be.false;
+    });
+
+    it("isWindowFetchResponse validates undefined end empty", () => {
+      expect(isWindowFetchResponse(undefined)).to.be.false;
+      expect(isWindowFetchResponse({})).to.be.false;
+    });
+
+    it("isWindowFetchResponse validates complete response object", () => {
+      expect(isWindowFetchResponse(windowResponse)).to.be.true;
+    });
+
+    it("isWindowFetchResponse does not validate Cypress.Response and IResult", () => {
+      expect(isWindowFetchResponse(cypressResponse)).to.be.false;
+      expect(isWindowFetchResponse(iResultObject)).to.be.false;
+    });
+
+    it("isIResult validates undefined and empty", () => {
+      expect(isIResult(undefined)).to.be.false;
+      expect(isIResult({})).to.be.false;
+    });
+
+    it("isIResult validates complete IResult object", () => {
+      expect(isIResult(iResultObject)).to.be.true;
+    });
+
+    it("isIResult does not validate with incomplete res object", () => {
+      const response: IResult<any> = {
+        data: {},
+        // @ts-ignore
+        res: {
+          status: 200,
+          statusText: "OK",
+        },
+      };
+
+      expect(isIResult(response)).to.be.false;
+    });
+
+    it("isIResult does not validate Cypress.Response and window.Response", () => {
+      expect(isIResult(cypressResponse)).to.be.false;
+      expect(isIResult(windowResponse)).to.be.false;
+    });
+
+    it("isArrayOfFunctions validates undefined and empty", () => {
+      expect(isArrayOfFunctions(undefined)).to.be.false;
+      expect(isArrayOfFunctions([])).to.be.false;
+    });
+
+    it("isArrayOfFunctions validates array of functions", () => {
+      expect(isArrayOfFunctions([() => {}, () => {}])).to.be.true;
+      // @ts-ignore
+      expect(isArrayOfFunctions([() => {}, "test"])).to.be.false;
     });
   });
 });

@@ -1,5 +1,5 @@
+import { C8yDefaultPactRecord } from "../../../lib/pacts/c8ypact";
 import { C8yDefaultPactRunner } from "../../../lib/pacts/runner";
-import { initRequestStub, stubResponses } from "../support/util";
 
 const { _ } = Cypress;
 
@@ -11,7 +11,7 @@ class C8yTestPactRunner extends C8yDefaultPactRunner {
 
   test_createURL(pact: any | string, info: any | string = {}): string {
     if (_.isString(pact)) {
-      pact = { url: pact };
+      pact = { request: { url: pact } };
     }
     if (_.isString(info)) {
       info = { baseUrl: info };
@@ -54,18 +54,23 @@ describe("c8ypactrunner", () => {
     });
 
     it("should remove not required headers", function () {
-      const pact = {
-        headers: {
-          "content-type": "application/json2",
+      const pact = new C8yDefaultPactRecord(
+        {
+          headers: {
+            "X-XSRF-TOKEN": "********",
+            Authorization: "Bearer ******",
+            "content-type": "application/json",
+            accept: "application/json",
+            UseXBasic: true,
+          },
         },
-        requestHeaders: {
-          "X-XSRF-TOKEN": "********",
-          Authorization: "Bearer ******",
-          "content-type": "application/json",
-          accept: "application/json",
-          UseXBasic: true,
+        {
+          headers: {
+            "content-type": "application/json2",
+          },
         },
-      };
+        {}
+      );
       expect(runner.test_createHeader(pact, {})).to.deep.eq({
         "content-type": "application/json",
         accept: "application/json",
@@ -103,23 +108,27 @@ describe("c8ypactrunner", () => {
     it("should create fetchoptions with body having ids replaced and headers removed", function () {
       expect(
         runner.test_createFetchOptions(
-          {
-            requestHeaders: {
-              "X-XSRF-TOKEN": "********",
-              Authorization: "Bearer ******",
-              "content-type": "application/json",
-              accept: "application/json",
-              UseXBasic: true,
-            },
-            requestBody: {
-              externalId: "85A4265B-5A14-4360-86A7-C82ED51D8AA0",
-              type: "c8y_Serial",
-              managedObject: {
-                id: "68124542292",
+          new C8yDefaultPactRecord(
+            {
+              headers: {
+                "X-XSRF-TOKEN": "********",
+                Authorization: "Bearer ******",
+                "content-type": "application/json",
+                accept: "application/json",
+                UseXBasic: true,
+              },
+              body: {
+                externalId: "85A4265B-5A14-4360-86A7-C82ED51D8AA0",
+                type: "c8y_Serial",
+                managedObject: {
+                  id: "68124542292",
+                },
               },
             },
-          },
-          undefined
+            {},
+            {}
+          ),
+          {}
         )
       ).to.deep.eq({
         method: "GET",

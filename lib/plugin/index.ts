@@ -8,6 +8,8 @@ type C8yPactPluginConfig = {
   folder?: string;
 };
 
+let c8ypactFolder: string;
+
 function c8yPlugin(
   on: Cypress.PluginEvents,
   config: Cypress.PluginConfigOptions,
@@ -17,7 +19,8 @@ function c8yPlugin(
   let pactIndex: { [key: string]: number } = {};
   let pactInfo: C8yPactPluginInfoObjects = ({} = {});
   const folder =
-    options?.folder || `${process.cwd()}${path.sep}cypress${path.sep}fixtures`;
+    options?.folder || path.join(process.cwd(), "cypress", "fixtures");
+  c8ypactFolder = path.join(folder, "c8ypact");
 
   config.env.C8Y_PACT_ENABLED = "true";
 
@@ -46,21 +49,12 @@ function c8yPlugin(
     }
     pactInfo[id] = info;
 
-    const c8ypactFolder = `${folder}${path.sep}c8ypact`;
     createFolderRecursive(c8ypactFolder, true);
 
     const obj = { info, id: id, records: pactObjects[id] };
 
-    const file = `${c8ypactFolder}${path.sep}${id}.json`;
+    const file = path.join(c8ypactFolder, `${id}.json`);
     fs.writeFileSync(file, JSON.stringify(obj, undefined, 2), "utf-8");
-
-    const exportDefinitions = Object.keys(pactObjects).map((key) => {
-      const safeVariableName = key.replace(/[^a-zA-Z0-9_$]/g, "");
-      return `export { default as ${safeVariableName} } from ".${path.sep}${key}.json";`;
-    });
-
-    const indexFile = `${c8ypactFolder}${path.sep}index.js`;
-    fs.writeFileSync(indexFile, exportDefinitions.join("\n"), "utf-8");
 
     return null;
   }
@@ -72,29 +66,28 @@ function c8yPlugin(
     return pactInfo[pact] || null;
   }
 
-  function getPacts(pact: string): C8yPactRecord[] | null {
+  function getPact(pact: string): C8yPact | null {
     if (!pact || typeof pact !== "string") {
       throw new Error(`c8ypact must be a string, was ${typeof pact}`);
     }
-    return pactObjects[pact] || null;
+    if (!pactObjects[pact]) return null;
+    return { records: pactObjects[pact], info: pactInfo[pact], id: pact };
   }
 
-  function getNextPact(
-    pact: string
-  ): { record: C8yPactRecord; info: C8yPactInfo; id: string } | null {
+  function getNextRecord(pact: string): C8yPactNextRecord | null {
     if (!pact || typeof pact !== "string") {
       throw new Error(`c8ypact must be a string, was ${typeof pact}`);
     }
     const index = pactIndex[pact] || 0;
     pactIndex[pact] = index + 1;
     return pactObjects[pact] && pactObjects[pact].length > index
-      ? { record: pactObjects[pact][index], info: pactInfo[pact], id: pact }
+      ? { record: pactObjects[pact][index], info: pactInfo[pact] }
       : null;
   }
 
   function loadPacts(folder: string): C8yPactPluginRecordObjects {
-    const c8ypactFolder = `${folder}${path.sep}c8ypact`;
-    const jsonFiles = loadJsonFiles(c8ypactFolder);
+    const c8ypactFolder = path.join(folder, `c8ypact`);
+    const jsonFiles = loadPactObjects(c8ypactFolder);
     pactObjects = jsonFiles.reduce((acc, obj) => {
       acc[obj.info.id] = obj.records;
       return acc;
@@ -117,6 +110,7 @@ function c8yPlugin(
     delete pactIndex[pact];
     delete pactInfo[pact];
 
+    deletePactFile(pact, c8ypactFolder);
     return true;
   }
 
@@ -129,8 +123,8 @@ function c8yPlugin(
 
   on("task", {
     "c8ypact:save": savePact,
-    "c8ypact:get": getPacts,
-    "c8ypact:next": getNextPact,
+    "c8ypact:get": getPact,
+    "c8ypact:next": getNextRecord,
     "c8ypact:info": getPactInfo,
     "c8ypact:load": loadPacts,
     "c8ypact:remove": removePact,
@@ -138,31 +132,45 @@ function c8yPlugin(
   });
 }
 
-function loadJsonFiles(folderPath: string) {
-  const jsonFiles = glob.sync(path.join(folderPath, "*.json"));
-
-  let pact = [];
-  for (const filePath of jsonFiles) {
-    try {
-      const fileContent = fs.readFileSync(filePath, "utf8");
-      pact.push(JSON.parse(fileContent));
-    } catch (error: any) {
-      console.error(
-        `Error reading pact at ${filePath}: ${
-          error.message ? error.message : error
-        }`
-      );
-    }
+function readPactFiles(folderPath: string): string[] {
+  if (!folderPath || !fs.existsSync(folderPath)) {
+    return [];
   }
+  const jsonFiles = glob.sync(path.join(folderPath, "*.json"));
+  const pacts = jsonFiles.map((file) => {
+    return fs.readFileSync(file, "utf-8");
+  });
+  return pacts;
+}
 
-  return pact;
+function deletePactFiles(folderPath: string): void {
+  if (!folderPath || !fs.existsSync(folderPath)) {
+    return;
+  }
+  const jsonFiles = glob.sync(path.join(folderPath, "*.json"));
+  jsonFiles.forEach((file) => {
+    fs.unlinkSync(file);
+  });
+}
+
+function deletePactFile(id: string, pactFolder: string): void {
+  const filePath = path.join(pactFolder, `${id}.json`);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  } else {
+    console.log(`File ${filePath} does not exist. Nothing to delete.`);
+  }
+}
+
+function loadPactObjects(folderPath: string) {
+  const pacts = readPactFiles(folderPath);
+  return pacts.map((pact) => JSON.parse(pact));
 }
 
 function createFolderRecursive(folder: string, absolutePath: boolean) {
   const parts = folder.split(path.sep);
-
-  for (let i = 1; i <= parts.length; i++) {
-    let currentPath = path.join(...parts.slice(0, i));
+  parts.forEach((part, i) => {
+    let currentPath = path.join(...parts.slice(0, i + 1));
     if (absolutePath) {
       currentPath = path.join("/", currentPath);
     }
@@ -176,7 +184,7 @@ function createFolderRecursive(folder: string, absolutePath: boolean) {
         throw err; // Other error, rethrow it
       }
     }
-  }
+  });
 }
 
 function getVersion() {
@@ -191,4 +199,4 @@ export function isNodeError<T extends new (...args: any) => Error>(
   return error instanceof type;
 }
 
-module.exports = c8yPlugin;
+module.exports = { c8yPlugin, readPactFiles };

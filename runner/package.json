@@ -22,11 +22,21 @@
   },
   "dependencies": {
     "@c8y/client": "^1017.0.374",
+    "cumulocity-cypress": "^0.2.4",
+    "cypress": "^13.3.2",
     "date-fns": "^2.30.0",
-    "semver": "^7.5.2",
-    "cypress": "^13.3.2"
+    "semver": "^7.5.2"
   },
   "devDependencies": {
+    "@c8y/client": "^1017.0.374",
+    "@types/chai": "^4.3.4",
+    "@types/glob": "^8.1.0",
+    "@types/node": "^20.10.6",
+    "copyfiles": "^2.4.1",
+    "cypress": "^13.3.2",
+    "http-server": "^14.1.1",
+    "rimraf": "^5.0.1",
+    "start-server-and-test": "^2.0.0",
     "typescript": "^5.0.2"
   }
 }

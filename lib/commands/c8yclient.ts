@@ -116,6 +116,21 @@ declare global {
         options?: C8yClientOptions
       ): Chainable<Response<T[]>>;
 
+      /**
+       * Compares a given Cypress.Response object with a C8yPactRecord contract. If
+       * the contract is not met, an C8yPactError is thrown.
+       *
+       * @param response - A Cypress.Response object representing the HTTP response.
+       * @param record - A C8yPactRecord object representing the contract.
+       * @param info - An optional C8yPactInfo object that may contain additional information for processing the contract.
+       * @param options - An optional C8yClientOptions object that may contain various options for the behavior of the c8ymatch function.
+       */
+      c8ymatch(
+        response: Cypress.Response<any>,
+        record: Partial<C8yPactRecord>,
+        info?: C8yPactInfo,
+        options?: C8yClientOptions
+      ): Cypress.Chainable<void>;
       c8ymatch(
         response: Cypress.Response<any>,
         record: Partial<C8yPactRecord>,
@@ -153,6 +168,9 @@ declare global {
     | C8yClientServiceArrayFn<R, T>[]
     | C8yClientServiceListFn<R, T>;
 
+  /**
+   * Options used to configure c8yclient command.
+   */
   type C8yClientOptions = Partial<Cypress.Loggable> &
     Partial<Cypress.Timeoutable> &
     Partial<Pick<Cypress.Failable, "failOnStatusCode">> &
@@ -160,7 +178,10 @@ declare global {
       auth: IAuthentication;
       baseUrl: string;
       client: Client;
-      pact: any;
+      pact: {
+        record: C8yPactRecord;
+        info?: C8yPactInfo;
+      };
       preferBasicAuth: boolean;
       skipClientAuthenication: boolean;
       failOnPactValidation: boolean;
@@ -209,7 +230,7 @@ declare global {
   function isCypressResponse(obj: any): obj is Cypress.Response<any>;
 }
 
-const defaultClientOptions: C8yClientOptions = {
+export const defaultClientOptions: C8yClientOptions = {
   log: true,
   timeout: Cypress.config().requestTimeout,
   failOnStatusCode: true,
@@ -332,14 +353,14 @@ window.fetch = async function (url, fetchOptions) {
     // and resolve json() and text() promises using the values we read from the stream.
     const res = new window.Response(rawBody, _.cloneDeep(response));
     try {
-      res.requestBody = _.isString(fetchOptions.body)
+      responseObj.requestBody = _.isString(fetchOptions.body)
         ? JSON.parse(fetchOptions.body)
         : fetchOptions.body;
     } catch (error) {
-      res.requestBody = fetchOptions.body;
+      responseObj.requestBody = fetchOptions.body;
     }
     // res.ok = response.ok,
-    res.method = fetchOptions.method;
+    responseObj.method = fetchOptions?.method || res?.method || "GET";
 
     // pass the responseObj as part of the window.Response object. this way we can access
     // in the Clients response and do not need to reprocess
@@ -464,6 +485,9 @@ const c8yclientFn = (...args: any[]) => {
       c8yclient._auth = auth;
     }
     c8yclient._options = options;
+    if (!c8yclient._auth) {
+      c8yclient._auth = auth;
+    }
     runClient(c8yclient, clientFn, prevSubject, baseUrl);
   }
 };
@@ -539,22 +563,24 @@ function run(
             : Cypress.c8ypact.currentNextRecord()
           )
             // @ts-ignore
-            .then((pactObject: any) => {
-              if (pactObject != null && !ignore) {
-                const { record, info } = pactObject;
-                cy.c8ymatch(r, record, info, options);
-              } else {
-                if (
-                  pactObject == null &&
-                  Cypress.c8ypact.failOnMissingPacts &&
-                  !ignore
-                ) {
-                  throwError(
-                    `${Cypress.c8ypact.currentPactIdentifier()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
-                  );
+            .then(
+              (pactObject: { record: C8yPactRecord; info?: C8yPactInfo }) => {
+                if (pactObject != null && !ignore) {
+                  const { record, info } = pactObject;
+                  cy.c8ymatch(r, record, info, options);
+                } else {
+                  if (
+                    pactObject == null &&
+                    Cypress.c8ypact.failOnMissingPacts &&
+                    !ignore
+                  ) {
+                    throwError(
+                      `${Cypress.c8ypact.currentPactIdentifier()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
+                    );
+                  }
                 }
               }
-            });
+            );
         }
       }
     };
@@ -760,11 +786,13 @@ function toCypressResponse(
     | IFetchResponse
     | IResult<any>
     | IResultList<any>
-    | C8yPactRecord = {},
+    | C8yPactRecord,
   duration: number = 0,
   fetchOptions: IFetchOptions = {},
   url?: RequestInfo | URL
 ): Cypress.Response<any> {
+  if (!obj) return undefined;
+
   if (isPactRecord(obj)) {
     return obj.toCypressResponse();
   }
@@ -772,6 +800,8 @@ function toCypressResponse(
   if (isIResult(obj)) {
     fetchResponse = obj.res;
   } else if (isWindowFetchResponse(obj)) {
+    fetchResponse = obj;
+  } else {
     fetchResponse = obj;
   }
   if ("responseObj" in fetchResponse) {
@@ -797,28 +827,46 @@ function toCypressResponse(
 global.isCypressResponse = isCypressResponse;
 function isCypressResponse(obj: any): obj is Cypress.Response {
   return (
-    _.isObject(obj) &&
-    _.has(obj, "body") &&
-    _.has(obj, "status") &&
-    _.has(obj, "headers")
+    _.isObjectLike(obj) &&
+    "body" in obj &&
+    "status" in obj &&
+    "headers" in obj &&
+    "requestHeaders" in obj &&
+    "duration" in obj &&
+    "url" in obj &&
+    "isOkStatusCode" in obj &&
+    // not a window.Response or Client.FetchResponse
+    !("ok" in obj || "arrayBuffer" in obj)
   );
 }
 
-function isArrayOfFunctions(
-  functions: C8yClientFnArg
-): functions is Array<any> {
-  if (!functions || !_.isArray(functions)) return false;
+export function isArrayOfFunctions<T>(
+  functions: C8yClientFnArg | Array<Function>
+): functions is Array<Function> {
+  if (!functions || !_.isArray(functions) || _.isEmpty(functions)) return false;
   return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
 }
 
-function isWindowFetchResponse(obj: any): obj is Partial<Response> {
-  return "status" in obj && "ok" in obj; // && _.has(obj, "url");
+export function isWindowFetchResponse(obj: any): obj is Partial<Response> {
+  return (
+    obj != null &&
+    _.isObjectLike(obj) &&
+    "status" in obj &&
+    "statusText" in obj &&
+    "headers" in obj &&
+    "body" in obj &&
+    "url" in obj &&
+    _.isFunction(_.get(obj, "json")) &&
+    _.isFunction(_.get(obj, "arrayBuffer"))
+  );
 }
 
-function isClientFetchResponse(obj: any): obj is IFetchResponse {
-  return "arrayBuffer" in obj && _.isFunction(obj.arrayBuffer);
-}
-
-function isIResult(obj: any): obj is IResult<any> {
-  return "data" in obj && "res" in obj && isClientFetchResponse(obj.res);
+export function isIResult(obj: any): obj is IResult<any> {
+  return (
+    obj != null &&
+    _.isObjectLike(obj) &&
+    "data" in obj &&
+    "res" in obj &&
+    isWindowFetchResponse(obj.res)
+  );
 }

@@ -7,91 +7,98 @@ declare global {
   }
 
   interface C8yPactRunner {
-    run: (pacts: any, options?: C8yPactRunnerOptions) => void;
+    run: (pacts: C8yPact[], options?: C8yPactRunnerOptions) => void;
     runTest: (title: string, pact: any, info: any) => void;
   }
 }
+
+type TestHierarchyTree<T> = { [key: string]: T | TestHierarchyTree<T> };
 
 export class C8yDefaultPactRunner implements C8yPactRunner {
   constructor() {}
 
   protected idMapper: { [key: string]: string } = {};
 
-  run(pacts: any, options: C8yPactRunnerOptions = {}): void {
+  run(pacts: C8yPact[], options: C8yPactRunnerOptions = {}): void {
     this.idMapper = {};
 
-    if (!_.isPlainObject(pacts)) return;
-    const tests = [];
-    const keys = Object.keys(pacts);
+    if (!_.isArray(pacts)) return;
+    const tests: C8yPact[] = [];
 
-    for (const key of keys) {
-      const { info, pact, id } = pacts[key];
-      if (!_.isPlainObject(info) || !_.isArray(pact) || !_.isString(id)) {
+    for (const pact of pacts) {
+      const { info, records, id } = pact;
+      if (!_.isPlainObject(info) || !_.isArray(records) || !_.isString(id)) {
         continue;
       }
 
-      if (_.isString(options.consumer) && info.consumer !== options.consumer) {
+      if (
+        _.isString(options.consumer) &&
+        info?.consumer?.name !== options.consumer
+      ) {
         continue;
       }
 
-      if (_.isString(options.producer) && info.producer !== options.producer) {
+      if (
+        _.isString(options.producer) &&
+        info?.producer?.name !== options.producer
+      ) {
         continue;
       }
 
-      const titlePath: string[] = info?.title || info?.id?.split("__");
-      tests.push({ info, pact, id, title: titlePath });
+      if (!info?.title) {
+        info.title = info?.id?.split("__");
+      }
+      tests.push({ info, records, id });
     }
 
     const testHierarchy = this.buildTestHierarchy(tests);
     this.createTestsFromHierarchy(testHierarchy);
   }
 
-  protected buildTestHierarchy(tests: any) {
-    const tree = {};
-    tests.forEach((test: any) => {
-      const titles = test.title;
+  protected buildTestHierarchy(
+    pactObjects: C8yPact[]
+  ): TestHierarchyTree<C8yPact> {
+    const tree: TestHierarchyTree<C8yPact> = {};
+    pactObjects.forEach((pact) => {
+      const titles = pact.info.title;
 
-      let currentNode: any = tree;
-      titles.forEach((title: any, index: any) => {
+      let currentNode = tree;
+      titles.forEach((title, index) => {
         if (!currentNode[title]) {
-          currentNode[title] = index === titles.length - 1 ? test : {};
+          currentNode[title] = index === titles.length - 1 ? pact : {};
         }
-        currentNode = currentNode[title];
+        currentNode = currentNode[title] as TestHierarchyTree<C8yPact>;
       });
     });
-
     return tree;
   }
 
-  protected createTestsFromHierarchy(obj: any) {
-    const keys = Object.keys(obj);
+  protected createTestsFromHierarchy(hierarchy: TestHierarchyTree<C8yPact>) {
+    const keys = Object.keys(hierarchy);
     keys.forEach((key: string, index: number) => {
-      const isLastKey = obj[key].pact != null && obj[key].info != null;
+      const subTree = hierarchy[key];
       const that = this;
 
-      if (isLastKey) {
+      if (isPact(subTree)) {
         it(key, () => {
-          that.runTest(key, obj[key].pact, obj[key].info);
+          that.runTest(key, subTree);
         });
       } else {
         context(key, function () {
-          that.createTestsFromHierarchy(obj[key]);
+          that.createTestsFromHierarchy(subTree);
         });
       }
     });
   }
 
-  runTest(title: string, pact: any, info: any) {
+  runTest(title: string, pact: C8yPact) {
     this.idMapper = {};
-
-    if (!_.isArray(pact)) return;
-
-    for (const currentPact of pact) {
+    for (const record of pact?.records) {
       cy.then(() => {
-        const url = this.createURL(currentPact, info);
-        const clientFetchOptions = this.createFetchOptions(currentPact, info);
+        const url = this.createURL(record, pact.info);
+        const clientFetchOptions = this.createFetchOptions(record, pact.info);
 
-        let user = currentPact.auth.userAlias || currentPact.auth.user;
+        let user = record.auth.userAlias || record.auth.user;
         if (user.split("/").length > 1) {
           user = user.split("/").slice(1).join("/");
         }
@@ -99,9 +106,9 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
           user = "devicebootstrap";
         }
 
-        const cOpts = {
-          pact: { pact: currentPact, info },
-          ..._.pick(currentPact.options, [
+        const cOpts: C8yClientOptions = {
+          pact: { record: record, info: pact.info },
+          ..._.pick(record.options, [
             "skipClientAuthenication",
             "preferBasicAuth",
             "failOnStatusCode",
@@ -124,12 +131,12 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
           if (response.method === "POST") {
             const newId = response.body.id;
             if (newId) {
-              this.idMapper[currentPact.createdObject] = newId;
+              this.idMapper[record.createdObject] = newId;
             }
           }
         };
 
-        if (currentPact.auth && currentPact.auth.type === "CookieAuth") {
+        if (record.auth && record.auth.type === "CookieAuth") {
           cy.getAuth(user).login();
           cy.c8yclient(
             (c) => c.core.fetch(url, clientFetchOptions),
@@ -144,20 +151,20 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     }
   }
 
-  protected createHeader(pact: any, info: any): any {
-    let headers = _.omit(pact.requestHeaders || {}, [
+  protected createHeader(pact: C8yPactRecord, info: C8yPactInfo): any {
+    let headers = _.omit(pact.request.headers || {}, [
       "X-XSRF-TOKEN",
       "Authorization",
     ]);
     return headers;
   }
 
-  protected createFetchOptions(pact: any, info: any): any {
+  protected createFetchOptions(pact: C8yPactRecord, info: C8yPactInfo): any {
     let options: any = {
-      method: pact.method || "GET",
+      method: pact.request.method || "GET",
       headers: this.createHeader(pact, info),
     };
-    let body = pact.requestBody;
+    let body = pact.request.body;
     if (body) {
       if (_.isString(body)) {
         options.body = this.updateIds(body);
@@ -172,8 +179,8 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     return options;
   }
 
-  protected createURL(pact: any, info: any): string {
-    let url = pact.url;
+  protected createURL(pact: C8yPactRecord, info: C8yPactInfo): string {
+    let url = pact.request.url;
     if (info?.baseUrl && url.includes(info.baseUrl)) {
       url = url.replace(info.baseUrl, "");
     }
@@ -184,10 +191,9 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     return url;
   }
 
-  protected updateURLs(value: string, info: any): string {
+  protected updateURLs(value: string, info: C8yPactInfo): string {
     if (!value || !info) return value;
     let result = value;
-    let updateTenantUrls = true;
 
     const tenantUrl = (baseUrl: string, tenant: string): URL => {
       if (!baseUrl || !tenant) return undefined;

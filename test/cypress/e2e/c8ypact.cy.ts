@@ -2,6 +2,7 @@ import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses } from "../support/util";
 import { SinonSpy } from "cypress/types/sinon";
 import { C8yDefaultPactRecord } from "../../../lib/pacts/c8ypact";
+import { defaultClientOptions } from "../../../lib/commands/c8yclient";
 
 const { _ } = Cypress;
 
@@ -10,6 +11,8 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
+    Cypress.env("C8Y_LOGGED_IN_USER", undefined);
+    Cypress.env("C8Y_LOGGED_IN_USERALIAS", undefined);
 
     initRequestStub();
     stubResponses([
@@ -29,6 +32,17 @@ describe("c8yclient", () => {
         headers: { "content-type": "application/json" },
       }),
     ]);
+  });
+
+  afterEach(() => {
+    // delete recorded pacts after each test
+    cy.task("c8ypact:remove", Cypress.c8ypact.currentPactIdentifier()).then(
+      () => {
+        Cypress.c8ypact.currentPact().then((pact) => {
+          expect(pact).to.be.null;
+        });
+      }
+    );
   });
 
   context("C8yDefaultPactRecord", function () {
@@ -190,7 +204,7 @@ describe("c8yclient", () => {
     });
   });
 
-  context("c8ypact recording", function () {
+  context("c8ypact config", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
     });
@@ -221,7 +235,7 @@ describe("c8yclient", () => {
 
     it("should create pact identifier from test case name", function () {
       expect(Cypress.c8ypact.currentPactIdentifier()).to.equal(
-        "c8yclient__c8ypact_recording__should_create_pact_identifier_from_test_case_name"
+        "c8yclient__c8ypact_config__should_create_pact_identifier_from_test_case_name"
       );
     });
 
@@ -234,17 +248,18 @@ describe("c8yclient", () => {
         );
       }
     );
+  });
+
+  context("c8ypact recording", function () {
+    beforeEach(() => {
+      Cypress.env("C8Y_TENANT", undefined);
+      Cypress.env("C8Y_PACT_MODE", "recording");
+    });
 
     it("should record c8ypacts if recording is enabled in environment", function () {
-      Cypress.env("C8Y_TENANT", undefined);
       cy.spy(Cypress.c8ypact, "currentNextRecord").log(false);
 
-      cy.then(() => {
-        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
-      });
-      Cypress.c8ypact.currentPacts().then((pact) => {
-        expect(pact).to.be.null;
-      });
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
 
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<IManagedObject>((c) => {
@@ -262,10 +277,49 @@ describe("c8yclient", () => {
         });
 
       // pacts should have been written to expected folder
-      Cypress.c8ypact.currentPacts().then((pacts) => {
-        expect(pacts).to.have.length(2);
+      Cypress.c8ypact.currentPact().then((pact) => {
+        expect(pact.records).to.have.length(2);
         cy.readFile(Cypress.c8ypact.currentPactFilename());
+
+        expect(isPactRecord(pact.records[0])).to.be.true;
+        expect(pact.records[0].auth).to.deep.equal({
+          user: "admin",
+          type: "BasicAuth",
+        });
       });
+    });
+
+    it("should record options and auth with alias", function () {
+      Cypress.env("admin_username", "admin");
+      Cypress.env("admin_password", "mypassword");
+
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+
+      cy.getAuth("admin")
+        .c8yclient<IManagedObject>(
+          (c) => {
+            return c.inventory.detail(1, { withChildren: false });
+          },
+          {
+            failOnStatusCode: false,
+            preferBasicAuth: true,
+          }
+        )
+        .then((response) => {
+          expect(response.status).to.eq(201);
+          // pacts are not validated when recording
+          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+          expect(spy.getCall(0).args[1]._auth).to.deep.eq({
+            user: "admin",
+            userAlias: "admin",
+          });
+          expect(spy.getCall(0).args[1]._options).to.deep.eq({
+            ...defaultClientOptions,
+            failOnStatusCode: false,
+            preferBasicAuth: true,
+          });
+        });
     });
   });
 
@@ -459,7 +513,15 @@ describe("c8yclient", () => {
     });
   });
 
-  context("c8ypact validation", function () {
+  context("c8ypact typeguards", function () {
+    it("isPactRecord is registered globally", function () {
+      expect(global.isPactRecord).to.be.a("function");
+    });
+
+    it("isPactRecord validates undefined", function () {
+      expect(isPactRecord(undefined)).to.be.false;
+    });
+
     it("isPactRecord validates pact object", function () {
       const pact = {
         response: {
@@ -489,6 +551,59 @@ describe("c8yclient", () => {
       const record = new C8yDefaultPactRecord(pact.request, pact.response, {});
       expect(isPactRecord(record)).to.be.true;
       expect(record.toCypressResponse()).to.not.be.null;
+    });
+
+    it("isPact validates undefined", function () {
+      expect(isPact(undefined)).to.be.false;
+    });
+
+    it("isPact is registered globally", function () {
+      expect(global.isPact).to.be.a("function");
+    });
+
+    it("isPact validates pact object", function () {
+      const pact: C8yPact = {
+        info: {
+          baseUrl: "http://localhost:8080",
+        },
+        records: [
+          new C8yDefaultPactRecord(
+            {
+              url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
+            },
+            {
+              status: 201,
+              isOkStatusCode: true,
+            },
+            {},
+            {}
+          ),
+        ],
+        id: "test",
+      };
+      expect(isPact(pact)).to.be.true;
+    });
+
+    it("isPact validates records to be C8yDefaultPactRecord", function () {
+      const pact: C8yPact = {
+        info: {
+          baseUrl: "http://localhost:8080",
+        },
+        records: [
+          // @ts-ignore
+          {
+            response: {
+              status: 201,
+              isOkStatusCode: true,
+            },
+            request: {
+              url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
+            },
+          },
+        ],
+        id: "test",
+      };
+      expect(isPact(pact)).to.be.false;
     });
   });
 });

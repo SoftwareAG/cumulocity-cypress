@@ -1,8 +1,5 @@
-import "../commands/administration"
-import "../commands/c8yclient"
-import '../pacts/c8ypact'
-import "../commands/request"
-import "../commands/login"
+import "cumulocity-cypress/lib/commands";
+import "cumulocity-cypress/lib/commands/request";
 
 before(() => {
   // cache tenant id in C8Y_TENANT

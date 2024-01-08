@@ -12,8 +12,6 @@
     "clean": "rimraf dist/ && rimraf runner/dist/",
     "copy-files": "copyfiles lib/**/*.*js lib/**/*.d.ts README.md package.json dist/",
     "build": "npm run clean && npm run copy-files && tsc && cd dist/ && npm run clean-package-json",
-    "runner:copy-files": "cd runner && npx copyfiles cypress/**/*.* cypress/*.* package.json cypress.config.js dist/ && npx copyfiles --flat ../lib/commands/{c8yclient,administration,utils,request,login}*.* dist/cypress/commands/ && npx copyfiles --flat ../lib/pacts/**/*.* dist/cypress/pacts && npx copyfiles --flat ../lib/plugin/*.* dist/cypress/plugin",
-    "runner:build": "npm run clean && npm run runner:copy-files",
     "runner:docker": "npm run runner:build && cd runner && docker build --platform linux/arm64 -t c8ypact-runner .",
     "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },

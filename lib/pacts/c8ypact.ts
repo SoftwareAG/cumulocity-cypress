@@ -1,4 +1,3 @@
-import { Client } from "@c8y/client";
 import { C8yDefaultPactMatcher } from "./matcher";
 import { C8yPactDefaultPreprocessor } from "./preprocessor";
 import { C8yDefaultPactRunner } from "./runner";
@@ -7,7 +6,7 @@ const { _ } = Cypress;
 declare global {
   namespace Cypress {
     interface Cypress {
-      c8ypact: CypressPact;
+      c8ypact: CypressC8yPact;
     }
 
     interface SuiteConfigOverrides {
@@ -55,16 +54,13 @@ declare global {
     tenant?: string;
   }
 
-  interface CypressPact {
+  interface CypressC8yPact {
     matcher: C8yPactMatcher;
     preprocessor: C8yPactPreprocessor;
     currentPactIdentifier: () => C8yPactID;
     currentPactFilename: () => string;
-    currentNextRecord: <T = any>() => Cypress.Chainable<{
-      record: C8yPactRecord;
-      info?: C8yPactInfo;
-    } | null>;
-    currentPacts: () => Cypress.Chainable<C8yPact | null>;
+    currentNextRecord: () => Cypress.Chainable<C8yPactNextRecord | null>;
+    currentPact: () => Cypress.Chainable<C8yPact | null>;
     currentMatcher: () => C8yPactMatcher;
     savePact: (response: Cypress.Response<any>, client?: C8yClient) => void;
     isEnabled: () => boolean;
@@ -93,10 +89,12 @@ declare global {
     response: C8yPactResponse<any>;
     options: C8yClientOptions;
     auth: C8yAuthOptions;
-    createdObject: string | string[];
+    createdObject: string;
 
     toCypressResponse(): Cypress.Response<any>;
   }
+
+  type C8yPactNextRecord = { record: C8yPactRecord; info?: C8yPactInfo };
 
   /**
    * Checks if the given object is a C8yPactRecord.
@@ -105,6 +103,14 @@ declare global {
    * @returns True if the object is a C8yPactRecord, false otherwise.
    */
   function isPactRecord(obj: any): obj is C8yPactRecord;
+
+  /**
+   * Checks if the given object is a C8yPact.
+   *
+   * @param obj The object to check.
+   * @returns True if the object is a C8yPact, false otherwise.
+   */
+  function isPact(obj: any): obj is C8yPact;
 }
 
 export class C8yDefaultPactRecord implements C8yPactRecord {
@@ -112,14 +118,14 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   response: C8yPactResponse<any>;
   options: C8yClientOptions;
   auth: C8yAuthOptions;
-  createdObject: string | string[];
+  createdObject: string;
 
   constructor(
     request: C8yPactRequest,
     response: C8yPactResponse<any>,
     options: C8yClientOptions,
     auth?: C8yAuthOptions,
-    createdObject?: string | string[]
+    createdObject?: string
   ) {
     this.request = request;
     this.response = response;
@@ -162,11 +168,11 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
 }
 
 Cypress.c8ypact = {
-  currentPactIdentifier: pactIdentifier,
+  currentPactIdentifier,
   currentMatcher,
-  currentPacts,
+  currentPact,
   currentPactFilename,
-  currentNextRecord: getNextRecord,
+  currentNextRecord,
   isRecordingEnabled,
   savePact,
   isEnabled,
@@ -199,13 +205,18 @@ beforeEach(() => {
   }
 });
 
-function pactIdentifier(): C8yPactID {
+function currentPactIdentifier(): C8yPactID {
   let key = Cypress.currentTest?.titlePath?.join("__");
   if (key == null) {
     key = Cypress.spec?.relative?.split("/").slice(-2).join("__");
   }
   const pact = Cypress.config().c8ypact;
   return (pact && pact.id) || key.replace(/ /g, "_");
+}
+
+function currentPactFilename(): string {
+  const pactId = Cypress.c8ypact.currentPactIdentifier();
+  return `${Cypress.config().fixturesFolder}/c8ypact/${pactId}.json`;
 }
 
 function currentMatcher(): C8yPactMatcher {
@@ -248,22 +259,37 @@ function savePact(response: Cypress.Response<any>, client?: C8yClient) {
   );
 }
 
-function currentPacts(): Cypress.Chainable<C8yPact | null> {
-  return !isEnabled()
-    ? cy.wrap<C8yPact | null>(null, debugLogger())
-    : cy.task<C8yPact>(
-        "c8ypact:get",
-        Cypress.c8ypact.currentPactIdentifier(),
-        debugLogger()
-      );
+function currentPact(): Cypress.Chainable<C8yPact | null> {
+  if (!isEnabled()) {
+    return cy.wrap<C8yPact | null>(null);
+  }
+  return cy
+    .task<C8yPact | null>(
+      "c8ypact:get",
+      Cypress.c8ypact.currentPactIdentifier(),
+      debugLogger()
+    )
+    .then((pact) => {
+      if (pact == null) {
+        return cy.wrap<C8yPact>(null);
+      }
+
+      // required to map the record object to a C8yPactRecord here as this can
+      // not be done in the plugin
+      pact.records = pact.records?.map((record) => {
+        return new C8yDefaultPactRecord(
+          record.request,
+          record.response,
+          record.options,
+          record.auth,
+          record.createdObject
+        );
+      });
+      return cy.wrap(pact);
+    });
 }
 
-function currentPactFilename(): string {
-  const pactId = Cypress.c8ypact.currentPactIdentifier();
-  return `${Cypress.config().fixturesFolder}/c8ypact/${pactId}.json`;
-}
-
-function getNextRecord(): Cypress.Chainable<{
+function currentNextRecord(): Cypress.Chainable<{
   record: C8yPactRecord;
   info?: C8yPactInfo;
 } | null> {
@@ -274,10 +300,29 @@ function getNextRecord(): Cypress.Chainable<{
     } | null>(null);
   }
 
-  return cy.task<{
-    info?: C8yPactInfo;
-    record: C8yPactRecord;
-  }>("c8ypact:next", Cypress.c8ypact.currentPactIdentifier(), debugLogger());
+  return cy
+    .task<C8yPactNextRecord>(
+      "c8ypact:next",
+      Cypress.c8ypact.currentPactIdentifier(),
+      debugLogger()
+    )
+    .then((r) => {
+      if (r == null) {
+        return cy.wrap<C8yPactNextRecord | null>(null);
+      }
+      // required to map the record object to a C8yPactRecord here as this can
+      // not be done in the plugin
+      cy.wrap<C8yPactNextRecord>({
+        record: new C8yDefaultPactRecord(
+          r.record.request,
+          r.record.response,
+          r.record.options,
+          r.record.auth,
+          r.record.createdObject
+        ),
+        info: r.info,
+      });
+    });
 }
 
 function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
@@ -304,13 +349,25 @@ function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
   return info;
 }
 
+function isPact(obj: any): obj is C8yPact {
+  return (
+    _.isObjectLike(obj) &&
+    "info" in obj &&
+    _.isObjectLike(_.get(obj, "info")) &&
+    "records" in obj &&
+    _.isArray(_.get(obj, "records")) &&
+    _.every(_.get(obj, "records"), isPactRecord)
+  );
+}
+global.isPact = isPact;
+
 function isPactRecord(obj: any): obj is C8yPactRecord {
   return (
-    _.isObject(obj) &&
-    _.has(obj, "request") &&
-    _.isPlainObject(_.get(obj, "request")) &&
-    _.has(obj, "response") &&
-    _.isPlainObject(_.get(obj, "response")) &&
+    _.isObjectLike(obj) &&
+    "request" in obj &&
+    _.isObjectLike(_.get(obj, "request")) &&
+    "response" in obj &&
+    _.isObjectLike(_.get(obj, "response")) &&
     _.isFunction(_.get(obj, "toCypressResponse"))
   );
 }
