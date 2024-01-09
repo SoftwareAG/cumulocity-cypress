@@ -2,33 +2,80 @@ import * as fs from "fs";
 import * as path from "path";
 import * as glob from "glob";
 
-type C8yPactPluginRecordObjects = { [key: string]: C8yPactRecord[] };
-type C8yPactPluginInfoObjects = { [key: string]: C8yPactInfo };
-type C8yPactPluginConfig = {
-  folder?: string;
+/**
+ * Configuration options for the Cumulocity Cypress plugin.
+ */
+export type C8yPluginConfig = {
+  /**
+   * Folder where to store or load pact files from.
+   * Default is cypress/fixtures/c8ypact
+   */
+  pactFolder?: string;
+  /**
+   * Adapter to load and save pact objects.
+   * Default is C8yPactDefaultFileAdapter
+   */
+  pactAdapter?: C8yPactFileAdapter;
 };
 
-let c8ypactFolder: string;
+/**
+ * Using C8yPactFileAdapter you can implement your own adapter to load and save pacts using any format you want.
+ * This allows loading pact objects from different sources, such as HAR files, pact.io, etc.
+ *
+ * The default adapter is C8yPactDefaultFileAdapter which loads and saves pact objects from/to
+ * json files using C8yPact objects. Default location is cypress/fixtures/c8ypact folder.
+ */
+export interface C8yPactFileAdapter {
+  /**
+   * Loads all pact objects. The key must be the pact id used in C8yPact.id.
+   */
+  loadPacts: () => { [key: string]: C8yPact };
+  /**
+   * Saves a pact object.
+   */
+  savePact: (pact: C8yPact) => void;
+  /**
+   * Deletes a pact object or file.
+   */
+  deletePact: (id: string) => void;
+  /**
+   * Gets the folder where the pact files are stored.
+   */
+  getFolder: () => string;
+}
 
-function c8yPlugin(
+/**
+ * Configuration options for the Cumulocity Pact plugin. Sets up for example required tasks
+ * to save and load pact objects.
+ *
+ * @param on Cypress plugin events
+ * @param config Cypress plugin config
+ * @param options Cumulocity plugin configuration options
+ */
+function configureC8yPlugin(
   on: Cypress.PluginEvents,
   config: Cypress.PluginConfigOptions,
-  options: C8yPactPluginConfig = {}
+  options: C8yPluginConfig = {}
 ) {
-  let pactObjects: C8yPactPluginRecordObjects = {};
-  let pactIndex: { [key: string]: number } = {};
-  let pactInfo: C8yPactPluginInfoObjects = ({} = {});
-  const folder =
-    options?.folder || path.join(process.cwd(), "cypress", "fixtures");
-  c8ypactFolder = path.join(folder, "c8ypact");
+  let adapter: C8yPactFileAdapter = options.pactAdapter;
+  if (!adapter) {
+    const folder =
+      options.pactFolder ||
+      options.pactAdapter?.getFolder() ||
+      // default folder is cypress/fixtures/c8ypact
+      path.join(process.cwd(), "cypress", "fixtures", "c8ypact");
+    adapter = new C8yPactDefaultFileAdapter(folder);
+  }
 
+  let pactIndex: { [key: string]: number } = {};
+  let pacts: { [key: string]: C8yPact } = {};
+
+  // use C8Y_PACT_ENABLED to see if the plugin has been loaded
   config.env.C8Y_PACT_ENABLED = "true";
 
   function savePact(pact: C8yPact): null {
     const { id, info, records } = pact;
-    if (!id || typeof id !== "string") {
-      throw new Error(`c8ypact must be a string, was ${typeof id}`);
-    }
+    validateId(id);
 
     const version = getVersion();
     if (version && info) {
@@ -39,86 +86,69 @@ function c8yPlugin(
       info.version.c8ypact = "1";
     }
 
-    if (!pactObjects[id]) {
-      pactObjects[id] = [];
-    }
-    if (Array.isArray(records)) {
-      Array.prototype.push.apply(pactObjects[id], records);
+    if (!pacts[id]) {
+      pacts[id] = pact;
     } else {
-      pactObjects[id].push(records);
+      if (!pacts[id].records) {
+        pacts[id].records = records;
+      } else if (Array.isArray(records)) {
+        Array.prototype.push.apply(pacts[id].records, records);
+      } else {
+        pacts[id].records.push(records);
+      }
     }
-    pactInfo[id] = info;
 
-    createFolderRecursive(c8ypactFolder, true);
-
-    const obj = { info, id: id, records: pactObjects[id] };
-
-    const file = path.join(c8ypactFolder, `${id}.json`);
-    fs.writeFileSync(file, JSON.stringify(obj, undefined, 2), "utf-8");
-
+    adapter?.savePact(pacts[id]);
     return null;
   }
 
   function getPactInfo(pact: string): C8yPactInfo | null {
-    if (!pact || typeof pact !== "string") {
-      throw new Error(`c8ypact must be a string, was ${typeof pact}`);
-    }
-    return pactInfo[pact] || null;
+    validateId(pact);
+    return pacts[pact].info || null;
   }
 
   function getPact(pact: string): C8yPact | null {
-    if (!pact || typeof pact !== "string") {
-      throw new Error(`c8ypact must be a string, was ${typeof pact}`);
-    }
-    if (!pactObjects[pact]) return null;
-    return { records: pactObjects[pact], info: pactInfo[pact], id: pact };
+    validateId(pact);
+    return pacts[pact] || null;
   }
 
   function getNextRecord(pact: string): C8yPactNextRecord | null {
-    if (!pact || typeof pact !== "string") {
-      throw new Error(`c8ypact must be a string, was ${typeof pact}`);
-    }
+    validateId(pact);
+
     const index = pactIndex[pact] || 0;
     pactIndex[pact] = index + 1;
-    return pactObjects[pact] && pactObjects[pact].length > index
-      ? { record: pactObjects[pact][index], info: pactInfo[pact] }
+    return pacts[pact] && pacts[pact].records.length > index
+      ? { record: pacts[pact].records[index], info: pacts[pact].info }
       : null;
   }
 
-  function loadPacts(folder: string): C8yPactPluginRecordObjects {
-    const c8ypactFolder = path.join(folder, `c8ypact`);
-    const jsonFiles = loadPactObjects(c8ypactFolder);
-    pactObjects = jsonFiles.reduce((acc, obj) => {
-      acc[obj.info.id] = obj.records;
-      return acc;
-    }, {});
-    pactInfo = jsonFiles.reduce((acc, obj) => {
-      acc[obj.info.id] = obj.info;
-      return acc;
-    }, {});
+  function loadPacts(): { [key: string]: C8yPact } {
+    pacts = adapter?.loadPacts() || null;
     pactIndex = {};
-    return pactObjects || null;
+    return pacts;
   }
 
   function removePact(pact: string): boolean {
-    if (typeof pact !== "string") {
-      throw new Error(`c8ypact must be a string, was ${typeof pact}`);
-    }
+    validateId(pact);
 
-    if (!pactObjects[pact]) return false;
-    delete pactObjects[pact];
+    if (!pacts[pact]) return false;
+    delete pacts[pact];
     delete pactIndex[pact];
-    delete pactInfo[pact];
 
-    deletePactFile(pact, c8ypactFolder);
+    adapter.deletePact(pact);
     return true;
   }
 
-  function clearAll(): C8yPactPluginRecordObjects {
-    pactObjects = {};
+  function clearAll(): { [key: string]: C8yPact } {
+    pacts = {};
     pactIndex = {};
-    pactInfo = {};
-    return pactObjects;
+    return pacts;
+  }
+
+  function validateId(id: string): void {
+    if (!id || typeof id !== "string") {
+      throw new Error(`c8ypact id must be a string, was ${typeof id}`);
+    }
   }
 
   on("task", {
@@ -132,71 +162,112 @@ function c8yPlugin(
   });
 }
 
-function readPactFiles(folderPath: string): string[] {
-  if (!folderPath || !fs.existsSync(folderPath)) {
-    return [];
-  }
-  const jsonFiles = glob.sync(path.join(folderPath, "*.json"));
-  const pacts = jsonFiles.map((file) => {
-    return fs.readFileSync(file, "utf-8");
-  });
-  return pacts;
-}
-
-function deletePactFiles(folderPath: string): void {
-  if (!folderPath || !fs.existsSync(folderPath)) {
-    return;
-  }
-  const jsonFiles = glob.sync(path.join(folderPath, "*.json"));
-  jsonFiles.forEach((file) => {
-    fs.unlinkSync(file);
-  });
-}
-
-function deletePactFile(id: string, pactFolder: string): void {
-  const filePath = path.join(pactFolder, `${id}.json`);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  } else {
-    console.log(`File ${filePath} does not exist. Nothing to delete.`);
-  }
-}
-
-function loadPactObjects(folderPath: string) {
-  const pacts = readPactFiles(folderPath);
-  return pacts.map((pact) => JSON.parse(pact));
-}
-
-function createFolderRecursive(folder: string, absolutePath: boolean) {
-  const parts = folder.split(path.sep);
-  parts.forEach((part, i) => {
-    let currentPath = path.join(...parts.slice(0, i + 1));
-    if (absolutePath) {
-      currentPath = path.join("/", currentPath);
-    }
-    try {
-      fs.accessSync(currentPath, fs.constants.F_OK);
-    } catch (err) {
-      if (isNodeError(err, TypeError) && err.code === "ENOENT") {
-        // Directory does not exist, create it
-        fs.mkdirSync(currentPath);
-      } else {
-        throw err; // Other error, rethrow it
-      }
-    }
-  });
-}
-
 function getVersion() {
   let version = require("../../package.json").version;
   return version;
 }
 
-export function isNodeError<T extends new (...args: any) => Error>(
-  error: any,
-  type: T
-): error is InstanceType<T> & NodeJS.ErrnoException {
-  return error instanceof type;
+/**
+ * Default implementation of C8yPactFileAdapter which loads and saves pact objects from/to
+ * json files using C8yPact objects.
+ */
+class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
+  folder: string;
+  constructor(folder: string) {
+    this.folder = folder;
+  }
+
+  getFolder(): string {
+    return this.folder;
+  }
+
+  loadPacts(): { [key: string]: C8yPact } {
+    const jsonFiles = this.loadPactObjects();
+    return jsonFiles.reduce((acc, obj) => {
+      acc[obj.info.id] = obj;
+      return acc;
+    }, {});
+  }
+
+  savePact(pact: C8yPact): void {
+    this.createFolderRecursive(this.folder, true);
+    const file = path.join(this.folder, `${pact.id}.json`);
+    fs.writeFileSync(
+      file,
+      JSON.stringify(
+        {
+          id: pact.id,
+          info: pact.info,
+          records: pact.records,
+        },
+        undefined,
+        2
+      ),
+      "utf-8"
+    );
+  }
+
+  deletePact(id: string): void {
+    const filePath = path.join(this.folder, `${id}.json`);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    } else {
+      console.log(`File ${filePath} does not exist. Nothing to delete.`);
+    }
+  }
+
+  readJsonFiles(): string[] {
+    if (!this.folder || !fs.existsSync(this.folder)) {
+      return [];
+    }
+    const jsonFiles = glob.sync(path.join(this.folder, "*.json"));
+    const pacts = jsonFiles.map((file) => {
+      return fs.readFileSync(file, "utf-8");
+    });
+    return pacts;
+  }
+
+  protected deleteJsonFiles(): void {
+    if (!this.folder || !fs.existsSync(this.folder)) {
+      return;
+    }
+    const jsonFiles = glob.sync(path.join(this.folder, "*.json"));
+    jsonFiles.forEach((file) => {
+      fs.unlinkSync(file);
+    });
+  }
+
+  protected loadPactObjects() {
+    const pacts = this.readJsonFiles();
+    return pacts.map((pact) => JSON.parse(pact));
+  }
+
+  protected createFolderRecursive(f: string, absolutePath: boolean) {
+    const parts = f?.split(path.sep);
+    parts.forEach((part, i) => {
+      let currentPath = path.join(...parts.slice(0, i + 1));
+      if (absolutePath) {
+        currentPath = path.join("/", currentPath);
+      }
+      try {
+        fs.accessSync(currentPath, fs.constants.F_OK);
+      } catch (err) {
+        if (this.isNodeError(err, TypeError) && err.code === "ENOENT") {
+          // Directory does not exist, create it
+          fs.mkdirSync(currentPath);
+        } else {
+          throw err; // Other error, rethrow it
+        }
+      }
+    });
+  }
+
+  protected isNodeError<T extends new (...args: any) => Error>(
+    error: any,
+    type: T
+  ): error is InstanceType<T> & NodeJS.ErrnoException {
+    return error instanceof type;
+  }
 }
 
-module.exports = { c8yPlugin, readPactFiles };
+module.exports = { configureC8yPlugin, C8yPactDefaultFileAdapter };

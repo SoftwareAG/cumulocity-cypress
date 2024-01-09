@@ -1,5 +1,8 @@
 const { defineConfig } = require("cypress");
-const { c8yPlugin, readPactFiles } = require("cumulocity-cypress/lib/plugin/");
+const {
+  configureC8yPlugin,
+  C8yPactDefaultFileAdapter,
+} = require("cumulocity-cypress/lib/plugin/");
 
 module.exports = defineConfig({
   e2e: {
@@ -12,15 +15,15 @@ module.exports = defineConfig({
         config.env.pactFolder ||
         config.fixturesFolder;
 
-      const jsonArray = readPactFiles(`${fixture}/c8ypact`);
-      config.env._pacts = jsonArray;
+      const adapter = new C8yPactDefaultFileAdapter(`${fixture}/c8ypact`);
+      config.env._pacts = adapter.readJsonFiles();
 
       const baseUrl = config.env.baseUrl || null;
       if (baseUrl) {
         config.baseUrl = baseUrl;
       }
 
-      c8yPlugin(on, config);
+      configureC8yPlugin(on, config);
       return config;
     },
   },
