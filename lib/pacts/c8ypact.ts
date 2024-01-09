@@ -235,24 +235,24 @@ function isRecordingEnabled(): boolean {
 function savePact(response: Cypress.Response<any>, client?: C8yClient) {
   if (!isEnabled()) return;
 
-  const preprocessedResponse = _.cloneDeep(response);
-  Cypress.c8ypact.preprocessor.apply(preprocessedResponse);
-  const pactRecord = createPactRecord(preprocessedResponse, client);
+  const pactRecord = createPactRecord(response, client);
   const id = Cypress.c8ypact.currentPactIdentifier();
   if (!id) return;
 
   const info = createPactInfo(id, client);
   const folder = Cypress.config().fixturesFolder;
 
-  const pactFile: C8yPact = {
+  const pact: C8yPact = {
     id,
     info,
     records: [pactRecord],
   };
+  Cypress.c8ypact.preprocessor.apply(pact);
+
   cy.task(
     "c8ypact:save",
     {
-      ...pactFile,
+      ...pact,
       folder,
     },
     debugLogger()

@@ -760,13 +760,11 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
     message: matcher.constructor.name || "-",
   });
   try {
-    const preprocessedResponse = _.cloneDeep(response);
-    Cypress.c8ypact.preprocessor.apply(preprocessedResponse, info.preprocessor);
-
     const responseAsRecord = _.pick(
-      C8yDefaultPactRecord.from(preprocessedResponse),
+      C8yDefaultPactRecord.from(response),
       matchingProperties
     );
+    Cypress.c8ypact.preprocessor.apply(responseAsRecord, info.preprocessor);
     consoleProps.responseAsRecord = responseAsRecord;
 
     matcher.match(responseAsRecord, pactToMatch, consoleProps);

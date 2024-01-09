@@ -409,53 +409,169 @@ describe("c8yclient", () => {
   context("c8ypact preprocessing", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
+      Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
+      Cypress.env("C8Y_PACT_IGNORE", undefined);
     });
 
-    it("should replace Authorization header and password in body", function () {
-      const obj: Cypress.Response<any> = {
-        status: 201,
-        isOkStatusCode: true,
-        statusText: "Created",
-        headers: {
-          "content-type":
-            "application/vnd.com.nsn.cumulocity.newdevicerequest+json;charset=UTF-8;ver=0.9",
-          date: "Fri, 17 Nov 2023 13:12:04 GMT",
-          expires: "0",
-        },
-        requestHeaders: {
-          Authorization: "asdasdasdasd",
-          "content-type": "application/json",
-          accept: "application/json",
-          UseXBasic: "true",
-        },
-        duration: 35,
-        url: "https://oee-dev.eu-latest.cumulocity.com/devicecontrol/newDeviceRequests",
-        body: {
-          customProperties: {},
-          creationTime: "2023-11-17T13:12:03.992Z",
-          status: "WAITING_FOR_CONNECTION",
-          password: "abasasapksasas",
-        },
-        method: "POST",
-        requestBody: {
-          id: "abc123124",
-        },
-        allRequestResponses: [],
-      };
+    const cypressResponse: Partial<Cypress.Response<any>> = {
+      headers: {
+        date: "Fri, 17 Nov 2023 13:12:04 GMT",
+        expires: "0",
+      },
+      requestHeaders: {
+        Authorization: "asdasdasdasd",
+        "content-type": "application/json",
+        accept: "application/json",
+        UseXBasic: "true",
+      },
+      body: {
+        customProperties: {},
+        creationTime: "2023-11-17T13:12:03.992Z",
+        status: "WAITING_FOR_CONNECTION",
+        password: "abasasapksasas",
+      },
+    };
+
+    it("should not add any non-existing path", function () {
+      const obj = _.cloneDeep(cypressResponse);
+      Cypress.c8ypact.preprocessor.apply(obj, {
+        obfuscationPattern: "<abcdefg>",
+        obfuscate: ["requestHeaders.MyAuthorization", "body.password2"],
+      });
+      expect(obj.requestHeaders.Authorization).to.eq("asdasdasdasd");
+      expect(obj.body.password).to.eq("abasasapksasas");
+      expect(obj.requestHeaders.MyAuthorization).to.be.undefined;
+      expect(obj.body.password2).to.be.undefined;
+      expect("MyAuthorization" in obj.requestHeaders).to.be.false;
+      expect("password2" in obj.body).to.be.false;
+    });
+
+    it("should use env variables if no options provided", function () {
+      Cypress.env("C8Y_PACT_OBFUSCATE", [
+        "requestHeaders.Authorization",
+        "body.password",
+      ]);
+      Cypress.env("C8Y_PACT_IGNORE", [
+        "requestHeaders.date",
+        "body.creationTime",
+      ]);
+      const obj = _.cloneDeep(cypressResponse);
+      Cypress.c8ypact.preprocessor.apply(obj);
+      expect(obj.requestHeaders.Authorization).to.eq("********");
+      expect(obj.body.password).to.eq("********");
+      expect(obj.requestHeaders.date).to.be.undefined;
+      expect(obj.body.creationTime).to.be.undefined;
+    });
+
+    it("should use config from options over env variables", function () {
+      Cypress.env("C8Y_PACT_OBFUSCATE", [
+        "requestHeaders.Authorization",
+        "body.password",
+      ]);
+      Cypress.env("C8Y_PACT_IGNORE", ["requestHeaders.accept", "body.status"]);
+      const obj = _.cloneDeep(cypressResponse);
       Cypress.c8ypact.preprocessor.apply(obj, {
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["requestHeaders.Authorization", "body.password"],
+        ignore: ["requestHeaders.date", "body.creationTime"],
       });
       expect(obj.requestHeaders.Authorization).to.eq("<abcdefg>");
       expect(obj.body.password).to.eq("<abcdefg>");
+      expect(obj.requestHeaders.accept).to.not.be.undefined;
+      expect(obj.body.status).to.not.be.undefined;
+      expect(obj.requestHeaders.date).to.be.undefined;
+      expect(obj.body.creationTime).to.be.undefined;
+    });
+
+    it("should preprocess Cypress.Response", function () {
+      const obj = _.cloneDeep(cypressResponse);
+      Cypress.c8ypact.preprocessor.apply(obj, {
+        obfuscationPattern: "<abcdefg>",
+        obfuscate: ["requestHeaders.Authorization", "body.password"],
+        ignore: ["requestHeaders.date", "body.creationTime"],
+      });
+      expect(obj.requestHeaders.Authorization).to.eq("<abcdefg>");
+      expect(obj.body.password).to.eq("<abcdefg>");
+      expect(obj.requestHeaders.date).to.be.undefined;
+      expect(obj.body.creationTime).to.be.undefined;
+    });
+
+    it("should preprocess C8yDefaultPactRecord", function () {
+      const obj = C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse));
+      expect(obj).to.not.be.null;
+      Cypress.c8ypact.preprocessor.apply(obj, {
+        obfuscationPattern: "<abcdefg>",
+        obfuscate: ["request.headers.Authorization", "response.body.password"],
+        ignore: ["request.headers.date", "response.body.creationTime"],
+      });
+      // @ts-ignore
+      expect(obj.request.headers.Authorization).to.eq("<abcdefg>");
+      expect(obj.response.body.password).to.eq("<abcdefg>");
+      // @ts-ignore
+      expect(obj.request.headers.date).to.be.undefined;
+      expect(obj.response.body.creationTime).to.be.undefined;
+    });
+
+    it("should not preprocess reserved keys", function () {
+      const obj = {
+        records: [C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse))],
+        info: {
+          baseUrl: "http://localhost:8080",
+        },
+        id: "test",
+      };
+      Cypress.c8ypact.preprocessor.apply(obj, {
+        obfuscationPattern: "<abcdefg>",
+        obfuscate: ["info", "id", "records"],
+        ignore: ["info", "id", "records"],
+      });
+      expect(obj.records).to.deep.eq([
+        C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
+      ]);
+      expect(obj.info).to.deep.eq({ baseUrl: "http://localhost:8080" });
+      expect(obj.id).to.eq("test");
+    });
+
+    it("should preprocess C8yPact and preprocess records", function () {
+      const obj = {
+        records: [
+          C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
+          C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
+          C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
+        ],
+      };
+      debugger;
+      Cypress.c8ypact.preprocessor.apply(obj, {
+        obfuscationPattern: "<abcdefg>",
+        obfuscate: ["request.headers.Authorization", "response.body.password"],
+        ignore: ["request.headers.date", "response.body.creationTime"],
+      });
+      // @ts-ignore
+      expect(obj.records[0].request.headers.Authorization).to.eq("<abcdefg>");
+      expect(obj.records[0].response.body.password).to.eq("<abcdefg>");
+      // @ts-ignore
+      expect(obj.records[1].request.headers.Authorization).to.eq("<abcdefg>");
+      expect(obj.records[1].response.body.password).to.eq("<abcdefg>");
+      // @ts-ignore
+      expect(obj.records[2].request.headers.Authorization).to.eq("<abcdefg>");
+      expect(obj.records[2].response.body.password).to.eq("<abcdefg>");
+      // @ts-ignore
+      expect(obj.records[0].request.headers.date).to.be.undefined;
+      expect(obj.records[0].response.body.creationTime).to.be.undefined;
+      // @ts-ignore
+      expect(obj.records[1].request.headers.date).to.be.undefined;
+      expect(obj.records[1].response.body.creationTime).to.be.undefined;
+      // @ts-ignore
+      expect(obj.records[2].request.headers.date).to.be.undefined;
+      expect(obj.records[2].response.body.creationTime).to.be.undefined;
     });
 
     it("should preprocess response when saving response", function () {
       const obfuscationPattern =
         Cypress.c8ypact.preprocessor.defaultObfuscationPattern;
       Cypress.env("C8Y_PACT_OBFUSCATE", [
-        "requestHeaders.Authorization",
-        "body.password",
+        "request.headers.Authorization",
+        "response.body.password",
       ]);
 
       stubResponses([
