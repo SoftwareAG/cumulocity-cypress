@@ -35,6 +35,7 @@
     "semver": "^7.5.2"
   },
   "devDependencies": {
+    "@angular/common": "^14.1.2",
     "@c8y/client": "^1017.0.374",
     "@types/chai": "^4.3.4",
     "@types/glob": "^8.1.0",
@@ -49,6 +50,7 @@
   },
   "peerDependencies": {
     "@c8y/client": ">=1015.0.0",
-    "cypress": ">=12.0.0"
+    "cypress": ">=12.0.0",
+    "@angular/common": ">=14.0.0"
   }
 }
