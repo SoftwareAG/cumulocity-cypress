@@ -1,4 +1,4 @@
-import { C8yDefaultPactRecord } from "../../../lib/pacts/c8ypact";
+import { C8yDefaultPactRecord } from "cumulocity-cypress/lib/pacts/c8ypact";
 
 const { _ } = Cypress;
 
@@ -7,7 +7,7 @@ beforeEach(() => {
 });
 
 const pacts: string[] = Cypress.env("_pacts");
-if (!pacts || !_.isArray(pacts)) {
+if (!pacts || !_.isArray(pacts) || _.isEmpty(pacts)) {
   throw new Error("No pact records to run.");
 }
 

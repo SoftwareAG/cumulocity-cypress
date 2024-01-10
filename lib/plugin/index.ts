@@ -72,6 +72,8 @@ function configureC8yPlugin(
 
   // use C8Y_PACT_ENABLED to see if the plugin has been loaded
   config.env.C8Y_PACT_ENABLED = "true";
+  // use C8Y_PACT_FOLDER to find out where the pact files have been loaded from
+  config.env.C8Y_PACT_FOLDER = adapter.getFolder();
 
   function savePact(pact: C8yPact): null {
     const { id, info, records } = pact;

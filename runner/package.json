@@ -3,7 +3,9 @@
   "version": "0.2.4",
   "description": "Cypress runner for Cumulocity pact recordings",
   "scripts": {
-    "test": "cypress run --config-file cypress.config.js --spec cypress/e2e/pact-runner.cy.ts"
+    "test": "cypress run --config-file cypress.config.js --spec cypress/e2e/pact-runner.cy.ts",
+    "docker": "docker build --platform linux/arm64 -t c8ypact-runner --target prod .",
+    "docker:dev": "docker build --platform linux/arm64 -t c8ypact-runner --target dev ."
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,7 @@
     "url": "https://github.com/SoftwareAG/cumulocity-cypress/issues"
   },
   "dependencies": {
+    "@angular/common": "^14.1.2",
     "@c8y/client": "^1017.0.374",
     "cumulocity-cypress": "^0.2.4",
     "cypress": "^13.3.2",

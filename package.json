@@ -9,10 +9,10 @@
     "test:run": "TZ=Europe/Berlin cypress run  --project test --browser chrome --config video=false",
     "test:open": "TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 debug",
     "debug": "CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open --project test",
-    "clean": "rimraf dist/ && rimraf runner/dist/",
+    "clean": "rimraf dist/ && rimraf runner/dist/ && rimraf runner/.yalc && rimraf runner/yalc.lock",
     "copy-files": "copyfiles lib/**/*.*js lib/**/*.d.ts README.md package.json dist/",
     "build": "npm run clean && npm run copy-files && tsc && cd dist/ && npm run clean-package-json",
-    "runner:docker": "npm run runner:build && cd runner && docker build --platform linux/arm64 -t c8ypact-runner .",
+    "runner:yalc": "npm run clean && npm run build && yalc publish && cd runner && yalc add cumulocity-cypress",
     "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },
   "repository": {
@@ -44,7 +44,8 @@
     "http-server": "^14.1.1",
     "rimraf": "^5.0.1",
     "start-server-and-test": "^2.0.0",
-    "typescript": "^5.0.2"
+    "typescript": "^5.0.2",
+    "yalc": "^1.0.0-pre.53"
   },
   "peerDependencies": {
     "@c8y/client": ">=1015.0.0",

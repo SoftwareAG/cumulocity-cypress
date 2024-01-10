@@ -7,9 +7,6 @@ const {
 module.exports = defineConfig({
   e2e: {
     setupNodeEvents(on, config) {
-      config.env.C8Y_PACT_FOLDER =
-        "/Users/twi/Projects/cia/c8y-sensorapp-tests/cypress/fixtures";
-
       const fixture =
         config.env.C8Y_PACT_FOLDER ||
         config.env.pactFolder ||

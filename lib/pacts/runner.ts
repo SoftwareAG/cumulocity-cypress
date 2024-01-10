@@ -8,7 +8,7 @@ declare global {
 
   interface C8yPactRunner {
     run: (pacts: C8yPact[], options?: C8yPactRunnerOptions) => void;
-    runTest: (title: string, pact: any, info: any) => void;
+    runTest: (title: string, pact: C8yPact) => void;
   }
 }
 
