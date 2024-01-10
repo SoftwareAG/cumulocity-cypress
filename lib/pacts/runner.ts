@@ -1,19 +1,49 @@
 const { _ } = Cypress;
 
 declare global {
+  /**
+   * Configuration options for C8yPactRunner.
+   */
   interface C8yPactRunnerOptions {
+    /**
+     * Filter for consumer name.
+     */
     consumer?: string;
+    /**
+     * Filter for producer name.
+     */
     producer?: string;
   }
 
+  /**
+   * Runtime for C8yPact objects. A runner will create the tests dynamically based on
+   * the pact objects information and rerun recorded requests.
+   */
   interface C8yPactRunner {
+    /**
+     * Runs all pact objects. Will create the tests dynamically for each pact object.
+     *
+     * @param pacts Pact objects to run.
+     * @param options Runner options.
+     */
     run: (pacts: C8yPact[], options?: C8yPactRunnerOptions) => void;
-    runTest: (title: string, pact: C8yPact) => void;
+
+    /**
+     * Runs a single pact object. Needs to run within a test-case.
+     *
+     * @param pact Pact object to run.
+     */
+    runTest: (pact: C8yPact) => void;
   }
 }
 
 type TestHierarchyTree<T> = { [key: string]: T | TestHierarchyTree<T> };
 
+/**
+ * Default implementation of C8yPactRunner. Runtime for C8yPact objects that will
+ * create the tests dynamically and rerun recorded requests. Supports Basic and Cookie based
+ * authentication, id mapping, consumer and producer filtering and URL replacement.
+ */
 export class C8yDefaultPactRunner implements C8yPactRunner {
   constructor() {}
 
@@ -81,7 +111,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
       if (isPact(subTree)) {
         it(key, () => {
-          that.runTest(key, subTree);
+          that.runTest(subTree);
         });
       } else {
         context(key, function () {
@@ -91,7 +121,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     });
   }
 
-  runTest(title: string, pact: C8yPact) {
+  runTest(pact: C8yPact) {
     this.idMapper = {};
     for (const record of pact?.records) {
       cy.then(() => {

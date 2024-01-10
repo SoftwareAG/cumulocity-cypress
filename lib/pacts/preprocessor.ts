@@ -1,7 +1,19 @@
 const { _ } = Cypress;
 
 declare global {
+  /**
+   * Preprocessor for C8yPact objects. Use C8yPactPreprocessor to preprocess any
+   * Cypress.Response, C8yPactRecord or C8yPact. The preprocessor could be used to
+   * obfuscate or remove sensitive data from the pact objects. It is called on save
+   * and load of the pact objects.
+   */
   interface C8yPactPreprocessor {
+    /**
+     * Applies the preprocessor to the given object.
+     *
+     * @param obj Object to preprocess.
+     * @param options Preprocessor options.
+     */
     apply: (
       obj: Partial<Cypress.Response | C8yPactRecord | C8yPact>,
       options?: C8yPactPreprocessorOptions
@@ -9,13 +21,37 @@ declare global {
     defaultObfuscationPattern: string;
   }
 
+  /**
+   * Configuration options for the C8yPactPreprocessor.
+   */
   interface C8yPactPreprocessorOptions {
+    /**
+     * Key paths to obfuscate.
+     *
+     * @example
+     * response.body.password
+     */
     obfuscate?: string[];
+    /**
+     * Key paths to remove.
+     *
+     * @example
+     * request.headers.Authorization
+     */
     ignore?: string[];
+    /**
+     * Obfuscation pattern to use. Default is ********.
+     */
     obfuscationPattern?: string;
   }
 }
 
+/**
+ * Default implementation of C8yPactPreprocessor. Preprocessor for C8yPact objects
+ * that can be used to obfuscate or remove sensitive data from the pact objects.
+ * Use C8ypactPreprocessorOptions to configure the preprocessor. Also uses environment
+ * variables C8Y_PACT_OBFUSCATE and C8Y_PACT_IGNORE.
+ */
 export class C8yPactDefaultPreprocessor implements C8yPactPreprocessor {
   constructor() {}
 

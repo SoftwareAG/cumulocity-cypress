@@ -33,46 +33,149 @@ declare global {
     ignore?: boolean;
   }
 
+  /**
+   * ID representing a pact object. Should be unique.
+   */
   type C8yPactID = string;
 
+  /**
+   * Pact object. Contains all information about a recorded pact, including
+   * the pact records with requests and responses as well as info object with
+   * meta data. A C8yPact objtect must have an unique id.
+   */
   interface C8yPact {
+    /**
+     * Pact records containing the requests and responses as well as auth information,
+     * configuration options and created objects.
+     */
     records: C8yPactRecord[];
+    /**
+     * Meta information describing the pact.
+     */
     info: C8yPactInfo;
+    /**
+     * Unique id of the pact.
+     */
     id: C8yPactID;
   }
 
+  /**
+   *
+   */
   interface C8yPactInfo {
+    /**
+     * Information describing the producer of the pact.
+     */
     producer?: { name: string; version?: string };
+    /**
+     * Information describing the consumer of the pact.
+     */
     consumer?: { name: string; version?: string };
+    /**
+     * Preprocessor used to preprocess the pact.
+     */
     preprocessor?: C8yPactPreprocessorOptions;
+    /**
+     * Tags describing the pact.
+     */
     tags?: string[];
+    /**
+     * Description of the pact.
+     */
     description?: string;
+    /**
+     * Version information of the system, runner and pact standard used to record the pact.
+     */
     version?: { system?: string; c8ypact?: string; runner?: string };
+    /**
+     * Title of the pact. Title is an array of suite and test titles.
+     */
     title?: string[];
+    /**
+     * Id of the pact.
+     */
     id?: C8yPactID;
+    /**
+     * Base URL when recording the pact.
+     */
     baseUrl?: string;
+    /**
+     * Tenant when recording the pact.
+     */
     tenant?: string;
   }
 
+  /**
+   * C8yPact Cypress interface. Contains all functions and properties to interact and configure
+   * processing of C8yPact objects.
+   */
   interface CypressC8yPact {
+    /**
+     * The C8yPactMatcher implementation used to match requests and responses. Default is C8yDefaultPactMatcher.
+     * Can be overridden by setting a matcher in C8yPactConfigOptions.
+     */
     matcher: C8yPactMatcher;
+    /**
+     * The C8yPactPreprocessor implementation used to preprocess the pact objects.
+     */
     preprocessor: C8yPactPreprocessor;
+    /**
+     * Get the pact identifiert for the current test case. The identifier is used to identify the pact.
+     */
     currentPactIdentifier: () => C8yPactID;
+    /**
+     * Get the pact filename for the current test case. The filename is used to store the pact.
+     */
     currentPactFilename: () => string;
+    /**
+     * Get the next pact record for the current test case as stored in C8yPact records.
+     */
     currentNextRecord: () => Cypress.Chainable<C8yPactNextRecord | null>;
+    /**
+     * Get the pact for the current test case.
+     */
     currentPact: () => Cypress.Chainable<C8yPact | null>;
-    currentMatcher: () => C8yPactMatcher;
+    /**
+     * Save the given response as a pact record in the pact for the current test case.
+     */
     savePact: (response: Cypress.Response<any>, client?: C8yClient) => void;
+    /**
+     * Checks if the C8yPact plugin is enabled.
+     */
     isEnabled: () => boolean;
+    /**
+     * Checks if the C8yPact plugin is enabled and in recording mode.
+     */
     isRecordingEnabled: () => boolean;
+    /**
+     * Use failOnMissingPacts to disable failing the test if no pact or no next record
+     * is found for the current test case.
+     */
     failOnMissingPacts: boolean;
+    /**
+     * Use strictMatching to enable strict matching of the pact records. If strict matching
+     * is enabled, all properties of the pact records must match and tests fail if a property
+     * is missing.
+     */
     strictMatching: boolean;
+    /**
+     * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
+     */
     pactRunner: C8yPactRunner;
+    /**
+     * Use debugLog to enable logging of debug information to the Cypress debug log.
+     */
     debugLog: boolean;
   }
 
+  /**
+   * The request stored in a C8yPactRecord.
+   */
   type C8yPactRequest = Partial<Cypress.RequestOptions>;
 
+  /**
+   * The response stored in a C8yPactRecord.
+   */
   interface C8yPactResponse<T> {
     allRequestResponses?: any[];
     body?: T;
@@ -84,6 +187,11 @@ declare global {
     method?: string;
   }
 
+  /**
+   * The C8yPactRecord contains all information about a recorded request. It contains
+   * the request and response as well as configuration options, auth information and
+   * the created object id.
+   */
   interface C8yPactRecord {
     request: C8yPactRequest;
     response: C8yPactResponse<any>;
@@ -91,9 +199,15 @@ declare global {
     auth: C8yAuthOptions;
     createdObject: string;
 
+    /**
+     * Converts the C8yPactRecord to a Cypress.Response object.
+     */
     toCypressResponse(): Cypress.Response<any>;
   }
 
+  /**
+   * The C8yPactNextRecord contains a single pact record and the info object.
+   */
   type C8yPactNextRecord = { record: C8yPactRecord; info?: C8yPactInfo };
 
   /**
@@ -113,6 +227,9 @@ declare global {
   function isPact(obj: any): obj is C8yPact;
 }
 
+/**
+ * Default implementation of C8yPactRecord.
+ */
 export class C8yDefaultPactRecord implements C8yPactRecord {
   request: C8yPactRequest;
   response: C8yPactResponse<any>;
@@ -140,6 +257,11 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     }
   }
 
+  /**
+   * Creates a C8yPactRecord from a Cypress.Response object.
+   * @param response The Cypress.Response object.
+   * @param client The C8yClient for options and auth information.
+   */
   static from(
     response: Cypress.Response<any>,
     client: C8yClient = null
@@ -147,6 +269,9 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     return createPactRecord(response, client);
   }
 
+  /**
+   * Converts the C8yPactRecord to a Cypress.Response object.
+   */
   toCypressResponse<T>(): Cypress.Response<T> {
     let result = _.cloneDeep(this.response);
     _.extend(result, {
@@ -169,7 +294,6 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
 
 Cypress.c8ypact = {
   currentPactIdentifier,
-  currentMatcher,
   currentPact,
   currentPactFilename,
   currentNextRecord,
@@ -219,11 +343,6 @@ function currentPactFilename(): string {
   return `${Cypress.config().fixturesFolder}/c8ypact/${pactId}.json`;
 }
 
-function currentMatcher(): C8yPactMatcher {
-  const pact = Cypress.config().c8ypact;
-  return (pact && pact.matcher) || Cypress.c8ypact.matcher;
-}
-
 function isEnabled(): boolean {
   return Cypress.env("C8Y_PACT_ENABLED") != null;
 }
@@ -247,7 +366,7 @@ function savePact(response: Cypress.Response<any>, client?: C8yClient) {
     info,
     records: [pactRecord],
   };
-  Cypress.c8ypact.preprocessor.apply(pact);
+  Cypress.c8ypact.preprocessor?.apply(pact);
 
   cy.task(
     "c8ypact:save",
@@ -334,7 +453,7 @@ function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
       obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE") || [],
       ignore: Cypress.env("C8Y_PACT_IGNORE") || [],
       obfuscationPattern:
-        Cypress.c8ypact.preprocessor.defaultObfuscationPattern,
+        Cypress.c8ypact.preprocessor?.defaultObfuscationPattern,
     },
     consumer: c8ypact?.consumer,
     producer: c8ypact?.producer,
@@ -407,6 +526,7 @@ function createPactRecord(
   };
 
   if (client?._auth) {
+    // do not pick the password. passwords must not be stored in the pact.
     pact.auth = { ...envAuth, ..._.pick(client._auth, ["user", "userAlias"]) };
     pact.auth.type = client._auth.constructor.name;
   }

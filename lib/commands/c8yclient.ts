@@ -118,7 +118,7 @@ declare global {
 
       /**
        * Compares a given Cypress.Response object with a C8yPactRecord contract. If
-       * the contract is not met, an C8yPactError is thrown.
+       * the contract and the response do not match, an C8yPactError is thrown.
        *
        * @param response - A Cypress.Response object representing the HTTP response.
        * @param record - A C8yPactRecord object representing the contract.
@@ -201,14 +201,24 @@ declare global {
     requestBody?: string | any;
   }
 
-  // wrapper for Client to pass auth and options without extending Client
-  // using underscore to avoid name clashes with Client and misunderstandings reading the code
+  /**
+   * Wrapper for Client to pass auth and options without extending Client.
+   * Using underscore to avoid name clashes with Client and misunderstandings reading the code.
+   */
   interface C8yClient {
     _auth?: C8yAuthentication;
     _options?: C8yClientOptions;
     _client: Client;
   }
 
+  /**
+   * Covert a given object to a Cypress.Response object.
+   *
+   * @param obj The object to convert.
+   * @param duration Additional duration to add to the response.
+   * @param fetchOptions Additional fetch options to use for conversion. Required for requestHeaders for example.
+   * @param url Additional url to add to the response.
+   */
   function toCypressResponse<T = any>(
     obj:
       | Partial<Response>
@@ -745,7 +755,8 @@ Cypress.Commands.add(
 Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
 
 Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
-  const matcher = Cypress.c8ypact.currentMatcher();
+  const p = Cypress.config().c8ypact;
+  const matcher = (p && p.matcher) || Cypress.c8ypact.matcher;
   const matchingProperties = ["request", "response"];
   const pactToMatch = _.pick(pact, matchingProperties);
 
@@ -764,7 +775,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
       C8yDefaultPactRecord.from(response),
       matchingProperties
     );
-    Cypress.c8ypact.preprocessor.apply(responseAsRecord, info.preprocessor);
+    Cypress.c8ypact.preprocessor?.apply(responseAsRecord, info.preprocessor);
     consoleProps.responseAsRecord = responseAsRecord;
 
     matcher.match(responseAsRecord, pactToMatch, consoleProps);
@@ -838,6 +849,10 @@ function isCypressResponse(obj: any): obj is Cypress.Response {
   );
 }
 
+/**
+ * Checks if the given object is an array only containing functions.
+ * @param obj The object to check.
+ */
 export function isArrayOfFunctions<T>(
   functions: C8yClientFnArg | Array<Function>
 ): functions is Array<Function> {
@@ -845,6 +860,10 @@ export function isArrayOfFunctions<T>(
   return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
 }
 
+/**
+ * Checks if the given object is a window.Response.
+ * @param obj The object to check.
+ */
 export function isWindowFetchResponse(obj: any): obj is Partial<Response> {
   return (
     obj != null &&
@@ -859,6 +878,10 @@ export function isWindowFetchResponse(obj: any): obj is Partial<Response> {
   );
 }
 
+/**
+ * Checks if the given object is an IResult.
+ * @param obj The object to check.
+ */
 export function isIResult(obj: any): obj is IResult<any> {
   return (
     obj != null &&

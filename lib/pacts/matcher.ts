@@ -2,7 +2,19 @@ const { _ } = Cypress;
 import * as datefns from "date-fns";
 
 declare global {
+  /**
+   * Matcher for C8yPactRecord objects. Use C8yPactMatcher to match any two
+   * records. Depending on the matcher implementation an Error will be thrown
+   * or boolean is returned.
+   */
   interface C8yPactMatcher {
+    /**
+     * Matches two objects.
+     *
+     * @param obj1 First object to match.
+     * @param obj2 Second object to match.
+     * @param loggerProps Properties to log in Cypress debug log.
+     */
     match: (
       obj1: Partial<C8yPactRecord>,
       obj2: Partial<C8yPactRecord>,
@@ -11,6 +23,13 @@ declare global {
   }
 }
 
+/**
+ * Default implementation of C8yPactMatcher to match C8yPactRecord objects.
+ * In case objects do not match an C8yPactError will be thrown.
+ *
+ * C8yDefaultPactMatcher can be configured with custom property matchers. Use
+ * addPropertyMatcher to add a new property matcher for a specific property.
+ */
 export class C8yDefaultPactMatcher {
   private propertyMatchers: { [key: string]: C8yPactMatcher } = {};
   private parents: string[] = [];
@@ -163,15 +182,27 @@ export class C8yDefaultPactMatcher {
     return true;
   }
 
+  /**
+   * Adds a new property matcher for the given property name.
+   */
   addPropertyMatcher(propertyName: string, matcher: C8yPactMatcher) {
     this.propertyMatchers[propertyName] = matcher;
   }
 
+  /**
+   * Removes the property matcher for the given property name.
+   */
   removePropertyMatcher(propertyName: string) {
     delete this.propertyMatchers[propertyName];
   }
 }
 
+/**
+ * Extends C8yDefaultPactMatcher with default property matchers for Cumulocity
+ * response bodies. It has rules configured at least for the following properties:
+ * id, statistics, lastUpdated, creationTime, next, self, password, owner, tenantId
+ * and lastPasswordChange. It is registered for the properties body and requestBody.
+ */
 export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
   constructor(propertyMatchers = {}) {
     super(propertyMatchers);
