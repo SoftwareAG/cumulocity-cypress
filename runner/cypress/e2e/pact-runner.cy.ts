@@ -6,13 +6,13 @@ beforeEach(() => {
   Cypress.session.clearAllSavedSessions();
 });
 
-const pacts = Cypress.env("_pacts");
+const pacts: string[] = Cypress.env("_pacts");
 if (!pacts || !_.isArray(pacts)) {
   throw new Error("No pact records to run.");
 }
 
-const records = pacts.map((item) => {
-  const pact = JSON.parse(item);
+const pactObjects = pacts.map((item) => {
+  const pact: C8yPact = JSON.parse(item);
   // required to map the record object to a C8yPactRecord here as this can
   // not be done in the plugin
   pact.records = pact.records?.map((record) => {
@@ -32,6 +32,4 @@ const records = pacts.map((item) => {
   return pact;
 });
 
-console.log(records);
-
-Cypress.c8ypact.pactRunner.run(records);
+Cypress.c8ypact.pactRunner.run(pactObjects);
