@@ -786,7 +786,6 @@ describe("c8yclient", () => {
         {},
         "http://example.com"
       );
-      console.log(response);
       expect(response).to.have.property("status", 200);
       expect(response).to.have.property("isOkStatusCode", true);
       expect(response).to.have.property("statusText", "OK");
@@ -824,7 +823,6 @@ describe("c8yclient", () => {
       };
 
       const response = toCypressResponse(r, 0, {}, "http://example.com");
-      console.log(response);
       expect(response).to.have.property("status", 404);
       expect(response).to.have.property("isOkStatusCode", false);
       expect(response).to.have.property("statusText", "Error");
