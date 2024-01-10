@@ -65,6 +65,8 @@ declare global {
     // support cy.request properties
     sendImmediately?: boolean;
     bearer?: (() => string) | string;
+    userAlias?: string;
+    type?: string;
   }
 
   export type C8yAuthArgs = string | C8yAuthOptions;

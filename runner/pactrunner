@@ -1,0 +1,27 @@
+#!/bin/bash
+
+if [ "$#" -lt 2 ]; then
+  echo "Usage: $0 <pact location> <env file>"
+  exit 1
+fi
+
+pactLocation="$1"
+cypressEnv="$2"
+
+if [ ! -d "$pactLocation" ]; then
+  echo "Error: pact location does not exist or is not a directory."
+  exit 1
+fi
+
+if [ ! -f "$cypressEnv" ]; then
+  echo "Error: env file missing. Use env file to pass environment variables to the runner."
+  exit 1
+fi
+
+args="-v $pactLocation:/usr/src/app/cypress/fixtures -v $cypressEnv:/usr/src/app/cypress.env.json"
+
+if [ "$#" -eq 3 ]; then
+  docker run --rm $args -it c8ypact-runner "$3"
+else 
+  docker run --rm $args -it c8ypact-runner
+fi 

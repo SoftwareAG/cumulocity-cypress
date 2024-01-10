@@ -83,7 +83,7 @@ export function stubResponse<T>(
 ): void {
   Cypress.backend
     // @ts-ignore
-    .withArgs("http:request")
+    .withArgs("http:request", Cypress.sinon.match.any)
     .onCall(callIndex)
     .resolves(response);
   if (!response.status || response.status < 400) {

@@ -20,6 +20,7 @@ Contribute by raising pull requests. All commands must be documented and, if pos
   - [Chaining of commands](#chaining-of-commands)
   - [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
     - [c8yclient command](#c8yclient-command)
+  - [Environment Variables](#environment-variables)
 - [Development](#development)
   - [Debugging](#debugging)
     - [Console log debugging](#console-log-debugging)
@@ -43,24 +44,26 @@ Current set of commands include
 - `getCurrentTenant` and `getTenantId`
 - `visitAndWaitForSelector`
 - `toDate`, `toISODate` and `compareDates`
-- `c8yclient`
+- `c8yclient`, `c8yclientf` and `c8ymatch`
 - `createUser` and `deleteUser`
+- `getSystemVersion`
+- `bootstrapDeviceCredentials`
 
 # Installation and setup
 
 Add dependency to your package.json.
 
 ```bash
-npm install cumulocity-cypress --save-dev 
+npm install cumulocity-cypress --save-dev
 yarn add -D cumulocity-cypress
 ```
 
 You also need to have `@c8y/client` installed and make it available within the tested project as `cumulocity-cypress` defines `@c8y/client` as a peer-dependency. This is to ensure the version of `@c8y/client` to be used is the same as in the hosted test project.
 
-Install `@c8y/client` if needed via using
+Install `@c8y/client` if needed using
 
 ```bash
-npm install @c8y/client --save-dev 
+npm install @c8y/client --save-dev
 yarn add -D @c8y/client
 ```
 
@@ -71,7 +74,7 @@ Configure Cumulocity authentication. Easiest way to configure authentication is 
   "admin_username": "admin",
   "admin_password": "password",
   "noaccess_username": "noaccess",
-  "noaccess_password": "password",
+  "noaccess_password": "password"
 }
 ```
 
@@ -93,15 +96,18 @@ With this, also in the support file of your Cypress project, you can init enviro
 
 ```typescript
 before(() => {
-  cy.getAuth('admin')
+  cy.getAuth("admin")
     .getCurrentTenant()
     .then((tenant) => {
-      Cypress.env('C8Y_TENANT', tenant.body.name);
-      Cypress.env('C8Y_INSTANCE', tenant.body.domainName?.split('.').slice(1).join('.'));
+      Cypress.env("C8Y_TENANT", tenant.body.name);
+      Cypress.env(
+        "C8Y_INSTANCE",
+        tenant.body.domainName?.split(".").slice(1).join(".")
+      );
     })
     .then(() => {
-      expect(Cypress.env('C8Y_TENANT')).not.be.undefined;
-      expect(Cypress.env('C8Y_INSTANCE')).not.be.undefined;
+      expect(Cypress.env("C8Y_TENANT")).not.be.undefined;
+      expect(Cypress.env("C8Y_INSTANCE")).not.be.undefined;
     });
 });
 ```
@@ -341,9 +347,25 @@ cy.c8yclient((c) => c.userGroup.list({ pageSize: 10000}))
   })
 ```
 
+## Environment Variables
+
+Commands of this library make use of or provide a set of environment variables.
+
+- `C8Y_TENANT` (string) - store tenant for base url. set by `getTenantId` and `c8yclient`.
+- `C8Y_VERSION` (string) - Cumulocity version for base url. set by `getSystemVersion`.
+- `C8Y_USERNAME` (string) - username to be used by `getAuth`
+- `C8Y_PASSWORD` (string) - password to be used by `getAuth`
+- `C8Y_LOGGED_IN_USER` (string) - username of user logged in with `login`
+- `C8Y_LOGGED_IN_USER_ALIAS` (string) - alias that resolves to username with `getAuth(userAlias)`
+- `C8Y_PACT_ENABLED` (string) - has configureC8yPlugin been called in config
+- `C8Y_PACT_MODE` (string) - if set to `recording` all requests with `c8yclient` will be saved.
+- `C8Y_PACT_OBFUSCATE` (string[]) - pact properties to obfuscate before saving
+- `C8Y_PACT_IGNORE` (string[]) - pact properties to ignore and not save
+- `C8Y_PACT_FOLDER` (string) - folder where pacts are stored and restored from (read only)
+
 # Development
 
-## Debugging 
+## Debugging
 
 Debugging Cypress tests is tricky. To help debugging custom commands, this library comes with needed setup for debugging in Cypress.
 
@@ -414,7 +436,7 @@ For more information see [Debug just like you always do](https://docs.cypress.io
 
 ## Testing
 
-Cypress is used for testing commands. All tests a located in `cypress` folder. If needed, add HTML fixtures in `app/` folder.
+Cypress is used for testing commands. All tests a located in `test/cypress` folder. If needed, add HTML fixtures in `test/cypress/app/` folder.
 
 Run tests using
 
@@ -482,23 +504,25 @@ cy.disableGainsight()
   })
   .wait("@interception");
 ```
-# Useful links 
 
-📘 Explore the Knowledge Base   
-Dive into a wealth of Cumulocity IoT tutorials and articles in our [Tech Community Knowledge Base](https://tech.forums.softwareag.com/tags/c/knowledge-base/6/cumulocity-iot).  
+# Useful links
 
-💡 Get Expert Answers    
-Stuck or just curious? Ask the Cumulocity IoT experts directly on our [Forum](https://tech.forums.softwareag.com/tags/c/forum/1/Cumulocity-IoT).   
+📘 Explore the Knowledge Base  
+Dive into a wealth of Cumulocity IoT tutorials and articles in our [Tech Community Knowledge Base](https://tech.forums.softwareag.com/tags/c/knowledge-base/6/cumulocity-iot).
 
-🚀 Try Cumulocity IoT    
-See Cumulocity IoT in action with a [Free Trial](https://techcommunity.softwareag.com/en_en/downloads.html).   
+💡 Get Expert Answers  
+Stuck or just curious? Ask the Cumulocity IoT experts directly on our [Forum](https://tech.forums.softwareag.com/tags/c/forum/1/Cumulocity-IoT).
 
-✍️ Share Your Feedback    
-Your input drives our innovation. If you find a bug, please create an issue in the repository. If you’d like to share your ideas or feedback, please post them [here](https://tech.forums.softwareag.com/c/feedback/2). 
+🚀 Try Cumulocity IoT  
+See Cumulocity IoT in action with a [Free Trial](https://techcommunity.softwareag.com/en_en/downloads.html).
+
+✍️ Share Your Feedback  
+Your input drives our innovation. If you find a bug, please create an issue in the repository. If you’d like to share your ideas or feedback, please post them [here](https://tech.forums.softwareag.com/c/feedback/2).
 
 More to discover
-* [Recommended E2E testing framework](https://tech.forums.softwareag.com/t/recommended-e2e-testing-framework/285616)  
-* [How to setup component testing in CY8 CLI](https://tech.forums.softwareag.com/t/how-to-setup-component-testing-in-cy8-cli/285731)  
+
+- [Recommended E2E testing framework](https://tech.forums.softwareag.com/t/recommended-e2e-testing-framework/285616)
+- [How to setup component testing in CY8 CLI](https://tech.forums.softwareag.com/t/how-to-setup-component-testing-in-cy8-cli/285731)
 
 # Disclaimer
 
