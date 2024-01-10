@@ -18,7 +18,7 @@ if [ ! -f "$cypressEnv" ]; then
   exit 1
 fi
 
-args="-v $pactLocation:/usr/src/app/cypress/fixtures/c8ypact -v $cypressEnv:/usr/src/app/cypress.env.json"
+args="-v $pactLocation:/usr/src/app/cypress/fixtures -v $cypressEnv:/usr/src/app/cypress.env.json"
 
 if [ "$#" -eq 3 ]; then
   docker run --rm $args -it c8ypact-runner "$3"
