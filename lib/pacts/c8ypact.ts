@@ -103,6 +103,10 @@ declare global {
      * Tenant when recording the pact.
      */
     tenant?: string;
+    /**
+     * Setting of strict matching when recording the pact.
+     */
+    strictMatching?: boolean;
   }
 
   /**
@@ -193,10 +197,25 @@ declare global {
    * the created object id.
    */
   interface C8yPactRecord {
+    /**
+     * Request of the record.
+     */
     request: C8yPactRequest;
+    /**
+     * Response of the record.
+     */
     response: C8yPactResponse<any>;
+    /**
+     * Configuration options used for the request.
+     */
     options: C8yClientOptions;
+    /**
+     * Auth information used for the request. Can be Basic or Cookie auth. Contains username and possibly alias.
+     */
     auth: C8yAuthOptions;
+    /**
+     * Id of an object created by the request. Used for mapping when running the recording.
+     */
     createdObject: string;
 
     /**
@@ -446,7 +465,7 @@ function currentNextRecord(): Cypress.Chainable<{
 
 function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
   const c8ypact = Cypress.config().c8ypact;
-  const info = {
+  const info: C8yPactInfo = {
     title: Cypress.currentTest?.titlePath || [],
     id,
     preprocessor: {
@@ -464,6 +483,7 @@ function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
     version: Cypress.env("C8Y_VERSION") && {
       system: Cypress.env("C8Y_VERSION"),
     },
+    strictMatching: Cypress.c8ypact.strictMatching,
   };
   return info;
 }

@@ -45,6 +45,25 @@ describe("c8yclient", () => {
     );
   });
 
+  context("c8ypact setup", function () {
+    it("Cypress.c8ypact should be initialized with defaults", function () {
+      expect(Cypress.c8ypact).to.not.be.null.and.undefined;
+      expect(Cypress.c8ypact.debugLog).to.be.false;
+      expect(Cypress.c8ypact.failOnMissingPacts).to.be.true;
+      expect(Cypress.c8ypact.strictMatching).to.be.true;
+
+      expect(Cypress.c8ypact.isRecordingEnabled).to.be.a("function");
+      expect(Cypress.c8ypact.currentPactIdentifier).to.be.a("function");
+      expect(Cypress.c8ypact.currentPactFilename).to.be.a("function");
+      expect(Cypress.c8ypact.currentPact).to.be.a("function");
+      expect(Cypress.c8ypact.currentNextRecord).to.be.a("function");
+      expect(Cypress.c8ypact.savePact).to.be.a("function");
+      expect(Cypress.c8ypact.preprocessor).to.be.a("object");
+      expect(Cypress.c8ypact.pactRunner).to.be.a("object");
+      expect(Cypress.c8ypact.matcher).to.be.a("object");
+    });
+  });
+
   context("C8yDefaultPactRecord", function () {
     it("from() should create C8yDefaultPactRecord from Cypress.Response", function () {
       const response: Cypress.Response<any> = {
