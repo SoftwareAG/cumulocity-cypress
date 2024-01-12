@@ -519,7 +519,7 @@ function createPactRecord(
   );
 
   const envUser = Cypress.env("C8Y_LOGGED_IN_USER");
-  const envAlias = Cypress.env("C8Y_LOGGED_IN_USERALIAS");
+  const envAlias = Cypress.env("C8Y_LOGGED_IN_USER_ALIAS");
   const envAuth = {
     ...(envUser && { user: envUser }),
     ...(envAlias && { userAlias: envAlias }),

@@ -12,7 +12,7 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER", undefined);
-    Cypress.env("C8Y_LOGGED_IN_USERALIAS", undefined);
+    Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
 
     initRequestStub();
     stubResponses([
@@ -121,7 +121,7 @@ describe("c8yclient", () => {
 
     it("from() should create C8yDefaultPactRecord with auth from env", function () {
       Cypress.env("C8Y_LOGGED_IN_USER", "admin");
-      Cypress.env("C8Y_LOGGED_IN_USERALIAS", "alias");
+      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", "alias");
 
       // @ts-ignore
       let response: Cypress.Response<any> = {};
@@ -135,7 +135,7 @@ describe("c8yclient", () => {
     it("from() should use C8yClient auth", function () {
       // setting env variables to ensure client auth overrides env auth
       Cypress.env("C8Y_LOGGED_IN_USER", "admin");
-      Cypress.env("C8Y_LOGGED_IN_USERALIAS", "alias");
+      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", "alias");
       const auth: C8yAuthentication = new BasicAuth({
         user: "admin2",
         password: "mypassword",
