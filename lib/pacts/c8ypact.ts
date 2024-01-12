@@ -368,14 +368,43 @@ function savePact(response: Cypress.Response<any>, client?: C8yClient) {
   };
   Cypress.c8ypact.preprocessor?.apply(pact);
 
-  cy.task(
-    "c8ypact:save",
-    {
-      ...pact,
-      folder,
-    },
-    debugLogger()
-  );
+  const name = "c8ypact:save";
+  const data = {
+    ...pact,
+    folder,
+  };
+
+  // @ts-ignore
+  const ret = cy.state("commandIntermediateValue");
+  if (ret) {
+    // @ts-ignore
+    const { args, promise } = Cypress.emitMap("command:invocation", {
+      name: "task",
+      args: [name, data],
+    })[0];
+    new Promise((r) => promise.then(r))
+      .then(() =>
+        // @ts-ignore
+        Cypress.backend("run:privileged", {
+          commandName: "task",
+          args,
+          options: {
+            task: name,
+            arg: data,
+          },
+        })
+      )
+      .catch(() => {});
+  } else {
+    cy.task(
+      "c8ypact:save",
+      {
+        ...pact,
+        folder,
+      },
+      debugLogger()
+    );
+  }
 }
 
 function currentPact(): Cypress.Chainable<C8yPact | null> {
