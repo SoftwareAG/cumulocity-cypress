@@ -305,7 +305,7 @@ Cypress.c8ypact = {
   pactRunner: new C8yDefaultPactRunner(),
   failOnMissingPacts: true,
   strictMatching: true,
-  debugLog: true,
+  debugLog: false,
 };
 
 function debugLogger(): Cypress.Loggable {
