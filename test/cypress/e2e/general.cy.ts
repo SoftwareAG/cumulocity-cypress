@@ -83,7 +83,6 @@ describe("general", () => {
           );
         })
         .then((response) => {
-          console.log(response);
           expect(response.managedObjects[0].languageXYZ).to.eq("de");
         })
         .wait("@interception");
