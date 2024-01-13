@@ -222,6 +222,21 @@ describe("c8yclient", () => {
       const pactRecord = C8yDefaultPactRecord.from(response);
       expect(pactRecord.toCypressResponse()).to.deep.equal(response);
     });
+
+    it("date() should return date from response", function () {
+      // @ts-ignore
+      const response: Cypress.Response<any> = {
+        headers: {
+          date: "Fri, 17 Nov 2023 13:12:04 GMT",
+          expires: "0",
+        },
+      };
+
+      const pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.date()).to.deep.equal(
+        new Date("Fri, 17 Nov 2023 13:12:04 GMT")
+      );
+    });
   });
 
   context("c8ypact config", function () {

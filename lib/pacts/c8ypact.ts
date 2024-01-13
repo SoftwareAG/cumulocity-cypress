@@ -222,6 +222,10 @@ declare global {
      * Converts the C8yPactRecord to a Cypress.Response object.
      */
     toCypressResponse(): Cypress.Response<any>;
+    /**
+     * Returns the date of the response.
+     */
+    date(): Date;
   }
 
   /**
@@ -286,6 +290,14 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     client: C8yClient = null
   ): C8yPactRecord {
     return createPactRecord(response, client);
+  }
+
+  date(): Date {
+    const date = _.get(this.response, "headers.date");
+    if (date) {
+      return new Date(date);
+    }
+    return null;
   }
 
   /**
