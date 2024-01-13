@@ -4,6 +4,7 @@
   "description": "Cypress runner for Cumulocity pact recordings",
   "scripts": {
     "test": "cypress run --config-file cypress.config.js --spec cypress/e2e/pact-runner.cy.ts",
+    "test:open": "cypress open",    
     "docker": "docker build --platform linux/arm64 -t c8ypact-runner --target prod .",
     "docker:dev": "docker build --platform linux/arm64 -t c8ypact-runner --target dev ."
   },
