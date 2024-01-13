@@ -758,24 +758,92 @@ describe("c8yclient", () => {
   context("fetch requests", () => {
     beforeEach(() => {
       Cypress.env("C8Y_TENANT", "t123456789");
-    });
-
-    it("should tenant/currentTenant request should not have content-type", () => {
       stubResponse(
-        new window.Response(JSON.stringify({ name: "t123456789" }), {
-          status: 200,
+        new window.Response(JSON.stringify({ test: "test" }), {
+          status: 299,
           statusText: "OK",
           headers: {},
         })
       );
+    });
 
+    it("should remove content-type from tenant/currentTenant request", () => {
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<ICurrentTenant>((c) => {
           return c.tenant.current();
         })
         .then((response) => {
-          expect(response.status).to.eq(200);
+          expect(response.status).to.eq(299);
           expect(response.requestHeaders).to.not.have.property("content-type");
+        });
+    });
+
+    it("should add missing content-type if request has body", () => {
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<ICurrentTenant>((c) => {
+          return c.core.fetch("/inventory/managedObjects", {
+            method: "POST",
+            body: JSON.stringify({ name: "test" }),
+          });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(299);
+          expect(response.requestHeaders).to.have.property(
+            "content-type",
+            "application/json"
+          );
+        });
+    });
+
+    it("should not overwrite content-type if request has body", () => {
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<ICurrentTenant>((c) => {
+          return c.core.fetch("/inventory/managedObjects", {
+            method: "POST",
+            body: JSON.stringify({ name: "test" }),
+            headers: {
+              "content-type": "application/xml",
+            },
+          });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(299);
+          expect(response.requestHeaders).to.have.property(
+            "content-type",
+            "application/xml"
+          );
+        });
+    });
+
+    it("should not add content-type if request has no body", () => {
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<ICurrentTenant>((c) => {
+          return c.core.fetch("/inventory/managedObjects", {
+            method: "POST",
+          });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(299);
+          expect(response.requestHeaders).to.not.have.property(
+            "content-type",
+            "application/json"
+          );
+        });
+    });
+
+    it("should not add content-type for get requests without body", () => {
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<ICurrentTenant>((c) => {
+          return c.core.fetch("/inventory/managedObjects", {
+            method: "GET",
+          });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(299);
+          expect(response.requestHeaders).to.not.have.property(
+            "content-type",
+            "application/json"
+          );
         });
     });
   });

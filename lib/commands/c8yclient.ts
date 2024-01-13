@@ -335,6 +335,15 @@ window.fetch = async function (url, fetchOptions) {
   if (_.endsWith(toUrlString(url), "/tenant/currentTenant")) {
     // @ts-ignore
     fetchOptions.headers = _.omit(fetchOptions.headers, ["content-type"]);
+  } else {
+    // add json content type if body is present and content-type is not set
+    const method = fetchOptions?.method || "GET";
+    if (fetchOptions?.body && method !== "GET" && method != "HEAD") {
+      fetchOptions.headers = {
+        "content-type": "application/json",
+        ...fetchOptions.headers,
+      };
+    }
   }
 
   let startTime: number = Date.now();
