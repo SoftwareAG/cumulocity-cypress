@@ -1,0 +1,43 @@
+{
+  "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects?pageSize=5&fragmentType=languageXYZ&currentPage=1",
+  "next": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects?pageSize=5&fragmentType=languageXYZ&currentPage=2",
+  "managedObjects": [
+    {
+      "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects/4228241",
+      "id": "4228241",
+      "type": "c8y_UserPreference",
+      "lastUpdated": "2023-09-04T07:17:51.365Z",
+      "creationTime": "2021-07-20T13:19:27.372Z",
+      "owner": "test@test.de",
+      "childDevices": {
+        "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects/4228241/childDevices",
+        "references": []
+      },
+      "childAssets": {
+        "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects/4228241/childAssets",
+        "references": []
+      },
+      "childAdditions": {
+        "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects/4228241/childAdditions",
+        "references": []
+      },
+      "deviceParents": {
+        "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects/4228241/deviceParents",
+        "references": []
+      },
+      "assetParents": {
+        "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects/4228241/assetParents",
+        "references": []
+      },
+      "additionParents": {
+        "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects/4228241/additionParents",
+        "references": []
+      },
+      "languageXYZ": "en"
+    }
+  ],
+  "statistics": {
+    "pageSize": 5,
+    "currentPage": 1
+  }
+}

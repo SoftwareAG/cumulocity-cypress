@@ -49,7 +49,7 @@ describe("administration", () => {
               password: "mypassword",
               tenant: "t12345678",
             },
-            headers: { UseXBasic: true, "content-type": "application/json" },
+            headers: { UseXBasic: true },
             method: "DELETE",
           });
         });
@@ -77,7 +77,7 @@ describe("administration", () => {
               password: "mypassword",
               tenant: "t12345678",
             },
-            headers: { UseXBasic: true, "content-type": "application/json" },
+            headers: { UseXBasic: true },
             method: "DELETE",
           });
         });
@@ -113,7 +113,7 @@ describe("administration", () => {
               password: "mypassword",
               tenant: "t12345678",
             },
-            headers: { UseXBasic: true, "content-type": "application/json" },
+            headers: { UseXBasic: true },
           });
         });
     });
@@ -132,7 +132,7 @@ describe("administration", () => {
               password: "mypassword",
               tenant: "t12345678",
             },
-            headers: { UseXBasic: true, "content-type": "application/json" },
+            headers: { UseXBasic: true },
           });
         });
     });

@@ -7,7 +7,6 @@
       "content-type": "application/json"
     },
     "requestHeaders": {
-      "content-type": "application/json",
       "accept": "application/json",
       "UseXBasic": true
     },
@@ -238,7 +237,6 @@
       "content-type": "application/json"
     },
     "requestHeaders": {
-      "content-type": "application/json",
       "accept": "application/json",
       "UseXBasic": true
     },

@@ -329,6 +329,23 @@ window.fetch = async function (url, fetchOptions) {
     logOnce = true;
   }
 
+  // client.tenant.current() does add content-type header for some reason. probably mistaken accept header.
+  // as this is not required, remove it to avoid special handling in pact matching against recordings
+  // not created by c8y/client.
+  if (_.endsWith(toUrlString(url), "/tenant/currentTenant")) {
+    // @ts-ignore
+    fetchOptions.headers = _.omit(fetchOptions.headers, ["content-type"]);
+  } else {
+    // add json content type if body is present and content-type is not set
+    const method = fetchOptions?.method || "GET";
+    if (fetchOptions?.body && method !== "GET" && method != "HEAD") {
+      fetchOptions.headers = {
+        "content-type": "application/json",
+        ...fetchOptions.headers,
+      };
+    }
+  }
+
   let startTime: number = Date.now();
   const fetchPromise: Promise<Response> = window.fetchStub(url, fetchOptions);
 
@@ -508,9 +525,6 @@ function runClient(
   prevSubject: any,
   baseUrl: string
 ) {
-  client._client.core.defaultHeaders = {
-    "content-type": "application/json",
-  };
   storeClient(client);
   if (!fns) {
     // return Cypress.isCy(client) ? client : cy.wrap(client._client, { log: false });
@@ -529,9 +543,6 @@ function authenticateClient(
 ): Cypress.Chainable<C8yClient> {
   return cy.then(async () => {
     const clientCore = new FetchClient(auth, baseUrl);
-    clientCore.defaultHeaders = {
-      "content-type": "application/json",
-    };
     const res = await clientCore.fetch("/tenant/currentTenant");
     if (res.status !== 200) {
       throwError(makeErrorMessage(res.responseObj));

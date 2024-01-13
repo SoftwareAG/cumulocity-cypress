@@ -12,7 +12,7 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER", undefined);
-    Cypress.env("C8Y_LOGGED_IN_USERALIAS", undefined);
+    Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
 
     initRequestStub();
     stubResponses([
@@ -43,6 +43,25 @@ describe("c8yclient", () => {
         });
       }
     );
+  });
+
+  context("c8ypact setup", function () {
+    it("Cypress.c8ypact should be initialized with defaults", function () {
+      expect(Cypress.c8ypact).to.not.be.null.and.undefined;
+      expect(Cypress.c8ypact.debugLog).to.be.false;
+      expect(Cypress.c8ypact.failOnMissingPacts).to.be.true;
+      expect(Cypress.c8ypact.strictMatching).to.be.true;
+
+      expect(Cypress.c8ypact.isRecordingEnabled).to.be.a("function");
+      expect(Cypress.c8ypact.currentPactIdentifier).to.be.a("function");
+      expect(Cypress.c8ypact.currentPactFilename).to.be.a("function");
+      expect(Cypress.c8ypact.currentPact).to.be.a("function");
+      expect(Cypress.c8ypact.currentNextRecord).to.be.a("function");
+      expect(Cypress.c8ypact.savePact).to.be.a("function");
+      expect(Cypress.c8ypact.preprocessor).to.be.a("object");
+      expect(Cypress.c8ypact.pactRunner).to.be.a("object");
+      expect(Cypress.c8ypact.matcher).to.be.a("object");
+    });
   });
 
   context("C8yDefaultPactRecord", function () {
@@ -121,7 +140,7 @@ describe("c8yclient", () => {
 
     it("from() should create C8yDefaultPactRecord with auth from env", function () {
       Cypress.env("C8Y_LOGGED_IN_USER", "admin");
-      Cypress.env("C8Y_LOGGED_IN_USERALIAS", "alias");
+      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", "alias");
 
       // @ts-ignore
       let response: Cypress.Response<any> = {};
@@ -129,13 +148,14 @@ describe("c8yclient", () => {
       expect(pactRecord.auth).to.deep.equal({
         user: "admin",
         userAlias: "alias",
+        type: "CookieAuth",
       });
     });
 
     it("from() should use C8yClient auth", function () {
       // setting env variables to ensure client auth overrides env auth
       Cypress.env("C8Y_LOGGED_IN_USER", "admin");
-      Cypress.env("C8Y_LOGGED_IN_USERALIAS", "alias");
+      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", "alias");
       const auth: C8yAuthentication = new BasicAuth({
         user: "admin2",
         password: "mypassword",
@@ -201,6 +221,21 @@ describe("c8yclient", () => {
 
       const pactRecord = C8yDefaultPactRecord.from(response);
       expect(pactRecord.toCypressResponse()).to.deep.equal(response);
+    });
+
+    it("date() should return date from response", function () {
+      // @ts-ignore
+      const response: Cypress.Response<any> = {
+        headers: {
+          date: "Fri, 17 Nov 2023 13:12:04 GMT",
+          expires: "0",
+        },
+      };
+
+      const pactRecord = C8yDefaultPactRecord.from(response);
+      expect(pactRecord.date()).to.deep.equal(
+        new Date("Fri, 17 Nov 2023 13:12:04 GMT")
+      );
     });
   });
 
@@ -313,6 +348,7 @@ describe("c8yclient", () => {
           expect(spy.getCall(0).args[1]._auth).to.deep.eq({
             user: "admin",
             userAlias: "admin",
+            type: "BasicAuth",
           });
           expect(spy.getCall(0).args[1]._options).to.deep.eq({
             ...defaultClientOptions,
@@ -540,7 +576,6 @@ describe("c8yclient", () => {
           C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
         ],
       };
-      debugger;
       Cypress.c8ypact.preprocessor.apply(obj, {
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["request.headers.Authorization", "response.body.password"],
