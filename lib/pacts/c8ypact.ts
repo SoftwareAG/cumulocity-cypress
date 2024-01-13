@@ -103,6 +103,10 @@ declare global {
      * Tenant when recording the pact.
      */
     tenant?: string;
+    /**
+     * Setting of strict matching when recording the pact.
+     */
+    strictMatching?: boolean;
   }
 
   /**
@@ -193,16 +197,35 @@ declare global {
    * the created object id.
    */
   interface C8yPactRecord {
+    /**
+     * Request of the record.
+     */
     request: C8yPactRequest;
+    /**
+     * Response of the record.
+     */
     response: C8yPactResponse<any>;
+    /**
+     * Configuration options used for the request.
+     */
     options: C8yClientOptions;
+    /**
+     * Auth information used for the request. Can be Basic or Cookie auth. Contains username and possibly alias.
+     */
     auth: C8yAuthOptions;
+    /**
+     * Id of an object created by the request. Used for mapping when running the recording.
+     */
     createdObject: string;
 
     /**
      * Converts the C8yPactRecord to a Cypress.Response object.
      */
     toCypressResponse(): Cypress.Response<any>;
+    /**
+     * Returns the date of the response.
+     */
+    date(): Date;
   }
 
   /**
@@ -269,6 +292,14 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     return createPactRecord(response, client);
   }
 
+  date(): Date {
+    const date = _.get(this.response, "headers.date");
+    if (date) {
+      return new Date(date);
+    }
+    return null;
+  }
+
   /**
    * Converts the C8yPactRecord to a Cypress.Response object.
    */
@@ -305,7 +336,7 @@ Cypress.c8ypact = {
   pactRunner: new C8yDefaultPactRunner(),
   failOnMissingPacts: true,
   strictMatching: true,
-  debugLog: true,
+  debugLog: false,
 };
 
 function debugLogger(): Cypress.Loggable {
@@ -446,7 +477,7 @@ function currentNextRecord(): Cypress.Chainable<{
 
 function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
   const c8ypact = Cypress.config().c8ypact;
-  const info = {
+  const info: C8yPactInfo = {
     title: Cypress.currentTest?.titlePath || [],
     id,
     preprocessor: {
@@ -464,6 +495,7 @@ function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
     version: Cypress.env("C8Y_VERSION") && {
       system: Cypress.env("C8Y_VERSION"),
     },
+    strictMatching: Cypress.c8ypact.strictMatching,
   };
   return info;
 }
@@ -519,16 +551,22 @@ function createPactRecord(
   );
 
   const envUser = Cypress.env("C8Y_LOGGED_IN_USER");
-  const envAlias = Cypress.env("C8Y_LOGGED_IN_USERALIAS");
+  const envAlias = Cypress.env("C8Y_LOGGED_IN_USER_ALIAS");
   const envAuth = {
     ...(envUser && { user: envUser }),
     ...(envAlias && { userAlias: envAlias }),
+    ...(envAlias && { type: "CookieAuth" }),
   };
 
   if (client?._auth) {
     // do not pick the password. passwords must not be stored in the pact.
-    pact.auth = { ...envAuth, ..._.pick(client._auth, ["user", "userAlias"]) };
-    pact.auth.type = client._auth.constructor.name;
+    pact.auth = _.defaultsDeep(
+      client._auth,
+      _.pick(envAuth, ["user", "userAlias", "type"])
+    );
+    if (client._auth.constructor != null) {
+      pact.auth.type = client._auth.constructor.name;
+    }
   }
   if (!pact.auth && (envUser || envAlias)) {
     pact.auth = envAuth;

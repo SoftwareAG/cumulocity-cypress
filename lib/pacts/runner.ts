@@ -125,6 +125,8 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     this.idMapper = {};
     for (const record of pact?.records) {
       cy.then(() => {
+        Cypress.c8ypact.strictMatching = pact.info?.strictMatching || true;
+
         const url = this.createURL(record, pact.info);
         const clientFetchOptions = this.createFetchOptions(record, pact.info);
 
