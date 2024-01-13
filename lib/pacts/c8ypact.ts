@@ -543,12 +543,18 @@ function createPactRecord(
   const envAuth = {
     ...(envUser && { user: envUser }),
     ...(envAlias && { userAlias: envAlias }),
+    ...(envAlias && { type: "CookieAuth" }),
   };
 
   if (client?._auth) {
     // do not pick the password. passwords must not be stored in the pact.
-    pact.auth = { ...envAuth, ..._.pick(client._auth, ["user", "userAlias"]) };
-    pact.auth.type = client._auth.constructor.name;
+    pact.auth = _.defaultsDeep(
+      client._auth,
+      _.pick(envAuth, ["user", "userAlias", "type"])
+    );
+    if (client._auth.constructor != null) {
+      pact.auth.type = client._auth.constructor.name;
+    }
   }
   if (!pact.auth && (envUser || envAlias)) {
     pact.auth = envAuth;

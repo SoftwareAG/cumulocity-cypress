@@ -148,6 +148,7 @@ describe("c8yclient", () => {
       expect(pactRecord.auth).to.deep.equal({
         user: "admin",
         userAlias: "alias",
+        type: "CookieAuth",
       });
     });
 
@@ -332,6 +333,7 @@ describe("c8yclient", () => {
           expect(spy.getCall(0).args[1]._auth).to.deep.eq({
             user: "admin",
             userAlias: "admin",
+            type: "BasicAuth",
           });
           expect(spy.getCall(0).args[1]._options).to.deep.eq({
             ...defaultClientOptions,
@@ -559,7 +561,6 @@ describe("c8yclient", () => {
           C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
         ],
       };
-      debugger;
       Cypress.c8ypact.preprocessor.apply(obj, {
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["request.headers.Authorization", "response.body.password"],
