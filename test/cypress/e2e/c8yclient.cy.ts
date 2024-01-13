@@ -103,7 +103,7 @@ describe("c8yclient", () => {
     const requestOptions = {
       url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
       auth: { user: "admin", password: "mypassword", tenant: "t1234" },
-      headers: { UseXBasic: true, "content-type": "application/json" },
+      headers: { UseXBasic: true },
     };
 
     it("should use auth from previous subject", () => {
@@ -336,12 +336,12 @@ describe("c8yclient", () => {
         {
           url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
           auth: { user: "admin", password: "mypassword" },
-          headers: { UseXBasic: true, "content-type": "application/json" },
+          headers: { UseXBasic: true },
         },
         {
           url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
           auth: { user: "admin", password: "mypassword" },
-          headers: { UseXBasic: true, "content-type": "application/json" },
+          headers: { UseXBasic: true },
         },
       ];
 
@@ -352,7 +352,7 @@ describe("c8yclient", () => {
         })
         .then((response) => {
           expect(response.status).to.eq(201);
-          expectC8yClientRequest(expectedOptions, {});
+          expectC8yClientRequest(expectedOptions);
         });
     });
 
@@ -363,7 +363,6 @@ describe("c8yclient", () => {
           url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
           headers: {
             UseXBasic: true,
-            "content-type": "application/json",
             "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu",
           },
         },
@@ -371,7 +370,6 @@ describe("c8yclient", () => {
           url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
           headers: {
             UseXBasic: true,
-            "content-type": "application/json",
             "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu",
           },
         },
@@ -720,7 +718,7 @@ describe("c8yclient", () => {
     const requestOptions = {
       url: `${Cypress.config().baseUrl}/user/t123456789/groupByName/business`,
       auth: { user: "admin", password: "mypassword", tenant: "t123456789" },
-      headers: { UseXBasic: true, "content-type": "application/json" },
+      headers: { UseXBasic: true },
     };
     beforeEach(() => {
       Cypress.env("C8Y_TENANT", "t123456789");
@@ -731,7 +729,7 @@ describe("c8yclient", () => {
         new window.Response(JSON.stringify({ name: "t123456789" }), {
           status: 200,
           statusText: "OK",
-          headers: { "content-type": "application/json" },
+          headers: {},
         })
       );
 
@@ -753,6 +751,31 @@ describe("c8yclient", () => {
           expect(response.isOkStatusCode).to.eq(true);
           expect(response.duration).to.not.be.undefined;
           expectC8yClientRequest(requestOptions);
+        });
+    });
+  });
+
+  context("fetch requests", () => {
+    beforeEach(() => {
+      Cypress.env("C8Y_TENANT", "t123456789");
+    });
+
+    it("should tenant/currentTenant request should not have content-type", () => {
+      stubResponse(
+        new window.Response(JSON.stringify({ name: "t123456789" }), {
+          status: 200,
+          statusText: "OK",
+          headers: {},
+        })
+      );
+
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<ICurrentTenant>((c) => {
+          return c.tenant.current();
+        })
+        .then((response) => {
+          expect(response.status).to.eq(200);
+          expect(response.requestHeaders).to.not.have.property("content-type");
         });
     });
   });

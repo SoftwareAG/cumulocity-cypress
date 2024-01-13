@@ -156,7 +156,6 @@ export function expectC8yClientRequest(
   expectedOptions: any | any[],
   defaultOptions: any = {
     headers: {
-      "content-type": "application/json",
       UseXBasic: true,
     },
   }

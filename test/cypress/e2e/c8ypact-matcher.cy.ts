@@ -201,7 +201,6 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
       pact.request.headers = {
-        "content-type": "application/json",
         UseXBasic: true,
         accept: "application/json",
       };
