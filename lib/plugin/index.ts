@@ -67,7 +67,6 @@ function configureC8yPlugin(
     adapter = new C8yPactDefaultFileAdapter(folder);
   }
 
-  let pactIndex: { [key: string]: number } = {};
   let pacts: { [key: string]: C8yPact } = {};
 
   // use C8Y_PACT_ENABLED to see if the plugin has been loaded
@@ -104,29 +103,13 @@ function configureC8yPlugin(
     return null;
   }
 
-  function getPactInfo(pact: string): C8yPactInfo | null {
-    validateId(pact);
-    return pacts[pact].info || null;
-  }
-
   function getPact(pact: string): C8yPact | null {
     validateId(pact);
     return pacts[pact] || null;
   }
 
-  function getNextRecord(pact: string): C8yPactNextRecord | null {
-    validateId(pact);
-
-    const index = pactIndex[pact] || 0;
-    pactIndex[pact] = index + 1;
-    return pacts[pact] && pacts[pact].records.length > index
-      ? { record: pacts[pact].records[index], info: pacts[pact].info }
-      : null;
-  }
-
   function loadPacts(): { [key: string]: C8yPact } {
     pacts = adapter?.loadPacts() || null;
-    pactIndex = {};
     return pacts;
   }
 
@@ -135,7 +118,6 @@ function configureC8yPlugin(
 
     if (!pacts[pact]) return false;
     delete pacts[pact];
-    delete pactIndex[pact];
 
     adapter.deletePact(pact);
     return true;
@@ -143,7 +125,6 @@ function configureC8yPlugin(
 
   function clearAll(): { [key: string]: C8yPact } {
     pacts = {};
-    pactIndex = {};
     return pacts;
   }
 
@@ -156,8 +137,6 @@ function configureC8yPlugin(
   on("task", {
     "c8ypact:save": savePact,
     "c8ypact:get": getPact,
-    "c8ypact:next": getNextRecord,
-    "c8ypact:info": getPactInfo,
     "c8ypact:load": loadPacts,
     "c8ypact:remove": removePact,
     "c8ypact:clearAll": clearAll,

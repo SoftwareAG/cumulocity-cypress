@@ -178,10 +178,6 @@ declare global {
       auth: IAuthentication;
       baseUrl: string;
       client: Client;
-      pact: {
-        record: C8yPactRecord;
-        info?: C8yPactInfo;
-      };
       preferBasicAuth: boolean;
       skipClientAuthenication: boolean;
       failOnPactValidation: boolean;
@@ -567,41 +563,34 @@ function run(
       (Cypress.config().c8ypact && Cypress.config().c8ypact.ignore) || false;
     const optionsIgnore =
       (options.ignorePact && options.ignorePact === true) || false;
-
     const ignore = configIgnore || optionsIgnore;
     const savePact =
-      options.pact == null && !ignore && Cypress.c8ypact.isRecordingEnabled();
+      Cypress.c8ypact.current == null &&
+      !ignore &&
+      Cypress.c8ypact.isRecordingEnabled();
 
     const matchPact = (response: any) => {
       if (ignore) return;
       if (
-        options.pact ||
+        Cypress.c8ypact.current ||
         (Cypress.c8ypact.isEnabled() && !Cypress.c8ypact.isRecordingEnabled())
       ) {
         for (const r of _.isArray(response) ? response : [response]) {
-          (options.pact != null
-            ? cy.wrap(options.pact, { log: Cypress.c8ypact.debugLog })
-            : Cypress.c8ypact.currentNextRecord()
-          )
-            // @ts-ignore
-            .then(
-              (pactObject: { record: C8yPactRecord; info?: C8yPactInfo }) => {
-                if (pactObject != null && !ignore) {
-                  const { record, info } = pactObject;
-                  cy.c8ymatch(r, record, info, options);
-                } else {
-                  if (
-                    pactObject == null &&
-                    Cypress.c8ypact.failOnMissingPacts &&
-                    !ignore
-                  ) {
-                    throwError(
-                      `${Cypress.c8ypact.currentPactIdentifier()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
-                    );
-                  }
-                }
-              }
-            );
+          const record = Cypress.c8ypact.current?.nextRecord();
+          const info = Cypress.c8ypact.current?.info;
+          if (record != null && info != null && !ignore) {
+            cy.c8ymatch(r, record, info, options);
+          } else {
+            if (
+              record == null &&
+              Cypress.c8ypact.failOnMissingPacts &&
+              !ignore
+            ) {
+              throwError(
+                `${Cypress.c8ypact.getCurrentTestId()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
+              );
+            }
+          }
         }
       }
     };

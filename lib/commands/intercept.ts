@@ -105,7 +105,7 @@ Cypress.on("log:intercept", (options) => {
 
   if (Cypress.c8ypact.isRecordingEnabled()) {
     // @ts-ignore
-    Cypress.c8ypact.savePact(cypressResponse, {});
+    Cypress.c8ypact.savePact(cypressResponse, {}, { noqueue: true });
   }
 });
 
