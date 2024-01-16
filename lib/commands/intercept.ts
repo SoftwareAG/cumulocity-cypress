@@ -6,35 +6,135 @@ import {
 
 const { _ } = Cypress;
 
-const wrapResponseFunction = (fn: any) => {
-  var that = this;
+// see documentation fo cy.intercept at https://docs.cypress.io/api/commands/intercept
+Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
+  if (!args || _.isEmpty(args)) return originalFn(...args);
+
+  const method =
+    _.isString(args[0]) && HTTP_METHODS.includes(args[0].toUpperCase())
+      ? args[0]
+      : undefined;
+  const matcher = method ? args[1] : args[0];
+  let response = method ? args[2] : args[1];
+
+  let updatedArgs: any[] = [];
+  if (method) {
+    updatedArgs.push(method);
+  }
+  if (matcher) {
+    updatedArgs.push(matcher);
+  }
+  if (response) {
+    try {
+      if (typeof response === "function") {
+        response = wrapFunctionRouteHandler(response);
+      } else {
+        response = wrapStaticResponse(response);
+      }
+    } catch (error) {
+      console.log(`Failed to intercept response: ${error}`);
+    }
+    updatedArgs.push(response);
+  } else {
+    response = wrapEmptyRoutHandler();
+    updatedArgs.push(response);
+  }
+
+  // @ts-ignore
+  return originalFn(...updatedArgs);
+});
+
+Cypress.env("C8Y_PACT_INTERCEPT_ENABLED", true);
+
+Cypress.on("log:intercept", (options) => {
+  const { req, res, modified } = options;
+
+  const cypressResponse = toCypressResponse(req, res);
+  const modifiedResponse =
+    modified != null ? toCypressResponse(req, modified) : undefined;
+
+  if (Cypress.c8ypact.isRecordingEnabled()) {
+    Cypress.c8ypact.savePact(
+      cypressResponse,
+      // @ts-ignore
+      {},
+      { noqueue: true, ...(modifiedResponse && { modifiedResponse }) }
+    );
+  }
+});
+
+function toCypressResponse(req: any, res: any): Cypress.Response {
+  const isBody = _.isString(res) || _.isArray(res);
+  const statusCode = isBody ? 200 : res?.statusCode;
+  const result: Cypress.Response = {
+    body: isBody ? res : res?.body,
+    url: req?.url,
+    headers: isBody ? {} : res?.headers,
+    status: statusCode,
+    duration: res?.duration,
+    requestHeaders: req?.headers,
+    requestBody: req?.body,
+    statusText: isBody ? "OK" : res?.statusMessage,
+    method: req?.method || "GET",
+    allRequestResponses: [],
+    isOkStatusCode: statusCode >= 200 && statusCode < 300,
+  };
+  return result;
+}
+
+function emitInterceptionEvent(req: any, res: any, modified: any = undefined) {
+  Cypress.emit("log:intercept", {
+    req,
+    res,
+    modified,
+  });
+}
+
+const wrapFunctionRouteHandler = (fn: any) => {
   return function (req: any) {
-    let startTime: number;
     // see Cypress before-request.ts for implementation details of overwritten functions
 
     // wrap continue() function
     const reqContinue = req.continue;
-    const reqContinueFn = (resFn: any) => {
-      const resWrapperFn = (res: any) => {
-        if (!res.duration) {
-          res.duration = Date.now() - startTime;
+    req.continue = (resFn: any) => {
+      let unmodifiedRes: any;
+      let responsePromise: any;
+
+      const resWrapperFn = async (res: any) => {
+        if (responsePromise) {
+          await responsePromise;
         }
         resFn(res);
-        emitInterceptionEvent(req, res);
+        emitInterceptionEvent(
+          req,
+          unmodifiedRes ? unmodifiedRes : res,
+          unmodifiedRes ? res : undefined
+        );
       };
-      startTime = Date.now();
+
+      if (Cypress.c8ypact.isRecordingEnabled()) {
+        responsePromise = new Cypress.Promise((resolve, reject) => {
+          // "before:response" is the event to use as in "response" the continue handler seems to be called resulting in a timeout
+          // see Cypress before-request.ts for implementation details
+          req.on("before:response", (res: any) => {
+            unmodifiedRes = _.cloneDeep(res);
+            resolve(res);
+          });
+        });
+      }
       reqContinue(resWrapperFn);
     };
-    req.continue = reqContinueFn;
 
     // wrap reply() function
     const reqReply = req.reply;
-    const resReplyFn = function (...args: any[]) {
+    req.reply = (...args: any[]) => {
       if (!args || _.isEmpty(args)) {
         reqReply(...args);
+        return;
       } else {
         const replyOptions: any = {};
         if (_.isFunction(args[0])) {
+          debugger;
           // route handler - not supported as it seems only supported for compatibility
           // with old implementation of continue() based on reply()
           reqReply(...args);
@@ -61,24 +161,22 @@ const wrapResponseFunction = (fn: any) => {
             replyOptions.headers = args[2];
           }
         }
-        reqReply(...args);
-        emitInterceptionEvent(req, replyOptions);
+
+        processReply(req, replyOptions, reqReply, reqContinue);
       }
     };
-    req.reply = resReplyFn;
 
     fn(req);
   };
 };
 
-const wrapResponseObject = (obj: any) => {
+const wrapStaticResponse = (obj: any) => {
   return function (req: any) {
-    req.reply(obj);
-    emitInterceptionEvent(req, obj);
+    processReply(req, obj, req.reply, req.continue);
   };
 };
 
-const wrapMissingResponse = () => {
+const wrapEmptyRoutHandler = () => {
   return function (req: any) {
     req.continue((res: any) => {
       res.send();
@@ -87,68 +185,32 @@ const wrapMissingResponse = () => {
   };
 };
 
-Cypress.on("log:intercept", (options) => {
-  const { req, res } = options;
-  const cypressResponse: Cypress.Response = {
-    body: res.body,
-    url: req.url,
-    headers: res.headers,
-    status: res.statusCode,
-    duration: res.duration,
-    requestHeaders: req.headers,
-    requestBody: req.body,
-    statusText: res.statusMessage,
-    method: req.method || "GET",
-    allRequestResponses: [],
-    isOkStatusCode: res.statusCode >= 200 && res.statusCode < 300,
-  };
-
+function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   if (Cypress.c8ypact.isRecordingEnabled()) {
-    // @ts-ignore
-    Cypress.c8ypact.savePact(cypressResponse, {}, { noqueue: true });
-  }
-});
+    let responsePromise = new Cypress.Promise((resolve, reject) => {
+      // "before:response" is the event to use as in "response" the continue handler seems to be called resulting in a timeout
+      // see Cypress before-request.ts for implementation details
+      req.on("before:response", (res: any) => {
+        emitInterceptionEvent(req, _.cloneDeep(res), obj);
+        if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
+          _.extend(res, obj);
+        } else if (_.isString(obj) || _.isArrayLike(obj)) {
+          res.body = obj;
+        }
+        resolve(res);
+      });
+    });
 
-Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
-  const method =
-    typeof args[0] === "string" && HTTP_METHODS.includes(args[0].toUpperCase())
-      ? args[0]
-      : undefined;
-  const matcher = method ? args[1] : args[0];
-  let response = method ? args[2] : args[1];
-
-  let updatedArgs: any[] = [];
-  if (method) {
-    updatedArgs.push(method);
-  }
-  if (matcher) {
-    updatedArgs.push(matcher);
-  }
-  if (response) {
-    try {
-      if (typeof response === "function") {
-        response = wrapResponseFunction(response);
-      } else {
-        response = wrapResponseObject(response);
-      }
-    } catch (error) {
-      console.log(`Failed to intercept response: ${error}`);
-    }
-    updatedArgs.push(response);
+    continueFn(async (res: any) => {
+      // wait for the reponse to be updated in the before:response event
+      await responsePromise;
+      return res;
+    });
   } else {
-    response = wrapMissingResponse();
-    updatedArgs.push(response);
+    // respond to the request with object (static response)
+    replyFn(obj);
+    emitInterceptionEvent(req, obj);
   }
-
-  // @ts-ignore
-  return originalFn(...updatedArgs);
-});
-
-function emitInterceptionEvent(req: any, res: any) {
-  Cypress.emit("log:intercept", {
-    req,
-    res,
-  });
 }
 
 function hasStaticResponseKeys(obj: any) {

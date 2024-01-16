@@ -122,6 +122,7 @@ declare global {
    */
   interface C8yPactSaveOptions {
     noqueue: boolean;
+    modifiedResponse?: Cypress.Response<any>;
   }
 
   /**
@@ -216,6 +217,10 @@ declare global {
      * Response of the record.
      */
     response: C8yPactResponse<any>;
+    /**
+     * Modified response returned by interception RouteHandler.
+     */
+    modifiedResponse?: C8yPactResponse<any>;
     /**
      * Configuration options used for the request.
      */
@@ -392,13 +397,15 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   options: C8yClientOptions;
   auth: C8yAuthOptions;
   createdObject: string;
+  modifiedResponse?: C8yPactResponse<any>;
 
   constructor(
     request: C8yPactRequest,
     response: C8yPactResponse<any>,
     options: C8yClientOptions,
     auth?: C8yAuthOptions,
-    createdObject?: string
+    createdObject?: string,
+    modifiedResponse?: C8yPactResponse<any>
   ) {
     this.request = request;
     this.response = response;
@@ -410,6 +417,9 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     }
     if (createdObject) {
       this.createdObject = createdObject;
+    }
+    if (modifiedResponse) {
+      this.modifiedResponse = modifiedResponse;
     }
   }
 
@@ -429,7 +439,8 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
         _.get(obj, "response"),
         _.get(obj, "options"),
         _.get(obj, "auth"),
-        _.get(obj, "createdObject")
+        _.get(obj, "createdObject"),
+        _.get(obj, "modifiedResponse")
       );
     }
     // @ts-ignore
@@ -535,6 +546,16 @@ function savePact(
   if (!isEnabled()) return;
 
   const pact = C8yDefaultPact.from(response, client);
+
+  if (options.modifiedResponse && isCypressResponse(options.modifiedResponse)) {
+    const modifiedPactRecord = C8yDefaultPactRecord.from(
+      options.modifiedResponse,
+      client
+    );
+    pact.records[pact.records.length - 1].modifiedResponse =
+      modifiedPactRecord.response;
+  }
+
   Cypress.c8ypact.preprocessor?.apply(pact);
 
   // create a shallow copy of the pact object and select properties to save
