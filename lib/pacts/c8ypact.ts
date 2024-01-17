@@ -372,6 +372,30 @@ export class C8yDefaultPact implements C8yPact {
     return this.records[this.recordIndex++];
   }
 
+  getRecordForUrl(url: string): C8yPactRecord | null {
+    const normalizeUrl = (url: string, parametersToRemove: string[] = []) => {
+      const urlObj = new URL(decodeURIComponent(url));
+      parametersToRemove.forEach((name) => {
+        urlObj.searchParams.delete(name);
+      });
+      return decodeURIComponent(
+        urlObj.toString()?.replace(Cypress.config().baseUrl, "")
+      );
+    };
+
+    const records = this.records.filter((record) => {
+      const normalizedRecordUrl = normalizeUrl(record.request.url, [
+        "dateFrom",
+        "dateTo",
+        "_",
+      ]);
+      return (
+        normalizedRecordUrl === normalizeUrl(url, ["dateFrom", "dateTo", "_"])
+      );
+    });
+    return records.length ? records[0] : null;
+  }
+
   /**
    * Returns an iterator for the pact records.
    */

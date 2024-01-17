@@ -431,4 +431,51 @@ describe("c8ypactintercept", () => {
         .then(expectSavePactNotCalled);
     });
   });
+
+  context("mock interceptions", () => {
+    const response: Cypress.Response<any> = {
+      status: 200,
+      statusText: "OK",
+      headers: { "content-type": "application/json" },
+      body: { name: "t123456789" },
+      duration: 100,
+      requestHeaders: { "content-type": "application/json2" },
+      requestBody: { id: "abc123124" },
+      allRequestResponses: [],
+      isOkStatusCode: false,
+      method: "PUT",
+      url:
+        Cypress.config().baseUrl +
+        "/inventory/managedObjects?fragmentType=abcd",
+    };
+
+    beforeEach(() => {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+    });
+
+    it.only("should return response from pact with static string response", () => {
+      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      cy.intercept("/inventory/managedObjects*", "test")
+        .as("inventory")
+        .then(fetchInventory)
+        .then((data) => {
+          expect(data).to.deep.eq(response.body);
+        })
+        .wait("@inventory")
+        .then(expectSavePactNotCalled);
+    });
+
+    it.only("should return response from pact with empty response", () => {
+      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      cy.intercept("/inventory/managedObjects*")
+        .as("inventory")
+        .then(fetchInventory)
+        .then((data) => {
+          expect(data).to.deep.eq(response.body);
+        })
+        .wait("@inventory")
+        .then(expectSavePactNotCalled);
+    });
+  });
 });

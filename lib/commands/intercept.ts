@@ -1,3 +1,4 @@
+import { C8yDefaultPact } from "../pacts/c8ypact";
 import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,
@@ -47,20 +48,19 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
 Cypress.env("C8Y_PACT_INTERCEPT_ENABLED", true);
 
 Cypress.on("log:intercept", (options) => {
+  if (!Cypress.c8ypact.isRecordingEnabled()) return;
   const { req, res, modified } = options;
 
   const cypressResponse = toCypressResponse(req, res);
   const modifiedResponse =
     modified != null ? toCypressResponse(req, modified) : undefined;
 
-  if (Cypress.c8ypact.isRecordingEnabled()) {
-    Cypress.c8ypact.savePact(
-      cypressResponse,
-      // @ts-ignore
-      {},
-      { noqueue: true, ...(modifiedResponse && { modifiedResponse }) }
-    );
-  }
+  Cypress.c8ypact.savePact(
+    cypressResponse,
+    // @ts-ignore
+    {},
+    { noqueue: true, ...(modifiedResponse && { modifiedResponse }) }
+  );
 });
 
 function toCypressResponse(req: any, res: any): Cypress.Response {
@@ -177,17 +177,23 @@ const wrapStaticResponse = (obj: any) => {
 
 const wrapEmptyRoutHandler = () => {
   return function (req: any) {
-    req.continue((res: any) => {
-      res.send();
-      emitInterceptionEvent(req, res);
-    });
+    if (Cypress.c8ypact.current == null) {
+      req.continue((res: any) => {
+        emitInterceptionEvent(req, _.cloneDeep(res));
+        res.send();
+      });
+    } else {
+      const response = responseFromPact({}, req.url);
+      req.reply(response);
+    }
   };
 };
 
 function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   if (Cypress.c8ypact.isRecordingEnabled()) {
     let responsePromise = new Cypress.Promise((resolve, reject) => {
-      // "before:response" is the event to use as in "response" the continue handler seems to be called resulting in a timeout
+      // "before:response" is the event to use as in "response" event the continue handler
+      // seems to be called resulting in a timeout
       // https://docs.cypress.io/api/commands/intercept#Intercepted-responses
       req.on("before:response", async (res: any) => {
         let modifiedResponse = obj;
@@ -200,28 +206,48 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
         }
         emitInterceptionEvent(req, _.cloneDeep(res), modifiedResponse);
 
-        // merge response with object - now done with res.send(obj)
-        // if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
-        //   _.extend(res, obj);
-        // } else if (_.isString(obj) || _.isArrayLike(obj)) {
-        //   res.body = obj;
-        // }
+        // merge response with object done with res.send(obj)
         resolve();
       });
     });
 
     continueFn((res: any) => {
-      // wait for the reponse to be updated in the before:response event#
+      // wait for the reponse to be updated in the before:response event
       return responsePromise.then(() => {
         // res.send(obj) should merge response with object automatically
         res.send(obj);
       });
     });
-  } else {
-    // respond to the request with object (static response)
-    replyFn(obj);
-    emitInterceptionEvent(req, obj);
+
+    return;
+  } else if (Cypress.c8ypact.current != null) {
+    obj = responseFromPact(obj, req.url);
   }
+
+  // respond to the request with object (static response)
+  replyFn(obj);
+  emitInterceptionEvent(req, obj);
+}
+
+function responseFromPact(obj: any, url: string): any {
+  if (Cypress.c8ypact.current == null) return obj;
+  const p = Cypress.c8ypact.current as C8yDefaultPact;
+  const record = p.getRecordForUrl(url);
+  if (record) {
+    // obj could be string
+    const response = {
+      body: record.response?.body,
+      headers: record.response.headers,
+      statusCode: record.response?.status,
+      statusMessage: record.response?.statusText,
+    };
+    if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
+      _.extend(obj, response);
+    } else if (_.isString(obj) || _.isArrayLike(obj)) {
+      obj = response;
+    }
+  }
+  return obj;
 }
 
 function hasStaticResponseKeys(obj: any) {
