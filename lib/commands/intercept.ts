@@ -232,14 +232,15 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
 function responseFromPact(obj: any, url: string): any {
   if (Cypress.c8ypact.current == null) return obj;
   const p = Cypress.c8ypact.current as C8yDefaultPact;
-  const record = p.getRecordForUrl(url);
+  const record = p.getRecordsForUrl(url);
   if (record) {
     // obj could be string
+    const r = _.first(record).response;
     const response = {
-      body: record.response?.body,
-      headers: record.response.headers,
-      statusCode: record.response?.status,
-      statusMessage: record.response?.statusText,
+      body: r.body,
+      headers: r.headers,
+      statusCode: r.status,
+      statusMessage: r.statusText,
     };
     if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
       _.extend(obj, response);

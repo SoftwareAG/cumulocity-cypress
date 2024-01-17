@@ -157,7 +157,7 @@ describe("c8yclient", () => {
       expect(pact.nextRecord()).to.be.null;
     });
 
-    it.only("getRecordForUrl should return records matching the passed url", function () {
+    it("getRecordsForUrl should return records matching the passed url", function () {
       const url1 = "/service/oee-bundle/configurationmanager/2/configuration";
       const url2 =
         "/inventory/managedObjects?pageSize=10&fragmentType=isISAObject";
@@ -170,13 +170,32 @@ describe("c8yclient", () => {
       pact.records[1].request.url = url(url2);
       pact.records[2].request.url = url(url3);
 
-      expect(pact.getRecordForUrl(url(url1))).to.deep.eq(pact.records[0]);
-      expect(pact.getRecordForUrl(url(url2))).to.deep.eq(pact.records[1]);
-      expect(pact.getRecordForUrl(url(url3))).to.deep.eq(pact.records[2]);
-      expect(pact.getRecordForUrl(url("/test"))).to.be.null;
+      expect(pact.getRecordsForUrl(url(url1))).to.deep.eq([
+        pact.records[0],
+        pact.records[2],
+      ]);
+      expect(pact.getRecordsForUrl(url(url2))).to.deep.eq([pact.records[1]]);
+      expect(pact.getRecordsForUrl(url(url3))).to.deep.eq([
+        pact.records[0],
+        pact.records[2],
+      ]);
+      expect(pact.getRecordsForUrl(url("/test"))).to.be.null;
+
+      expect(pact.getRecordsForUrl(new URL(url(url1)))).to.deep.eq([
+        pact.records[0],
+        pact.records[2],
+      ]);
+      expect(pact.getRecordsForUrl(new URL(url(url2)))).to.deep.eq([
+        pact.records[1],
+      ]);
+      expect(pact.getRecordsForUrl(new URL(url(url3)))).to.deep.eq([
+        pact.records[0],
+        pact.records[2],
+      ]);
+      expect(pact.getRecordsForUrl(new URL(url("/test")))).to.be.null;
     });
 
-    it.only("getRecordForUrl should allow filtering url parameters", function () {
+    it("getRecordsForUrl should allow filtering url parameters", function () {
       const url1 =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&dateFrom=2024-01-17T14%3A57%3A32.671Z&dateTo=2024-01-17T16%3A57%3A32.671Z&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
@@ -186,9 +205,9 @@ describe("c8yclient", () => {
       const url1WithoutParams =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
-      expect(pact.getRecordForUrl(url(url1WithoutParams))).to.deep.eq(
-        pact.records[0]
-      );
+      expect(pact.getRecordsForUrl(url(url1WithoutParams))).to.deep.eq([
+        pact.records[0],
+      ]);
     });
   });
 

@@ -454,7 +454,7 @@ describe("c8ypactintercept", () => {
       cy.spy(Cypress.c8ypact, "savePact").log(false);
     });
 
-    it.only("should return response from pact with static string response", () => {
+    it("should return response from pact with static string response", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
       cy.intercept("/inventory/managedObjects*", "test")
         .as("inventory")
@@ -466,7 +466,7 @@ describe("c8ypactintercept", () => {
         .then(expectSavePactNotCalled);
     });
 
-    it.only("should return response from pact with empty response", () => {
+    it("should return response from pact with empty response", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")

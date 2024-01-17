@@ -144,6 +144,10 @@ declare global {
      */
     matcher: C8yPactMatcher;
     /**
+     * The C8yPactUrlMatcher implementation used to match records by url. Default is C8yDefaultPactUrlMatcher.
+     */
+    urlMatcher: C8yPactUrlMatcher;
+    /**
      * The C8yPactPreprocessor implementation used to preprocess the pact objects.
      */
     preprocessor: C8yPactPreprocessor;
@@ -242,6 +246,22 @@ declare global {
      * Returns the date of the response.
      */
     date(): Date;
+  }
+
+  interface C8yPactUrlMatcher {
+    /**
+     * List of parameters to ignore when matching urls.
+     * Default parameters ignored are dateFrom, dateTo and _.
+     */
+    ignoreParameters: string[];
+
+    /**
+     * Matches two urls. Returns true if the urls match, false otherwise.
+     *
+     * @param url1 First url to match.
+     * @param url2 Second url to match.
+     */
+    match: (url1: string | URL, url2: string | URL) => boolean;
   }
 
   /**
@@ -372,28 +392,16 @@ export class C8yDefaultPact implements C8yPact {
     return this.records[this.recordIndex++];
   }
 
-  getRecordForUrl(url: string): C8yPactRecord | null {
-    const normalizeUrl = (url: string, parametersToRemove: string[] = []) => {
-      const urlObj = new URL(decodeURIComponent(url));
-      parametersToRemove.forEach((name) => {
-        urlObj.searchParams.delete(name);
-      });
-      return decodeURIComponent(
-        urlObj.toString()?.replace(Cypress.config().baseUrl, "")
-      );
-    };
-
+  /**
+   * Returns the pact record for the given url or null if no record is found.
+   * @param url The url to find the record for.
+   */
+  getRecordsForUrl(url: string | URL): C8yPactRecord[] | null {
+    const matcher = Cypress.c8ypact.urlMatcher;
     const records = this.records.filter((record) => {
-      const normalizedRecordUrl = normalizeUrl(record.request.url, [
-        "dateFrom",
-        "dateTo",
-        "_",
-      ]);
-      return (
-        normalizedRecordUrl === normalizeUrl(url, ["dateFrom", "dateTo", "_"])
-      );
+      return matcher.match(record.request.url, url);
     });
-    return records.length ? records[0] : null;
+    return records.length ? records : null;
   }
 
   /**
@@ -505,6 +513,37 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   }
 }
 
+export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
+  ignoreParameters: string[] = [];
+  constructor(ignoreParameters: string[] = []) {
+    this.ignoreParameters = ignoreParameters;
+  }
+
+  match(url1: string | URL, url2: string | URL): boolean {
+    const normalizeUrl = (
+      url: string | URL,
+      parametersToRemove: string[] = []
+    ) => {
+      const urlObj = isURL(url) ? url : new URL(decodeURIComponent(url));
+      parametersToRemove.forEach((name) => {
+        urlObj.searchParams.delete(name);
+      });
+      return decodeURIComponent(
+        urlObj.toString()?.replace(Cypress.config().baseUrl, "")
+      );
+    };
+
+    return _.isEqual(
+      normalizeUrl(url1, this.ignoreParameters),
+      normalizeUrl(url2, this.ignoreParameters)
+    );
+  }
+}
+
+function isURL(obj: any): obj is URL {
+  return obj instanceof URL;
+}
+
 Cypress.c8ypact = {
   current: null,
   getCurrentTestId,
@@ -512,6 +551,7 @@ Cypress.c8ypact = {
   savePact,
   isEnabled,
   matcher: new C8yDefaultPactMatcher(),
+  urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
   preprocessor: new C8yPactDefaultPreprocessor(),
   pactRunner: new C8yDefaultPactRunner(),
   failOnMissingPacts: true,
