@@ -64,7 +64,7 @@ Cypress.on("log:intercept", (options) => {
 });
 
 function toCypressResponse(req: any, res: any): Cypress.Response {
-  const isBody = _.isString(res) || _.isArray(res);
+  const isBody = res != null && !("body" in res);
   const statusCode = isBody ? 200 : res?.statusCode;
   const result: Cypress.Response = {
     body: isBody ? res : res?.body,
@@ -134,7 +134,6 @@ const wrapFunctionRouteHandler = (fn: any) => {
       } else {
         const replyOptions: any = {};
         if (_.isFunction(args[0])) {
-          debugger;
           // route handler - not supported as it seems only supported for compatibility
           // with old implementation of continue() based on reply()
           reqReply(...args);
@@ -189,22 +188,34 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   if (Cypress.c8ypact.isRecordingEnabled()) {
     let responsePromise = new Cypress.Promise((resolve, reject) => {
       // "before:response" is the event to use as in "response" the continue handler seems to be called resulting in a timeout
-      // see Cypress before-request.ts for implementation details
-      req.on("before:response", (res: any) => {
-        emitInterceptionEvent(req, _.cloneDeep(res), obj);
-        if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
-          _.extend(res, obj);
-        } else if (_.isString(obj) || _.isArrayLike(obj)) {
-          res.body = obj;
+      // https://docs.cypress.io/api/commands/intercept#Intercepted-responses
+      req.on("before:response", async (res: any) => {
+        let modifiedResponse = obj;
+        if (_.isObjectLike(obj) && "fixture" in obj) {
+          const [path, encoding] = obj.fixture.split(",");
+          // @ts-ignore
+          modifiedResponse = await Cypress.backend("get:fixture", path, {
+            encoding: encoding || "utf-8",
+          });
         }
-        resolve(res);
+        emitInterceptionEvent(req, _.cloneDeep(res), modifiedResponse);
+
+        // merge response with object - now done with res.send(obj)
+        // if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
+        //   _.extend(res, obj);
+        // } else if (_.isString(obj) || _.isArrayLike(obj)) {
+        //   res.body = obj;
+        // }
+        resolve();
       });
     });
 
-    continueFn(async (res: any) => {
-      // wait for the reponse to be updated in the before:response event
-      await responsePromise;
-      return res;
+    continueFn((res: any) => {
+      // wait for the reponse to be updated in the before:response event#
+      return responsePromise.then(() => {
+        // res.send(obj) should merge response with object automatically
+        res.send(obj);
+      });
     });
   } else {
     // respond to the request with object (static response)
