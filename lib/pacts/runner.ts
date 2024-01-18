@@ -57,9 +57,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
     for (const pact of pacts) {
       const { info, records, id } = pact;
-      if (!_.isPlainObject(info) || !_.isArray(records) || !_.isString(id)) {
-        continue;
-      }
+      if (!isPact(pact)) continue;
 
       if (
         _.isString(options.consumer) &&
@@ -78,7 +76,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
       if (!info?.title) {
         info.title = info?.id?.split("__");
       }
-      tests.push({ info, records, id });
+      tests.push(pact);
     }
 
     const testHierarchy = this.buildTestHierarchy(tests);
@@ -122,10 +120,13 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
   }
 
   runTest(pact: C8yPact) {
+    Cypress.c8ypact.current = pact;
     this.idMapper = {};
+
     for (const record of pact?.records) {
       cy.then(() => {
-        Cypress.c8ypact.strictMatching = pact.info?.strictMatching || true;
+        Cypress.c8ypact.strictMatching =
+          pact.info?.strictMatching != null ? pact.info.strictMatching : true;
 
         const url = this.createURL(record, pact.info);
         const clientFetchOptions = this.createFetchOptions(record, pact.info);
@@ -139,7 +140,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
         }
 
         const cOpts: C8yClientOptions = {
-          pact: { record: record, info: pact.info },
+          // pact: { record: record, info: pact.info },
           ..._.pick(record.options, [
             "skipClientAuthenication",
             "preferBasicAuth",

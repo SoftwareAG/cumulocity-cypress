@@ -14,5 +14,6 @@
 // ***********************************************************
 
 // Import commands.js using ES2015 syntax:
-import "../../../lib/commands"
-import "../../../lib/commands/request"
+import "../../../lib/commands";
+import "../../../lib/commands/request";
+import "../../../lib/commands/intercept";

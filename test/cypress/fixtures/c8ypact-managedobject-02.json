@@ -1,0 +1,9 @@
+{
+  "next": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects?pageSize=1000&fragmentType=isISAObject&currentPage=2&withTotalPages=false",
+  "self": "https://t617206445.eu-latest.cumulocity.com/inventory/managedObjects?pageSize=1000&fragmentType=isISAObject&currentPage=1&withTotalPages=false",
+  "fixtureTest": "fixture",
+  "statistics": {
+    "pageSize": 1000,
+    "currentPage": 1
+  }
+}

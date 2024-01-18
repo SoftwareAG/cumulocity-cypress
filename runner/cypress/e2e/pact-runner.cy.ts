@@ -1,4 +1,4 @@
-import { C8yDefaultPactRecord } from "cumulocity-cypress/lib/pacts/c8ypact";
+import { C8yDefaultPact } from "cumulocity-cypress/lib/pacts/c8ypact";
 
 const { _ } = Cypress;
 
@@ -12,24 +12,7 @@ if (!pacts || !_.isArray(pacts) || _.isEmpty(pacts)) {
 }
 
 const pactObjects = pacts.map((item) => {
-  const pact: C8yPact = JSON.parse(item);
-  // required to map the record object to a C8yPactRecord here as this can
-  // not be done in the plugin
-  pact.records = pact.records?.map((record) => {
-    return new C8yDefaultPactRecord(
-      record.request,
-      record.response,
-      record.options,
-      record.auth,
-      record.createdObject
-    );
-  });
-
-  if (!isPact(pact)) {
-    throw new Error("Invalid pact record.");
-  }
-
-  return pact;
+  return C8yDefaultPact.from(item);
 });
 
 Cypress.c8ypact.pactRunner.run(pactObjects);

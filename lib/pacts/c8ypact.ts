@@ -57,10 +57,18 @@ declare global {
      * Unique id of the pact.
      */
     id: C8yPactID;
+    /**
+     * Returns the next pact record or null if no more records are available.
+     */
+    nextRecord(): C8yPactRecord | null;
+    /**
+     * Returns an iterator for the pact records.
+     */
+    [Symbol.iterator](): Iterator<C8yPactRecord | null>;
   }
 
   /**
-   *
+   * Meta information describing a pact and how it was recorded.
    */
   interface C8yPactInfo {
     /**
@@ -110,39 +118,47 @@ declare global {
   }
 
   /**
+   * Options for saving pact objects.
+   */
+  interface C8yPactSaveOptions {
+    noqueue: boolean;
+    modifiedResponse?: Cypress.Response<any>;
+  }
+
+  /**
    * C8yPact Cypress interface. Contains all functions and properties to interact and configure
    * processing of C8yPact objects.
    */
   interface CypressC8yPact {
+    /**
+     * Create a C8yPactID for the current test case.
+     */
+    getCurrentTestId(): C8yPactID;
+    /**
+     * The pact object for the current test case. Null if no pact object is available.
+     */
+    current: C8yPact | null;
     /**
      * The C8yPactMatcher implementation used to match requests and responses. Default is C8yDefaultPactMatcher.
      * Can be overridden by setting a matcher in C8yPactConfigOptions.
      */
     matcher: C8yPactMatcher;
     /**
+     * The C8yPactUrlMatcher implementation used to match records by url. Default is C8yDefaultPactUrlMatcher.
+     */
+    urlMatcher: C8yPactUrlMatcher;
+    /**
      * The C8yPactPreprocessor implementation used to preprocess the pact objects.
      */
     preprocessor: C8yPactPreprocessor;
     /**
-     * Get the pact identifiert for the current test case. The identifier is used to identify the pact.
-     */
-    currentPactIdentifier: () => C8yPactID;
-    /**
-     * Get the pact filename for the current test case. The filename is used to store the pact.
-     */
-    currentPactFilename: () => string;
-    /**
-     * Get the next pact record for the current test case as stored in C8yPact records.
-     */
-    currentNextRecord: () => Cypress.Chainable<C8yPactNextRecord | null>;
-    /**
-     * Get the pact for the current test case.
-     */
-    currentPact: () => Cypress.Chainable<C8yPact | null>;
-    /**
      * Save the given response as a pact record in the pact for the current test case.
      */
-    savePact: (response: Cypress.Response<any>, client?: C8yClient) => void;
+    savePact: (
+      response: Cypress.Response<any>,
+      client?: C8yClient,
+      options?: C8yPactSaveOptions
+    ) => void;
     /**
      * Checks if the C8yPact plugin is enabled.
      */
@@ -206,6 +222,10 @@ declare global {
      */
     response: C8yPactResponse<any>;
     /**
+     * Modified response returned by interception RouteHandler.
+     */
+    modifiedResponse?: C8yPactResponse<any>;
+    /**
      * Configuration options used for the request.
      */
     options: C8yClientOptions;
@@ -226,6 +246,22 @@ declare global {
      * Returns the date of the response.
      */
     date(): Date;
+  }
+
+  interface C8yPactUrlMatcher {
+    /**
+     * List of parameters to ignore when matching urls.
+     * Default parameters ignored are dateFrom, dateTo and _.
+     */
+    ignoreParameters: string[];
+
+    /**
+     * Matches two urls. Returns true if the urls match, false otherwise.
+     *
+     * @param url1 First url to match.
+     * @param url2 Second url to match.
+     */
+    match: (url1: string | URL, url2: string | URL) => boolean;
   }
 
   /**
@@ -250,6 +286,140 @@ declare global {
   function isPact(obj: any): obj is C8yPact;
 }
 
+export class C8yDefaultPact implements C8yPact {
+  records: C8yPactRecord[];
+  info: C8yPactInfo;
+  id: C8yPactID;
+
+  protected recordIndex = 0;
+  protected iteratorIndex = 0;
+
+  constructor(records: C8yPactRecord[], info: C8yPactInfo, id: C8yPactID) {
+    this.records = records;
+    this.info = info;
+    this.id = id;
+  }
+
+  /**
+   * Creates a C8yPact from a Cypress.Response object, a serialized pact as string
+   * or an object containing the pact records and info object. Throws an error if
+   * the input can not be converted to a C8yPact.
+   * @param obj The Cypress.Response, string or object to create a pact from.
+   * @param client The optional C8yClient for options and auth information.
+   */
+  static from(
+    obj: C8yPact | string | Cypress.Response<any>,
+    client?: C8yClient
+  ): C8yDefaultPact {
+    if (!obj) {
+      throw new Error("Can not create pact from null or undefined.");
+    }
+    if (isCypressResponse(obj)) {
+      const pactRecord = createPactRecord(obj, client);
+      const id = Cypress.c8ypact.getCurrentTestId();
+      if (!id) return;
+
+      const info = createPactInfo(id, client);
+      return new C8yDefaultPact([pactRecord], info, id);
+    } else {
+      let pact: C8yPact;
+      if (_.isString(obj)) {
+        pact = JSON.parse(obj);
+      } else if (_.isObjectLike(obj)) {
+        pact = obj;
+      } else {
+        throw new Error(`Can not create pact from ${typeof obj}.`);
+      }
+
+      // required to map the record object to a C8yPactRecord here as this can
+      // not be done in the plugin
+      pact.records = pact.records?.map((record) => {
+        return new C8yDefaultPactRecord(
+          record.request,
+          record.response,
+          record.options,
+          record.auth,
+          record.createdObject
+        );
+      });
+
+      const result = new C8yDefaultPact(pact.records, pact.info, pact.id);
+      if (!isPact(result)) {
+        throw new Error(
+          `Invalid pact object. Can not create pact from ${typeof obj}.`
+        );
+      }
+      return result;
+    }
+  }
+
+  /**
+   * Loads the pact object for the current test from the pact file. If
+   * there is no stored pact object for the current test, null is returned.
+   */
+  static loadCurrent(): Cypress.Chainable<C8yPact | null> {
+    if (!isEnabled()) {
+      return cy.wrap<C8yPact | null>(null, debugLogger());
+    }
+    return cy
+      .task<C8yPact | null>(
+        "c8ypact:get",
+        Cypress.c8ypact.getCurrentTestId(),
+        debugLogger()
+      )
+      .then((pact) => {
+        if (pact == null) return cy.wrap<C8yPact>(null, debugLogger());
+
+        // required to map the record object to a C8yPactRecord here as this can
+        // not be done in the plugin
+        pact.records = pact.records?.map((record) => {
+          return C8yDefaultPactRecord.from(record);
+        });
+        return cy.wrap(
+          new C8yDefaultPact(pact.records, pact.info, pact.id),
+          debugLogger()
+        );
+      });
+  }
+
+  /**
+   * Returns the next pact record or null if no more records are available.
+   */
+  nextRecord(): C8yPactRecord | null {
+    if (this.recordIndex >= this.records.length) {
+      return null;
+    }
+    return this.records[this.recordIndex++];
+  }
+
+  /**
+   * Returns the pact record for the given url or null if no record is found.
+   * @param url The url to find the record for.
+   */
+  getRecordsForUrl(url: string | URL): C8yPactRecord[] | null {
+    const matcher = Cypress.c8ypact.urlMatcher;
+    const records = this.records.filter((record) => {
+      return matcher.match(record.request.url, url);
+    });
+    return records.length ? records : null;
+  }
+
+  /**
+   * Returns an iterator for the pact records.
+   */
+  [Symbol.iterator](): Iterator<C8yPactRecord | null> {
+    return {
+      next: () => {
+        if (this.iteratorIndex < this.records.length) {
+          return { value: this.records[this.iteratorIndex++], done: false };
+        } else {
+          return { value: null, done: true };
+        }
+      },
+    };
+  }
+}
+
 /**
  * Default implementation of C8yPactRecord.
  */
@@ -259,13 +429,15 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   options: C8yClientOptions;
   auth: C8yAuthOptions;
   createdObject: string;
+  modifiedResponse?: C8yPactResponse<any>;
 
   constructor(
     request: C8yPactRequest,
     response: C8yPactResponse<any>,
     options: C8yClientOptions,
     auth?: C8yAuthOptions,
-    createdObject?: string
+    createdObject?: string,
+    modifiedResponse?: C8yPactResponse<any>
   ) {
     this.request = request;
     this.response = response;
@@ -278,20 +450,38 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     if (createdObject) {
       this.createdObject = createdObject;
     }
+    if (modifiedResponse) {
+      this.modifiedResponse = modifiedResponse;
+    }
   }
 
   /**
-   * Creates a C8yPactRecord from a Cypress.Response object.
-   * @param response The Cypress.Response object.
+   * Creates a C8yPactRecord from a Cypress.Response or an C8yPactRecord object.
+   * @param obj The Cypress.Response object.
    * @param client The C8yClient for options and auth information.
    */
   static from(
-    response: Cypress.Response<any>,
+    obj: Cypress.Response<any> | C8yPactRecord,
     client: C8yClient = null
   ): C8yPactRecord {
-    return createPactRecord(response, client);
+    if (obj == null) return;
+    if ("request" in obj && "response" in obj) {
+      return new C8yDefaultPactRecord(
+        _.get(obj, "request"),
+        _.get(obj, "response"),
+        _.get(obj, "options"),
+        _.get(obj, "auth"),
+        _.get(obj, "createdObject"),
+        _.get(obj, "modifiedResponse")
+      );
+    }
+    // @ts-ignore
+    return createPactRecord(obj, client);
   }
 
+  /**
+   * Returns the date of the response.
+   */
   date(): Date {
     const date = _.get(this.response, "headers.date");
     if (date) {
@@ -323,15 +513,45 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   }
 }
 
+export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
+  ignoreParameters: string[] = [];
+  constructor(ignoreParameters: string[] = []) {
+    this.ignoreParameters = ignoreParameters;
+  }
+
+  match(url1: string | URL, url2: string | URL): boolean {
+    const normalizeUrl = (
+      url: string | URL,
+      parametersToRemove: string[] = []
+    ) => {
+      const urlObj = isURL(url) ? url : new URL(decodeURIComponent(url));
+      parametersToRemove.forEach((name) => {
+        urlObj.searchParams.delete(name);
+      });
+      return decodeURIComponent(
+        urlObj.toString()?.replace(Cypress.config().baseUrl, "")
+      );
+    };
+
+    return _.isEqual(
+      normalizeUrl(url1, this.ignoreParameters),
+      normalizeUrl(url2, this.ignoreParameters)
+    );
+  }
+}
+
+function isURL(obj: any): obj is URL {
+  return obj instanceof URL;
+}
+
 Cypress.c8ypact = {
-  currentPactIdentifier,
-  currentPact,
-  currentPactFilename,
-  currentNextRecord,
+  current: null,
+  getCurrentTestId,
   isRecordingEnabled,
   savePact,
   isEnabled,
   matcher: new C8yDefaultPactMatcher(),
+  urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
   preprocessor: new C8yPactDefaultPreprocessor(),
   pactRunner: new C8yDefaultPactRunner(),
   failOnMissingPacts: true,
@@ -351,28 +571,19 @@ before(() => {
 });
 
 beforeEach(() => {
+  Cypress.c8ypact.current = null;
   if (Cypress.c8ypact.isRecordingEnabled()) {
     cy.task(
       "c8ypact:remove",
-      Cypress.c8ypact.currentPactIdentifier(),
+      Cypress.c8ypact.getCurrentTestId(),
       debugLogger()
     );
+  } else if (isEnabled()) {
+    C8yDefaultPact.loadCurrent().then((pact) => {
+      Cypress.c8ypact.current = pact;
+    });
   }
 });
-
-function currentPactIdentifier(): C8yPactID {
-  let key = Cypress.currentTest?.titlePath?.join("__");
-  if (key == null) {
-    key = Cypress.spec?.relative?.split("/").slice(-2).join("__");
-  }
-  const pact = Cypress.config().c8ypact;
-  return (pact && pact.id) || key.replace(/ /g, "_");
-}
-
-function currentPactFilename(): string {
-  const pactId = Cypress.c8ypact.currentPactIdentifier();
-  return `${Cypress.config().fixturesFolder}/c8ypact/${pactId}.json`;
-}
 
 function isEnabled(): boolean {
   return Cypress.env("C8Y_PACT_ENABLED") != null;
@@ -382,97 +593,62 @@ function isRecordingEnabled(): boolean {
   return isEnabled() && Cypress.env("C8Y_PACT_MODE") === "recording";
 }
 
-function savePact(response: Cypress.Response<any>, client?: C8yClient) {
+function getCurrentTestId(): C8yPactID {
+  let key = Cypress.currentTest?.titlePath?.join("__");
+  if (key == null) {
+    key = Cypress.spec?.relative?.split("/").slice(-2).join("__");
+  }
+  const pact = Cypress.config().c8ypact;
+  return (pact && pact.id) || key.replace(/ /g, "_");
+}
+
+function savePact(
+  response: Cypress.Response<any>,
+  client?: C8yClient,
+  options: C8yPactSaveOptions = { noqueue: false }
+) {
   if (!isEnabled()) return;
 
-  const pactRecord = createPactRecord(response, client);
-  const id = Cypress.c8ypact.currentPactIdentifier();
-  if (!id) return;
+  const pact = C8yDefaultPact.from(response, client);
 
-  const info = createPactInfo(id, client);
-  const folder = Cypress.config().fixturesFolder;
+  if (options.modifiedResponse && isCypressResponse(options.modifiedResponse)) {
+    const modifiedPactRecord = C8yDefaultPactRecord.from(
+      options.modifiedResponse,
+      client
+    );
+    pact.records[pact.records.length - 1].modifiedResponse =
+      modifiedPactRecord.response;
+  }
 
-  const pact: C8yPact = {
-    id,
-    info,
-    records: [pactRecord],
-  };
   Cypress.c8ypact.preprocessor?.apply(pact);
 
-  cy.task(
-    "c8ypact:save",
-    {
-      ...pact,
-      folder,
-    },
-    debugLogger()
-  );
-}
+  // create a shallow copy of the pact object and select properties to save
+  const keysToSave = ["id", "info", "records"];
+  const taskName = "c8ypact:save";
+  const data = { ..._.pick(pact, keysToSave) };
 
-function currentPact(): Cypress.Chainable<C8yPact | null> {
-  if (!isEnabled()) {
-    return cy.wrap<C8yPact | null>(null);
+  if (options.noqueue === true) {
+    // @ts-ignore
+    const { args, promise } = Cypress.emitMap("command:invocation", {
+      name: "task",
+      args: [taskName, data],
+    })[0];
+    new Promise((r) => promise.then(r))
+      .then(() =>
+        // @ts-ignore
+        Cypress.backend("run:privileged", {
+          commandName: "task",
+          args,
+          options: {
+            task: taskName,
+            arg: data,
+          },
+        })
+      )
+      .catch(() => {});
+  } else {
+    cy.task("c8ypact:save", { ..._.pick(pact, keysToSave) }, debugLogger());
   }
-  return cy
-    .task<C8yPact | null>(
-      "c8ypact:get",
-      Cypress.c8ypact.currentPactIdentifier(),
-      debugLogger()
-    )
-    .then((pact) => {
-      if (pact == null) {
-        return cy.wrap<C8yPact>(null);
-      }
-
-      // required to map the record object to a C8yPactRecord here as this can
-      // not be done in the plugin
-      pact.records = pact.records?.map((record) => {
-        return new C8yDefaultPactRecord(
-          record.request,
-          record.response,
-          record.options,
-          record.auth,
-          record.createdObject
-        );
-      });
-      return cy.wrap(pact);
-    });
-}
-
-function currentNextRecord(): Cypress.Chainable<{
-  record: C8yPactRecord;
-  info?: C8yPactInfo;
-} | null> {
-  if (!isEnabled()) {
-    return cy.wrap<{
-      record: C8yPactRecord;
-      info?: C8yPactInfo;
-    } | null>(null);
-  }
-
-  return cy
-    .task<C8yPactNextRecord>(
-      "c8ypact:next",
-      Cypress.c8ypact.currentPactIdentifier(),
-      debugLogger()
-    )
-    .then((r) => {
-      if (r == null) {
-        return cy.wrap<C8yPactNextRecord | null>(null);
-      }
-      // required to map the record object to a C8yPactRecord here as this can
-      // not be done in the plugin
-      cy.wrap<C8yPactNextRecord>({
-        record: new C8yDefaultPactRecord(
-          r.record.request,
-          r.record.response,
-          r.record.options,
-          r.record.auth,
-          r.record.createdObject
-        ),
-        info: r.info,
-      });
-    });
 }
 
 function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
@@ -507,7 +683,8 @@ function isPact(obj: any): obj is C8yPact {
     _.isObjectLike(_.get(obj, "info")) &&
     "records" in obj &&
     _.isArray(_.get(obj, "records")) &&
-    _.every(_.get(obj, "records"), isPactRecord)
+    _.every(_.get(obj, "records"), isPactRecord) &&
+    _.isFunction(_.get(obj, "nextRecord"))
   );
 }
 global.isPact = isPact;
