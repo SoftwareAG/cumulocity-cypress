@@ -454,9 +454,21 @@ describe("c8ypactintercept", () => {
       cy.spy(Cypress.c8ypact, "savePact").log(false);
     });
 
-    it("should return response from pact with static string response", () => {
+    it("should ignore pact for static RouteHandlers", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
       cy.intercept("/inventory/managedObjects*", "test")
+        .as("inventory")
+        .then(fetchInventory)
+        .then((data) => {
+          expect(data).to.eq("test");
+        })
+        .wait("@inventory")
+        .then(expectSavePactNotCalled);
+    });
+
+    it("should return pact response for interceptions without RouteHandler", () => {
+      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      cy.intercept("/inventory/managedObjects*")
         .as("inventory")
         .then(fetchInventory)
         .then((data) => {
@@ -466,13 +478,37 @@ describe("c8ypactintercept", () => {
         .then(expectSavePactNotCalled);
     });
 
-    it("should return response from pact with empty response", () => {
+    it("should return pact response for interceptions with RouteHandler continue function", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
-      cy.intercept("/inventory/managedObjects*")
+      cy.intercept("/inventory/managedObjects*", (req) => {
+        req.continue((res) => {
+          res.body.test = "test2";
+          res.statusCode = 222;
+          res.send();
+        });
+      })
         .as("inventory")
         .then(fetchInventory)
         .then((data) => {
           expect(data).to.deep.eq(response.body);
+        })
+        .wait("@inventory")
+        .then(expectSavePactNotCalled);
+    });
+
+    it("should not return pact response for interceptions with RouteHandler reply function", () => {
+      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      cy.intercept("/inventory/managedObjects*", (req) => {
+        req.reply({
+          body: "test",
+          statusCode: 222,
+          headers: { "x-test": "test" },
+        });
+      })
+        .as("inventory")
+        .then(fetchInventory)
+        .then((data) => {
+          expect(data).to.eq("test");
         })
         .wait("@inventory")
         .then(expectSavePactNotCalled);

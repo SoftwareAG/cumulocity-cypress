@@ -122,7 +122,13 @@ const wrapFunctionRouteHandler = (fn: any) => {
           });
         });
       }
-      reqContinue(resWrapperFn);
+
+      if (Cypress.c8ypact.current == null) {
+        reqContinue(resWrapperFn);
+      } else {
+        const response = responseFromPact({}, req.url);
+        req.reply(response);
+      }
     };
 
     // wrap reply() function
@@ -218,15 +224,11 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
         res.send(obj);
       });
     });
-
-    return;
-  } else if (Cypress.c8ypact.current != null) {
-    obj = responseFromPact(obj, req.url);
+  } else {
+    // respond to the request with object (static response)
+    replyFn(obj);
+    emitInterceptionEvent(req, obj);
   }
-
-  // respond to the request with object (static response)
-  replyFn(obj);
-  emitInterceptionEvent(req, obj);
 }
 
 function responseFromPact(obj: any, url: string): any {
