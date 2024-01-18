@@ -67,6 +67,7 @@ describe("c8yclient", () => {
       expect(Cypress.c8ypact.preprocessor).to.be.a("object");
       expect(Cypress.c8ypact.pactRunner).to.be.a("object");
       expect(Cypress.c8ypact.matcher).to.be.a("object");
+      expect(Cypress.c8ypact.urlMatcher).to.be.a("object");
     });
   });
 
