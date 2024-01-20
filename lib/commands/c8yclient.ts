@@ -143,6 +143,7 @@ declare global {
       url?: string;
       requestBody?: string | any;
       method?: string;
+      $body?: any;
     }
   }
 
@@ -182,6 +183,7 @@ declare global {
       skipClientAuthenication: boolean;
       failOnPactValidation: boolean;
       ignorePact: boolean;
+      schema: any;
     }>;
 
   type C8yAuthentication = IAuthentication & C8yAuthOptions;
@@ -244,6 +246,7 @@ export const defaultClientOptions: C8yClientOptions = {
   skipClientAuthenication: false,
   ignorePact: false,
   failOnPactValidation: true,
+  schema: undefined,
 };
 
 let logOnce = true;
@@ -614,6 +617,7 @@ function run(
           result = error;
         }
         result = toCypressResponse(result);
+        result.$body = options.schema;
         if (savePact) {
           Cypress.c8ypact.savePact(result, client);
         }
@@ -798,7 +802,8 @@ function toCypressResponse(
     | C8yPactRecord,
   duration: number = 0,
   fetchOptions: IFetchOptions = {},
-  url?: RequestInfo | URL
+  url?: RequestInfo | URL,
+  schema?: any
 ): Cypress.Response<any> {
   if (!obj) return undefined;
 
@@ -830,6 +835,7 @@ function toCypressResponse(
     body: fetchResponse.data,
     requestBody: fetchResponse.requestBody,
     method: fetchResponse.method || "GET",
+    $body: schema,
   };
 }
 

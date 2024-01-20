@@ -11,6 +11,7 @@ describe("c8ypactmatcher", () => {
   let obj1: C8yPactRecord, obj2: C8yPactRecord;
 
   beforeEach(() => {
+    Cypress.c8ypact.strictMatching = true;
     cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
       obj1 = C8yDefaultPactRecord.from(pacts[0]);
       obj2 = C8yDefaultPactRecord.from(pacts[1]);
@@ -225,13 +226,10 @@ describe("c8ypactmatcher", () => {
 
     it("should fail if ignored porperty is missing", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const c = Object.keys(obj1.request).length;
       const pact = _.cloneDeep(obj1);
       delete pact.request.url;
       expect(() => matcher.match(obj1, pact)).to.throw(
-        `Pact validation failed! "request" objects have different number of keys (${c} and ${
-          c - 1
-        }).`
+        `Pact validation failed! "request > url" not found in pact object.`
       );
     });
 
@@ -344,6 +342,188 @@ describe("c8ypactmatcher", () => {
         },
       };
       expect(matcher.match(obj, plainObjPact)).to.be.true;
+    });
+  });
+
+  context("C8yDefaultPactMatcher schema matching", function () {
+    it("should have schema matcher", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      expect(matcher.schemaMatcher).to.be.not.null;
+    });
+
+    it("schema keys should not break object matching", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      Cypress.c8ypact.strictMatching = false;
+
+      pact.response["$body"] = {};
+      pact.request.body = {};
+      pact.request["$body"] = {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+        },
+      };
+      const obj = _.cloneDeep(obj1);
+      obj.request.body = { id: "123" };
+
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledTwice;
+      spy.resetHistory();
+
+      Cypress.c8ypact.strictMatching = true;
+      delete pact.response.$body;
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledOnce;
+    });
+
+    it("matching should not fail for different number of keys in matched objects", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      Cypress.c8ypact.strictMatching = false;
+
+      pact.response["$body"] = {};
+      pact.request.body = {};
+      pact.request["$body"] = {};
+      const obj = _.cloneDeep(obj1);
+      obj.request.body = { id: "123" };
+
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledTwice;
+    });
+
+    it("should not fail if only schema is available for key", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      delete pact.response.body;
+      pact.response["$body"] = {};
+      const obj = _.cloneDeep(obj1);
+
+      Cypress.c8ypact.strictMatching = false;
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledOnce;
+    });
+
+    it("should prefer schema over object matching", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      pact.response.body = { other: 101 };
+      pact.response["$body"] = {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+        },
+      };
+      const obj = _.cloneDeep(obj1);
+      obj.response.body = { id: "123" };
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledOnce;
+    });
+
+    it("should match schema with strictMatching disabled", function () {
+      Cypress.c8ypact.strictMatching = false;
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      pact.response["$body"] = {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+        },
+      };
+      const obj = _.cloneDeep(obj1);
+      obj.response.body = { id: "123" };
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledOnce;
+    });
+
+    it("should fail for not matching schema", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      pact.response["$body"] = {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+        },
+      };
+      const obj = _.cloneDeep(obj1);
+      obj.response.body = { id: 123 };
+      expect(() => matcher.match(obj, pact)).to.throw(
+        `Pact validation failed! Schema for "response > body" does not match.`
+      );
+      expect(spy).to.have.been.calledOnce;
+    });
+
+    it("should fail if schema validates not an object", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      pact.response["$body"] = {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+        },
+      };
+      const obj = _.cloneDeep(obj1);
+      obj.response.body = "{ id: 123 }";
+      expect(() => matcher.match(obj, pact)).to.throw(
+        `Pact validation failed! Schema for "response > body" does not match.`
+      );
+      expect(spy).to.have.been.calledOnce;
+    });
+
+    it("should fail for properties not defined in schema", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      pact.response["$body"] = {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+        },
+      };
+      const obj = _.cloneDeep(obj1);
+      obj.response.body = { id: "123", other: 101 };
+      expect(() => matcher.match(obj, pact)).to.throw(
+        `Pact validation failed! Schema for "response > body" does not match.`
+      );
+      expect(spy).to.have.been.calledOnce;
+    });
+
+    it("should not fail for additional properties with strictMatching disabled", function () {
+      Cypress.c8ypact.strictMatching = false;
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const pact = _.cloneDeep(obj1);
+      pact.response["$body"] = {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+        },
+      };
+      const obj = _.cloneDeep(obj1);
+      obj.response.body = { id: "123", other: 101 };
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledOnce;
     });
   });
 

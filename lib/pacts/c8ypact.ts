@@ -191,7 +191,9 @@ declare global {
   /**
    * The request stored in a C8yPactRecord.
    */
-  type C8yPactRequest = Partial<Cypress.RequestOptions>;
+  type C8yPactRequest = Partial<Cypress.RequestOptions> & {
+    $body?: string;
+  };
 
   /**
    * The response stored in a C8yPactRecord.
@@ -205,6 +207,7 @@ declare global {
     status?: number;
     statusText?: string;
     method?: string;
+    $body: any; // [key: `$${string}`]: any;
   }
 
   /**
@@ -723,6 +726,7 @@ function createPactRecord(
       ...(r?.allRequestResponses && {
         allRequestResponses: r.allRequestResponses,
       }),
+      ...(_.get(r, "$body") && { $body: _.get(r, "$body") }),
     },
     client?._options
   );
