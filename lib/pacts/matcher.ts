@@ -1,6 +1,6 @@
 const { _ } = Cypress;
 import * as datefns from "date-fns";
-import Ajv from "ajv";
+import Ajv, { Schema } from "ajv";
 
 declare global {
   /**
@@ -42,22 +42,21 @@ export class C8yDefaultPactMatcher {
     propertyMatchers: { [key: string]: C8yPactMatcher } = {
       body: new C8yPactContentMatcher(),
       requestBody: new C8yPactContentMatcher(),
+      duration: new C8yNumberMatcher(),
+      date: new C8yIgnoreMatcher(),
+      Authorization: new C8yIgnoreMatcher(),
+      auth: new C8yIgnoreMatcher(),
+      options: new C8yIgnoreMatcher(),
+      createdObject: new C8yIgnoreMatcher(),
+      location: new C8yIgnoreMatcher(),
+      url: new C8yIgnoreMatcher(),
+      "X-XSRF-TOKEN": new C8yIgnoreMatcher(),
+      lastMessage: new C8yISODateStringMatcher(),
     },
     schemaMatcher: C8yPactMatcher = new C8ySchemaMatcher()
   ) {
     this.propertyMatchers = propertyMatchers;
     this.schemaMatcher = schemaMatcher;
-
-    this.addPropertyMatcher("duration", new C8yNumberMatcher());
-    this.addPropertyMatcher("date", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("Authorization", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("auth", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("options", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("createdObject", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("location", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("url", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("X-XSRF-TOKEN", new C8yIgnoreMatcher());
-    this.addPropertyMatcher("lastMessage", new C8yISODateStringMatcher());
   }
 
   match(
