@@ -152,8 +152,15 @@ export class C8yDefaultPactMatcher {
         );
       }
       if (isSchema) {
-        if (!this.schemaMatcher.match(value, pact)) {
-          throwPactError(`Schema for "${keyPath(key)}" does not match.`, key);
+        try {
+          if (!this.schemaMatcher.match(value, pact)) {
+            throwPactError(`Schema for "${keyPath(key)}" does not match.`, key);
+          }
+        } catch (error) {
+          throwPactError(
+            `Schema for "${keyPath(key)}" does not match. (${error})`,
+            key
+          );
         }
       } else if (this.propertyMatchers[key]) {
         if (!strictMode && !value) {
@@ -295,6 +302,9 @@ export class C8ySchemaMatcher implements C8yPactMatcher {
     const ajv: Ajv = new Ajv();
     schema.additionalProperties = !Cypress.c8ypact.strictMatching;
     const valid = ajv.validate(schema, obj1);
+    if (!valid) {
+      throw new Error(ajv.errorsText());
+    }
     return valid;
   }
 }
