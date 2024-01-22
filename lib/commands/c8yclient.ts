@@ -785,7 +785,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   try {
     if (isSchemaMatching) {
       const schema = pact;
-      _.extend(consoleProps, response, schema);
+      _.extend(consoleProps, { response }, { schema });
       matcher.match(response.body, schema);
     } else {
       const matchingProperties = ["request", "response"];
@@ -796,7 +796,12 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
       );
 
       Cypress.c8ypact.preprocessor?.apply(responseAsRecord, info.preprocessor);
-      _.extend(consoleProps, responseAsRecord, response, { pact: pactToMatch });
+      _.extend(
+        consoleProps,
+        { responseAsRecord },
+        { response },
+        { pact: pactToMatch }
+      );
 
       matcher.match(responseAsRecord, pactToMatch, consoleProps);
     }
