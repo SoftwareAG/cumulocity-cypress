@@ -77,7 +77,7 @@ declare global {
 
       /**
        * Returns the Angular date format string used to format the given source string. If no format is found, `undefined` is returned.
-       *  
+       *
        * @param source date string formatted using Angular `date` or Cumulocity `c8yDate` pipe
        * @param options the configuration options
        */
@@ -91,14 +91,14 @@ declare global {
 
       /**
        * Compare Cumulocity `c8yDate` or Angular `date` pipe formatted string with a `Date` object or an ISO date string as used in Cumulocity REST API.
-       * 
+       *
        * Comparing is done by formatting the `target` using the format of the source string. This way only the relevant components of the date will be compared.
-       * 
+       *
        * @example
        * cy.setLanguage("en");
        * cy.compareDates("25/05/2023", new Date()).should("eq", true);
        * cy.compareDates("25/05/2023, 16:22", "2023-05-25T14:22:12.320Z").should("eq", true);
-       * 
+       *
        * @param source date string formatted using Angular `date` or Cumulocity `c8yDate` pipe
        * @param target `Date`or ISO date string to compare with
        * @param options the configuration options
@@ -204,7 +204,7 @@ Cypress.Commands.add(
   ) => {
     if (
       (!source && prevSubject) ||
-      (_.isObject(source) && !_.isArray(source))
+      (_.isObjectLike(source) && !_.isArray(source))
     ) {
       source = prevSubject;
     }
@@ -264,7 +264,9 @@ Cypress.Commands.add(
       }
 
       if (options?.invalid === "throw") {
-        throwError(`'${item?.toString()}' could not be converted into a valid date. No matching format or invalid input.`);
+        throwError(
+          `'${item?.toString()}' could not be converted into a valid date. No matching format or invalid input.`
+        );
       }
 
       return undefined;
@@ -296,7 +298,7 @@ Cypress.Commands.add(
   ) => {
     if (
       (!source && prevSubject) ||
-      (_.isObject(source) && !_.isArray(source))
+      (_.isObjectLike(source) && !_.isArray(source))
     ) {
       source = prevSubject;
     }
@@ -350,7 +352,7 @@ Cypress.Commands.add(
   ) => {
     if (
       (!source && prevSubject) ||
-      (_.isObject(source) && !_.isArray(source))
+      (_.isObjectLike(source) && !_.isArray(source))
     ) {
       source = prevSubject;
     }
@@ -402,7 +404,7 @@ Cypress.Commands.add(
   ) => {
     if (
       (!source && prevSubject) ||
-      (_.isObject(source) && !_.isArray(source))
+      (_.isObjectLike(source) && !_.isArray(source))
     ) {
       source = prevSubject;
     }
