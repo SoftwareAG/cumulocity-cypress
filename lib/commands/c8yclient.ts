@@ -21,7 +21,8 @@ import {
   IResult,
   IResultList,
 } from "@c8y/client";
-import { C8yDefaultPactRecord } from "../pacts/c8ypact";
+import { C8yDefaultPactRecord, isPactError } from "../pacts/c8ypact";
+import { C8ySchemaMatcher } from "../pacts/matcher";
 
 declare global {
   namespace Cypress {
@@ -117,8 +118,8 @@ declare global {
       ): Chainable<Response<T[]>>;
 
       /**
-       * Compares a given Cypress.Response object with a C8yPactRecord contract. If
-       * the contract and the response do not match, an C8yPactError is thrown.
+       * Compares a given Cypress.Response object with a C8yPactRecord contract or a json schema.
+       * match ing fails, an C8yPactError is thrown.
        *
        * @param response - A Cypress.Response object representing the HTTP response.
        * @param record - A C8yPactRecord object representing the contract.
@@ -133,9 +134,7 @@ declare global {
       ): Cypress.Chainable<void>;
       c8ymatch(
         response: Cypress.Response<any>,
-        record: Partial<C8yPactRecord>,
-        info?: C8yPactInfo,
-        options?: C8yClientOptions
+        schema: any
       ): Cypress.Chainable<void>;
     }
 
@@ -572,26 +571,30 @@ function run(
       !ignore &&
       Cypress.c8ypact.isRecordingEnabled();
 
-    const matchPact = (response: any) => {
-      if (ignore) return;
-      if (
-        Cypress.c8ypact.current ||
-        (Cypress.c8ypact.isEnabled() && !Cypress.c8ypact.isRecordingEnabled())
-      ) {
-        for (const r of _.isArray(response) ? response : [response]) {
-          const record = Cypress.c8ypact.current?.nextRecord();
-          const info = Cypress.c8ypact.current?.info;
-          if (record != null && info != null && !ignore) {
-            cy.c8ymatch(r, record, info, options);
-          } else {
-            if (
-              record == null &&
-              Cypress.c8ypact.failOnMissingPacts &&
-              !ignore
-            ) {
-              throwError(
-                `${Cypress.c8ypact.getCurrentTestId()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
-              );
+    const matchPact = (response: any, schema: any) => {
+      if (schema) {
+        cy.c8ymatch(response, schema);
+      } else {
+        if (ignore) return;
+        if (
+          Cypress.c8ypact.current ||
+          (Cypress.c8ypact.isEnabled() && !Cypress.c8ypact.isRecordingEnabled())
+        ) {
+          for (const r of _.isArray(response) ? response : [response]) {
+            const record = Cypress.c8ypact.current?.nextRecord();
+            const info = Cypress.c8ypact.current?.info;
+            if (record != null && info != null && !ignore) {
+              cy.c8ymatch(r, record, info, options);
+            } else {
+              if (
+                record == null &&
+                Cypress.c8ypact.failOnMissingPacts &&
+                !ignore
+              ) {
+                throwError(
+                  `${Cypress.c8ypact.getCurrentTestId()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
+                );
+              }
             }
           }
         }
@@ -661,7 +664,7 @@ function run(
         throw err;
       }
 
-      matchPact(err);
+      matchPact(err, options.schema);
 
       cy.then(() => {
         // @ts-ignore
@@ -672,7 +675,7 @@ function run(
       });
     });
 
-    matchPact(response);
+    matchPact(response, options.schema);
 
     cy.then(() => {
       if (isArrayOfFunctions(fns) && !_.isEmpty(fns)) {
@@ -760,35 +763,53 @@ Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
 
 Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   const p = Cypress.config().c8ypact;
-  const matcher = (p && p.matcher) || Cypress.c8ypact.matcher;
-  const matchingProperties = ["request", "response"];
-  const pactToMatch = _.pick(pact, matchingProperties);
+  let matcher = (p && p.matcher) || Cypress.c8ypact.matcher;
 
-  const consoleProps: any = {
-    matcher,
-    response,
-    pact: pactToMatch,
-  };
+  const isSchemaMatching =
+    !("request" in pact || "response" in pact) && _.isObjectLike(pact);
+  if (isSchemaMatching) {
+    matcher =
+      ((_.isFunction(_.get(matcher, "schemaMatcher.match")) &&
+        _.get(matcher, "schemaMatcher")) as C8ySchemaMatcher) ||
+      new C8ySchemaMatcher();
+    options.failOnPactValidation = true;
+  }
+
+  const consoleProps: any = { response, matcher };
   const logger = Cypress.log({
     autoEnd: false,
     consoleProps: () => consoleProps,
     message: matcher.constructor.name || "-",
   });
-  try {
-    const responseAsRecord = _.pick(
-      C8yDefaultPactRecord.from(response),
-      matchingProperties
-    );
-    Cypress.c8ypact.preprocessor?.apply(responseAsRecord, info.preprocessor);
-    consoleProps.responseAsRecord = responseAsRecord;
 
-    matcher.match(responseAsRecord, pactToMatch, consoleProps);
-    logger.end();
-  } catch (error) {
-    logger.end();
-    if (options.failOnPactValidation) {
-      throw error;
+  try {
+    if (isSchemaMatching) {
+      const schema = pact;
+      _.extend(consoleProps, response, schema);
+      matcher.match(response.body, schema);
+    } else {
+      const matchingProperties = ["request", "response"];
+      const pactToMatch = _.pick(pact, matchingProperties);
+      const responseAsRecord = _.pick(
+        C8yDefaultPactRecord.from(response),
+        matchingProperties
+      );
+
+      Cypress.c8ypact.preprocessor?.apply(responseAsRecord, info.preprocessor);
+      _.extend(consoleProps, responseAsRecord, response, { pact: pactToMatch });
+
+      matcher.match(responseAsRecord, pactToMatch, consoleProps);
     }
+  } catch (error: any) {
+    if (options.failOnPactValidation) {
+      if (isCypressError(error) || isPactError(error)) {
+        throw error;
+      } else {
+        throwError(`Matching schema failed. Error: ${error}`);
+      }
+    }
+  } finally {
+    logger.end();
   }
 });
 
@@ -896,4 +917,8 @@ export function isIResult(obj: any): obj is IResult<any> {
     "res" in obj &&
     isWindowFetchResponse(obj.res)
   );
+}
+
+export function isCypressError(error: any): boolean {
+  return _.isError(error) && _.get(error, "name") === "CypressError";
 }

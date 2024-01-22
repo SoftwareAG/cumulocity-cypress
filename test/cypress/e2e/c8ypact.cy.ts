@@ -5,6 +5,7 @@ import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
   C8yDefaultSchemaGenerator,
+  isPactError,
 } from "../../../lib/pacts/c8ypact";
 import { defaultClientOptions } from "../../../lib/commands/c8yclient";
 import {
@@ -1180,6 +1181,23 @@ describe("c8yclient", () => {
         "test"
       );
       expect(isPact(pact)).to.be.false;
+    });
+
+    it("isPactError validates error object with name C8yPactError", function () {
+      const error = new Error("test");
+      error.name = "C8yPactError";
+      expect(isPactError(error)).to.be.true;
+    });
+
+    it("isPactError does not validate error with wrong name", function () {
+      const error = new Error("test");
+      expect(isPactError(error)).to.be.false;
+    });
+
+    it("isPactError does not validate undefined and empty", function () {
+      expect(isPactError(undefined)).to.be.false;
+      expect(isPactError(null)).to.be.false;
+      expect(isPactError({})).to.be.false;
     });
   });
 });

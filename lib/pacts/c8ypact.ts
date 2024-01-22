@@ -765,6 +765,10 @@ function isPactRecord(obj: any): obj is C8yPactRecord {
 }
 global.isPactRecord = isPactRecord;
 
+export function isPactError(error: any): boolean {
+  return _.isError(error) && _.get(error, "name") === "C8yPactError";
+}
+
 function createPactRecord(
   response: Cypress.Response<any>,
   client: C8yClient = null

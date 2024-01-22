@@ -15,6 +15,7 @@ import {
 import { SinonSpy } from "cypress/types/sinon";
 import {
   isArrayOfFunctions,
+  isCypressError,
   isIResult,
   isWindowFetchResponse,
 } from "../../../lib/commands/c8yclient";
@@ -422,6 +423,54 @@ describe("c8yclient", () => {
           expect(consoleProps.BasicAuth).to.eq(
             "Basic dDEyMzQ1L2FkbWluMzpteXBhc3N3b3Jk (t12345/admin3)"
           );
+        });
+    });
+  });
+
+  context("schema matching", () => {
+    it("should use schema for matching response", () => {
+      //@ts-ignore
+      cy.spy(Cypress.c8ypact.matcher.schemaMatcher, "match");
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
+        .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
+          schema: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+              },
+            },
+          },
+        })
+        .then(() => {
+          // @ts-ignore
+          const spy = Cypress.c8ypact.matcher.schemaMatcher.match as SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+        });
+    });
+
+    it("should fail if schema does not match response", (done) => {
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("Matching schema failed. Error:");
+        expect(err.message).to.contain("data/name must be number");
+        done();
+      });
+
+      cy.getAuth({ user: "admin", password: "mypwd", tenant: "t12345678" })
+        .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
+          schema: {
+            type: "object",
+            properties: {
+              name: {
+                type: "number",
+              },
+            },
+          },
+        })
+        .then(() => {
+          // @ts-ignore
+          const spy = Cypress.c8ypact.matcher.schemaMatcher.match as SinonSpy;
+          expect(spy).to.have.been.calledOnce;
         });
     });
   });
@@ -1050,6 +1099,23 @@ describe("c8yclient", () => {
       expect(isArrayOfFunctions([() => {}, () => {}])).to.be.true;
       // @ts-ignore
       expect(isArrayOfFunctions([() => {}, "test"])).to.be.false;
+    });
+
+    it("isCypressError validates error object with name CypressError", () => {
+      const error = new Error("test");
+      error.name = "CypressError";
+      expect(isCypressError(error)).to.be.true;
+    });
+
+    it("isCypressError does not validate error object without name", () => {
+      const error = new Error("test");
+      expect(isCypressError(error)).to.be.false;
+    });
+
+    it("isCypressError validates undefined and empty", () => {
+      expect(isCypressError(undefined)).to.be.false;
+      expect(isCypressError(null)).to.be.false;
+      expect(isCypressError({})).to.be.false;
     });
   });
 });
