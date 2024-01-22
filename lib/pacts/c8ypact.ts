@@ -31,8 +31,8 @@ declare global {
     id?: string;
     log?: boolean;
     matcher?: C8yPactMatcher;
-    producer?: { name: string; version?: string };
-    consumer?: { name: string; version?: string };
+    producer?: { name: string; version?: string } | string;
+    consumer?: { name: string; version?: string } | string;
     tags?: string[];
     description?: string;
     ignore?: boolean;
@@ -737,8 +737,12 @@ function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
       obfuscationPattern:
         Cypress.c8ypact.preprocessor?.defaultObfuscationPattern,
     },
-    consumer: c8ypact?.consumer,
-    producer: c8ypact?.producer,
+    consumer: _.isString(c8ypact?.consumer)
+      ? { name: c8ypact.consumer }
+      : c8ypact?.consumer,
+    producer: _.isString(c8ypact?.producer)
+      ? { name: c8ypact.producer }
+      : c8ypact?.producer,
     description: Cypress.config().c8ypact?.description,
     tags: Cypress.config().c8ypact?.tags,
     tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
