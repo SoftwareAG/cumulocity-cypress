@@ -4,13 +4,19 @@ import { SinonSpy } from "cypress/types/sinon";
 import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
+  C8yDefaultSchemaGenerator,
+  isPactError,
 } from "../../../lib/pacts/c8ypact";
 import { defaultClientOptions } from "../../../lib/commands/c8yclient";
-import { C8yDefaultPactMatcher } from "../../../lib/pacts/matcher";
+import {
+  C8yDefaultPactMatcher,
+  C8ySchemaMatcher,
+} from "../../../lib/pacts/matcher";
 
 const { _ } = Cypress;
 
 class AcceptAllMatcher implements C8yPactMatcher {
+  schemaMatcher: C8ySchemaMatcher = new C8ySchemaMatcher();
   match(obj1: any, obj2: any): boolean {
     return true;
   }
@@ -18,11 +24,16 @@ class AcceptAllMatcher implements C8yPactMatcher {
 
 describe("c8yclient", () => {
   beforeEach(() => {
+    Cypress.c8ypact.strictMatching = true;
+
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
+    Cypress.env("C8Y_PACT_IGNORE", undefined);
+    Cypress.env("C8Y_PACT_MODE", undefined);
+    Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
 
     initRequestStub();
     stubResponses([
@@ -68,6 +79,7 @@ describe("c8yclient", () => {
       expect(Cypress.c8ypact.pactRunner).to.be.a("object");
       expect(Cypress.c8ypact.matcher).to.be.a("object");
       expect(Cypress.c8ypact.urlMatcher).to.be.a("object");
+      expect(Cypress.c8ypact.schemaGenerator).to.be.a("object");
     });
   });
 
@@ -387,7 +399,92 @@ describe("c8yclient", () => {
     });
   });
 
-  context("c8ypact config", function () {
+  context("C8yDefaultSchemaGenerator", function () {
+    it("should generate schema from object", async function () {
+      const generator = new C8yDefaultSchemaGenerator();
+      const schema = await generator.generate({
+        name: "test",
+      });
+      expect(schema).to.deep.equal({
+        $schema: "http://json-schema.org/draft-06/schema#",
+        $ref: "#/definitions/Root",
+        definitions: {
+          Root: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              name: {
+                type: "string",
+              },
+            },
+            required: ["name"],
+            title: "Root",
+          },
+        },
+      });
+    });
+
+    it("should generate schema with name of root object", async function () {
+      const expectedSchema = {
+        $schema: "http://json-schema.org/draft-06/schema#",
+        $ref: "#/definitions/Body",
+        definitions: {
+          Body: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              self: {
+                type: "string",
+                format: "uri",
+                "qt-uri-protocols": ["https"],
+              },
+              managedObjects: {
+                type: "array",
+                items: {
+                  $ref: "#/definitions/ManagedObject",
+                },
+              },
+            },
+            required: ["managedObjects", "self"],
+            title: "Body",
+          },
+          ManagedObject: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              self: {
+                type: "string",
+                format: "uri",
+                "qt-uri-protocols": ["https"],
+              },
+              id: {
+                type: "string",
+                format: "integer",
+              },
+            },
+            required: ["id", "self"],
+            title: "ManagedObject",
+          },
+        },
+      };
+      const generator = new C8yDefaultSchemaGenerator();
+      const schema = await generator.generate(
+        {
+          self: "https://test.com",
+          managedObjects: [
+            {
+              self: "https://test.com",
+              id: "123123",
+            },
+          ],
+        },
+        { name: "Body" }
+      );
+      expect(schema).to.deep.equal(expectedSchema);
+    });
+  });
+
+  context("c8ypact config and environment variabless", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
     });
@@ -418,7 +515,7 @@ describe("c8yclient", () => {
 
     it("should create pact identifier from test case name", function () {
       expect(Cypress.c8ypact.getCurrentTestId()).to.equal(
-        "c8yclient__c8ypact_config__should_create_pact_identifier_from_test_case_name"
+        "c8yclient__c8ypact_config_and_environment_variabless__should_create_pact_identifier_from_test_case_name"
       );
     });
 
@@ -433,7 +530,7 @@ describe("c8yclient", () => {
     );
   });
 
-  context("c8ypact recording", function () {
+  context("c8ypact record and load", function () {
     beforeEach(() => {
       Cypress.env("C8Y_TENANT", undefined);
       Cypress.env("C8Y_PACT_MODE", "recording");
@@ -510,11 +607,102 @@ describe("c8yclient", () => {
           });
         });
     });
+
+    it("should record and restore pact objects with schema", function () {
+      const schema = {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+          },
+        },
+      };
+
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<IManagedObject>(
+          (c) => c.inventory.detail(1, { withChildren: false }),
+          {
+            schema,
+          }
+        )
+        .then((response) => {
+          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+          expect(spy.getCall(0).args[0].$body).to.deep.eq(schema);
+        })
+        .then(() => {
+          C8yDefaultPact.loadCurrent().then((pact) => {
+            expect(pact.records).to.have.length(1);
+            expect(pact.records[0].response.$body).to.deep.equal(schema);
+          });
+        });
+    });
+
+    it("should add schema to records when saving pact", function () {
+      const schema = {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+          },
+        },
+      };
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
+        .c8yclient([
+          (c) => c.inventory.detail(1, { withChildren: false }),
+          (c) => c.inventory.detail(1, { withChildren: false }),
+        ])
+        .c8yclient((c) => c.inventory.detail(1), { schema })
+        .then((response) => {
+          C8yDefaultPact.loadCurrent().then((pact) => {
+            expect(pact.records).to.have.length(3);
+            expect(pact.records[0].response.$body).to.not.be.null;
+            expect(pact.records[1].response.$body).to.not.be.null;
+            expect(pact.records[2].response.$body).to.deep.eq(schema);
+          });
+        });
+    });
+
+    it("should not fail if no schemaGenerator is set", function () {
+      const generator = Cypress.c8ypact.schemaGenerator;
+      Cypress.c8ypact.schemaGenerator = null;
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
+        .c8yclient([
+          (c) => c.inventory.detail(1, { withChildren: false }),
+          (c) => c.inventory.detail(1, { withChildren: false }),
+        ])
+        .then((response) => {
+          Cypress.c8ypact.schemaGenerator = generator;
+          C8yDefaultPact.loadCurrent().then((pact) => {
+            expect(pact.records).to.have.length(2);
+            expect(pact.records[0].response.$body).to.be.undefined;
+            expect(pact.records[1].response.$body).to.be.undefined;
+          });
+        });
+    });
   });
 
   context("c8ypact matching", function () {
+    const response: Cypress.Response<any> = {
+      status: 200,
+      statusText: "OK",
+      headers: { "content-type": "application/json" },
+      body: { name: "t123456789" },
+      duration: 100,
+      requestHeaders: { accept: "application/json" },
+      allRequestResponses: [],
+      isOkStatusCode: false,
+      method: "GET",
+      url:
+        Cypress.config().baseUrl +
+        "/inventory/managedObjects?fragmentType=abcd",
+    };
+
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", undefined);
+      Cypress.c8ypact.matcher = new C8yDefaultPactMatcher();
     });
 
     it("should have recording disabled", function () {
@@ -616,13 +804,71 @@ describe("c8yclient", () => {
           });
         });
     });
+
+    it("should match with schema", function () {
+      const schema = {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+          },
+        },
+      };
+
+      Cypress.env("C8Y_PACT_IGNORE", [
+        "request.headers",
+        "response.isOkStatusCode",
+      ]);
+
+      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      Cypress.c8ypact.current.records[0].response.$body = schema;
+
+      const matcher = Cypress.c8ypact.matcher as C8yDefaultPactMatcher;
+      cy.spy(matcher.schemaMatcher, "match").log(false);
+
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
+        .c8yclient((c) => c.inventory.detail(1, { withChildren: false }))
+        .then((response) => {
+          const matchSpy = matcher.schemaMatcher.match as SinonSpy;
+          expect(matchSpy).to.have.been.calledOnce;
+          expect(matchSpy.getCall(0).args).to.deep.eq([response.body, schema]);
+        });
+    });
+
+    it("should fail if schema does not match", function (done) {
+      const schema = {
+        type: "object",
+        properties: {
+          name: {
+            type: "number",
+          },
+        },
+      };
+
+      Cypress.env("C8Y_PACT_IGNORE", [
+        "request.headers",
+        "response.isOkStatusCode",
+      ]);
+
+      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      Cypress.c8ypact.current.records[0].response.$body = schema;
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("Pact validation failed!");
+        done();
+      });
+
+      cy.getAuth({
+        user: "admin",
+        password: "mypassword",
+        tenant: "test",
+      }).c8yclient((c) => c.inventory.detail(1, { withChildren: false }));
+    });
   });
 
   context("c8ypact preprocessing", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
-      Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
-      Cypress.env("C8Y_PACT_IGNORE", undefined);
     });
 
     const cypressResponse: Partial<Cypress.Response<any>> = {
@@ -935,6 +1181,23 @@ describe("c8yclient", () => {
         "test"
       );
       expect(isPact(pact)).to.be.false;
+    });
+
+    it("isPactError validates error object with name C8yPactError", function () {
+      const error = new Error("test");
+      error.name = "C8yPactError";
+      expect(isPactError(error)).to.be.true;
+    });
+
+    it("isPactError does not validate error with wrong name", function () {
+      const error = new Error("test");
+      expect(isPactError(error)).to.be.false;
+    });
+
+    it("isPactError does not validate undefined and empty", function () {
+      expect(isPactError(undefined)).to.be.false;
+      expect(isPactError(null)).to.be.false;
+      expect(isPactError({})).to.be.false;
     });
   });
 });
