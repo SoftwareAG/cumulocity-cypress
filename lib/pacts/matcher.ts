@@ -1,6 +1,6 @@
 const { _ } = Cypress;
 import * as datefns from "date-fns";
-import Ajv, { Schema } from "ajv";
+import Ajv from "ajv";
 
 declare global {
   /**
@@ -35,7 +35,7 @@ declare global {
 export class C8yDefaultPactMatcher {
   schemaMatcher: C8ySchemaMatcher;
 
-  private propertyMatchers: { [key: string]: C8yPactMatcher } = {};
+  propertyMatchers: { [key: string]: C8yPactMatcher } = {};
   private parents: string[] = [];
 
   constructor(
@@ -299,7 +299,14 @@ export class C8ySchemaMatcher implements C8yPactMatcher {
   match(obj1: any, schema: any): boolean {
     if (!schema) return false;
     const ajv: Ajv = new Ajv();
+
     schema.additionalProperties = !Cypress.c8ypact.strictMatching;
+    if (schema.definitions) {
+      schema.definitions.forEach((definition: any) => {
+        definition.additionalProperties = !Cypress.c8ypact.strictMatching;
+      });
+    }
+
     const valid = ajv.validate(schema, obj1);
     if (!valid) {
       throw new Error(ajv.errorsText());

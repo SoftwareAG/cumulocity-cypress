@@ -1,3 +1,8 @@
+import {
+  InputData,
+  jsonInputForTargetLanguage,
+  quicktype,
+} from "quicktype-core";
 import { C8yDefaultPactMatcher } from "./matcher";
 import { C8yPactDefaultPreprocessor } from "./preprocessor";
 import { C8yDefaultPactRunner } from "./runner";
@@ -152,13 +157,17 @@ declare global {
      */
     preprocessor: C8yPactPreprocessor;
     /**
+     * The C8ySchemaGenerator implementation used to generate json schemas from json objects.
+     */
+    schemaGenerator: C8ySchemaGenerator;
+    /**
      * Save the given response as a pact record in the pact for the current test case.
      */
     savePact: (
       response: Cypress.Response<any>,
       client?: C8yClient,
       options?: C8yPactSaveOptions
-    ) => void;
+    ) => Promise<void>;
     /**
      * Checks if the C8yPact plugin is enabled.
      */
@@ -265,6 +274,16 @@ declare global {
      * @param url2 Second url to match.
      */
     match: (url1: string | URL, url2: string | URL) => boolean;
+  }
+
+  interface C8ySchemaGenerator {
+    /**
+     * Generates a json schema for the given object.
+     *
+     * @param obj The object to generate the schema for.
+     * @param options The options passed to the schema generator.
+     */
+    generate: (obj: any, options?: any) => Promise<any>;
   }
 
   /**
@@ -543,6 +562,26 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   }
 }
 
+export class C8yDefaultSchemaGenerator implements C8ySchemaGenerator {
+  async generate(obj: any, options: any = {}): Promise<any> {
+    const { name } = options;
+    const inputData = new InputData();
+    const jsonInput = jsonInputForTargetLanguage("json-schema");
+    await jsonInput.addSource({
+      name: name || "root",
+      samples: [JSON.stringify(obj)],
+    });
+    inputData.addInput(jsonInput);
+
+    const result = await quicktype({
+      inputData,
+      lang: "json-schema",
+    });
+
+    return JSON.parse(result.lines.join("\n"));
+  }
+}
+
 function isURL(obj: any): obj is URL {
   return obj instanceof URL;
 }
@@ -557,6 +596,7 @@ Cypress.c8ypact = {
   urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
   preprocessor: new C8yPactDefaultPreprocessor(),
   pactRunner: new C8yDefaultPactRunner(),
+  schemaGenerator: new C8yDefaultSchemaGenerator(),
   failOnMissingPacts: true,
   strictMatching: true,
   debugLog: false,
@@ -609,7 +649,7 @@ function savePact(
   response: Cypress.Response<any>,
   client?: C8yClient,
   options: C8yPactSaveOptions = { noqueue: false }
-) {
+): Promise<void> {
   if (!isEnabled()) return;
 
   const pact = C8yDefaultPact.from(response, client);
@@ -625,16 +665,37 @@ function savePact(
 
   Cypress.c8ypact.preprocessor?.apply(pact);
 
-  // create a shallow copy of the pact object and select properties to save
   const keysToSave = ["id", "info", "records"];
-  const taskName = "c8ypact:save";
-  const data = { ..._.pick(pact, keysToSave) };
+  return Promise.all(
+    pact.records
+      .filter((record: C8yPactRecord) => !record.response.$body)
+      .map((record) =>
+        Cypress.c8ypact.schemaGenerator
+          ?.generate(record.response.body, { name: "body" })
+          .then((schema) => {
+            record.response.$body = schema;
+            return record;
+          })
+      )
+  )
+    .then(() => {
+      const data = { ..._.pick(pact, keysToSave) };
+      save(data, options);
+    })
+    .catch((error) => {
+      console.error(error);
+      const data = { ..._.pick(pact, keysToSave) };
+      save(data, options);
+    });
+}
 
-  if (options.noqueue === true) {
+function save(pact: any, options: C8yPactSaveOptions) {
+  const taskName = "c8ypact:save";
+  if (options?.noqueue === true) {
     // @ts-ignore
     const { args, promise } = Cypress.emitMap("command:invocation", {
       name: "task",
-      args: [taskName, data],
+      args: [taskName, pact],
     })[0];
     new Promise((r) => promise.then(r))
       .then(() =>
@@ -644,13 +705,13 @@ function savePact(
           args,
           options: {
             task: taskName,
-            arg: data,
+            arg: pact,
           },
         })
       )
       .catch(() => {});
   } else {
-    cy.task("c8ypact:save", { ..._.pick(pact, keysToSave) }, debugLogger());
+    cy.task("c8ypact:save", pact, debugLogger());
   }
 }
 

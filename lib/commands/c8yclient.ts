@@ -619,7 +619,7 @@ function run(
         result = toCypressResponse(result);
         result.$body = options.schema;
         if (savePact) {
-          Cypress.c8ypact.savePact(result, client);
+          await Cypress.c8ypact.savePact(result, client);
         }
         if (isErrorResponse(result)) {
           throw result;

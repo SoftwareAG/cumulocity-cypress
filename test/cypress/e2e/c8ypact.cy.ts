@@ -4,6 +4,7 @@ import { SinonSpy } from "cypress/types/sinon";
 import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
+  C8yDefaultSchemaGenerator,
 } from "../../../lib/pacts/c8ypact";
 import { defaultClientOptions } from "../../../lib/commands/c8yclient";
 import {
@@ -30,6 +31,9 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_LOGGED_IN_USER", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
     Cypress.env("C8Y_PACT_IGNORE", undefined);
+    Cypress.env("C8Y_PACT_MODE", undefined);
+    Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
+
     initRequestStub();
     stubResponses([
       new window.Response(JSON.stringify({ name: "t123456789" }), {
@@ -74,6 +78,7 @@ describe("c8yclient", () => {
       expect(Cypress.c8ypact.pactRunner).to.be.a("object");
       expect(Cypress.c8ypact.matcher).to.be.a("object");
       expect(Cypress.c8ypact.urlMatcher).to.be.a("object");
+      expect(Cypress.c8ypact.schemaGenerator).to.be.a("object");
     });
   });
 
@@ -393,6 +398,91 @@ describe("c8yclient", () => {
     });
   });
 
+  context("C8yDefaultSchemaGenerator", function () {
+    it("should generate schema from object", async function () {
+      const generator = new C8yDefaultSchemaGenerator();
+      const schema = await generator.generate({
+        name: "test",
+      });
+      expect(schema).to.deep.equal({
+        $schema: "http://json-schema.org/draft-06/schema#",
+        $ref: "#/definitions/Root",
+        definitions: {
+          Root: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              name: {
+                type: "string",
+              },
+            },
+            required: ["name"],
+            title: "Root",
+          },
+        },
+      });
+    });
+
+    it("should generate schema with name of root object", async function () {
+      const expectedSchema = {
+        $schema: "http://json-schema.org/draft-06/schema#",
+        $ref: "#/definitions/Body",
+        definitions: {
+          Body: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              self: {
+                type: "string",
+                format: "uri",
+                "qt-uri-protocols": ["https"],
+              },
+              managedObjects: {
+                type: "array",
+                items: {
+                  $ref: "#/definitions/ManagedObject",
+                },
+              },
+            },
+            required: ["managedObjects", "self"],
+            title: "Body",
+          },
+          ManagedObject: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              self: {
+                type: "string",
+                format: "uri",
+                "qt-uri-protocols": ["https"],
+              },
+              id: {
+                type: "string",
+                format: "integer",
+              },
+            },
+            required: ["id", "self"],
+            title: "ManagedObject",
+          },
+        },
+      };
+      const generator = new C8yDefaultSchemaGenerator();
+      const schema = await generator.generate(
+        {
+          self: "https://test.com",
+          managedObjects: [
+            {
+              self: "https://test.com",
+              id: "123123",
+            },
+          ],
+        },
+        { name: "Body" }
+      );
+      expect(schema).to.deep.equal(expectedSchema);
+    });
+  });
+
   context("c8ypact config and environment variabless", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
@@ -517,7 +607,7 @@ describe("c8yclient", () => {
         });
     });
 
-    it("should record and restore schema", function () {
+    it("should record and restore pact objects with schema", function () {
       const schema = {
         type: "object",
         properties: {
@@ -545,6 +635,49 @@ describe("c8yclient", () => {
           C8yDefaultPact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             expect(pact.records[0].response.$body).to.deep.equal(schema);
+          });
+        });
+    });
+
+    it("should add schema to records when saving pact", function () {
+      const schema = {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+          },
+        },
+      };
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
+        .c8yclient([
+          (c) => c.inventory.detail(1, { withChildren: false }),
+          (c) => c.inventory.detail(1, { withChildren: false }),
+        ])
+        .c8yclient((c) => c.inventory.detail(1), { schema })
+        .then((response) => {
+          C8yDefaultPact.loadCurrent().then((pact) => {
+            expect(pact.records).to.have.length(3);
+            expect(pact.records[0].response.$body).to.not.be.null;
+            expect(pact.records[1].response.$body).to.not.be.null;
+            expect(pact.records[2].response.$body).to.deep.eq(schema);
+          });
+        });
+    });
+
+    it("should not fail if no schemaGenerator is set", function () {
+      const generator = Cypress.c8ypact.schemaGenerator;
+      Cypress.c8ypact.schemaGenerator = null;
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
+        .c8yclient([
+          (c) => c.inventory.detail(1, { withChildren: false }),
+          (c) => c.inventory.detail(1, { withChildren: false }),
+        ])
+        .then((response) => {
+          Cypress.c8ypact.schemaGenerator = generator;
+          C8yDefaultPact.loadCurrent().then((pact) => {
+            expect(pact.records).to.have.length(2);
+            expect(pact.records[0].response.$body).to.be.undefined;
+            expect(pact.records[1].response.$body).to.be.undefined;
           });
         });
     });
@@ -735,8 +868,6 @@ describe("c8yclient", () => {
   context("c8ypact preprocessing", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
-      Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
-      Cypress.env("C8Y_PACT_IGNORE", undefined);
     });
 
     const cypressResponse: Partial<Cypress.Response<any>> = {

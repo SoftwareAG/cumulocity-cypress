@@ -525,6 +525,29 @@ describe("c8ypactmatcher", () => {
       expect(matcher.match(obj, pact)).to.be.true;
       expect(spy).to.have.been.calledOnce;
     });
+
+    it("should match nested schema", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const spy = cy.spy(
+        _.get(matcher.propertyMatchers["body"], "schemaMatcher"),
+        "match"
+      );
+      const pact = _.cloneDeep(obj1);
+      pact.response.body = { id: "123", nested: { name: "abcd" } };
+      pact.response.body.$nested = {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+          },
+        },
+      };
+
+      const obj = _.cloneDeep(obj2);
+      obj.response.body = { id: "123", nested: { name: "abcd" } };
+      expect(matcher.match(obj, pact)).to.be.true;
+      expect(spy).to.have.been.calledOnce;
+    });
   });
 
   context("C8yISODateStringMatcher", function () {
