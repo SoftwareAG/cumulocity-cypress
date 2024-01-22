@@ -1,6 +1,8 @@
 const { _ } = Cypress;
 import * as datefns from "date-fns";
 import Ajv from "ajv";
+import addFormats from "ajv-formats";
+import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 
 declare global {
   /**
@@ -53,7 +55,7 @@ export class C8yDefaultPactMatcher {
       "X-XSRF-TOKEN": new C8yIgnoreMatcher(),
       lastMessage: new C8yISODateStringMatcher(),
     },
-    schemaMatcher: C8yPactMatcher = new C8ySchemaMatcher()
+    schemaMatcher: C8ySchemaMatcher = new C8ySchemaMatcher()
   ) {
     this.propertyMatchers = propertyMatchers;
     this.schemaMatcher = schemaMatcher;
@@ -283,7 +285,7 @@ export class C8ySameTypeMatcher implements C8yPactMatcher {
   }
 }
 
-export class C8yISODateStringMatcher implements C8yPactMatcher {
+export class C8yISODateStringMatcher {
   match(obj1: any, obj2: any): boolean {
     if (!_.isString(obj1) || !_.isString(obj2)) {
       return false;
@@ -295,23 +297,36 @@ export class C8yISODateStringMatcher implements C8yPactMatcher {
   }
 }
 
-export class C8ySchemaMatcher implements C8yPactMatcher {
+export class C8ySchemaMatcher {
   match(obj1: any, schema: any): boolean {
     if (!schema) return false;
-    const ajv: Ajv = new Ajv();
+    const ajv = new Ajv();
+    addFormats(ajv);
+    ajv.addMetaSchema(draft06Schema);
 
     const schemaClone = _.cloneDeep(schema);
-    schemaClone.additionalProperties = !Cypress.c8ypact.strictMatching;
-    if (schemaClone.definitions) {
-      schemaClone.definitions.forEach((definition: any) => {
-        definition.additionalProperties = !Cypress.c8ypact.strictMatching;
-      });
-    }
+    this.updateAdditionalProperties(
+      schemaClone,
+      !Cypress.c8ypact.strictMatching
+    );
 
     const valid = ajv.validate(schemaClone, obj1);
     if (!valid) {
       throw new Error(ajv.errorsText());
     }
     return valid;
+  }
+
+  protected updateAdditionalProperties(schema: any, value: boolean) {
+    if (_.isObjectLike(schema)) {
+      schema.additionalProperties = value;
+      Object.values(schema).forEach((v: any) => {
+        this.updateAdditionalProperties(v, value);
+      });
+    } else if (_.isArray(schema)) {
+      schema.forEach((v: any) => {
+        this.updateAdditionalProperties(v, value);
+      });
+    }
   }
 }

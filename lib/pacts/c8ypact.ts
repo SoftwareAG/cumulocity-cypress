@@ -577,8 +577,19 @@ export class C8yDefaultSchemaGenerator implements C8ySchemaGenerator {
       inputData,
       lang: "json-schema",
     });
+    const schema = JSON.parse(result.lines.join("\n"));
+    this.removeNonStandardKeywords(schema);
+    return schema;
+  }
 
-    return JSON.parse(result.lines.join("\n"));
+  protected removeNonStandardKeywords(schema: any) {
+    for (const key in schema) {
+      if (key.startsWith("qt-")) {
+        delete schema[key];
+      } else if (typeof schema[key] === "object") {
+        this.removeNonStandardKeywords(schema[key]);
+      }
+    }
   }
 }
 

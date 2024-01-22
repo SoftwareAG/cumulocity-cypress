@@ -766,7 +766,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   let matcher = (p && p.matcher) || Cypress.c8ypact.matcher;
 
   const isSchemaMatching =
-    !("request" in pact || "response" in pact) && _.isObjectLike(pact);
+    !("request" in pact) && !("response" in pact) && _.isObjectLike(pact);
   if (isSchemaMatching) {
     matcher =
       ((_.isFunction(_.get(matcher, "schemaMatcher.match")) &&

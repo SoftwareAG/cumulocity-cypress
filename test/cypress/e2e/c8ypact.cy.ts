@@ -424,7 +424,7 @@ describe("c8yclient", () => {
       });
     });
 
-    it("should generate schema with name of root object", async function () {
+    it("should generate schema without qt- properties and with name of root object", async function () {
       const expectedSchema = {
         $schema: "http://json-schema.org/draft-06/schema#",
         $ref: "#/definitions/Body",
@@ -436,7 +436,6 @@ describe("c8yclient", () => {
               self: {
                 type: "string",
                 format: "uri",
-                "qt-uri-protocols": ["https"],
               },
               managedObjects: {
                 type: "array",
@@ -455,7 +454,6 @@ describe("c8yclient", () => {
               self: {
                 type: "string",
                 format: "uri",
-                "qt-uri-protocols": ["https"],
               },
               id: {
                 type: "string",
