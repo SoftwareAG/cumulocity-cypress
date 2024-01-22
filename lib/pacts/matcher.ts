@@ -300,14 +300,15 @@ export class C8ySchemaMatcher implements C8yPactMatcher {
     if (!schema) return false;
     const ajv: Ajv = new Ajv();
 
-    schema.additionalProperties = !Cypress.c8ypact.strictMatching;
-    if (schema.definitions) {
-      schema.definitions.forEach((definition: any) => {
+    const schemaClone = _.cloneDeep(schema);
+    schemaClone.additionalProperties = !Cypress.c8ypact.strictMatching;
+    if (schemaClone.definitions) {
+      schemaClone.definitions.forEach((definition: any) => {
         definition.additionalProperties = !Cypress.c8ypact.strictMatching;
       });
     }
 
-    const valid = ajv.validate(schema, obj1);
+    const valid = ajv.validate(schemaClone, obj1);
     if (!valid) {
       throw new Error(ajv.errorsText());
     }
