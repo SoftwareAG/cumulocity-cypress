@@ -1,6 +1,6 @@
 const { _ } = Cypress;
 import * as datefns from "date-fns";
-import Ajv from "ajv";
+import Ajv, { SchemaObject } from "ajv";
 import addFormats from "ajv-formats";
 import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 
@@ -24,6 +24,14 @@ declare global {
       objectPact: any,
       loggerProps?: { [key: string]: any }
     ) => boolean;
+  }
+
+  /**
+   * Matcher for matching objects against a schema. If the object does not match
+   * the schema an Error will be thrown.
+   */
+  interface C8ySchemaMatcher {
+    match(obj: any, schema: any): boolean;
   }
 }
 
@@ -55,7 +63,7 @@ export class C8yDefaultPactMatcher {
       "X-XSRF-TOKEN": new C8yIgnoreMatcher(),
       lastMessage: new C8yISODateStringMatcher(),
     },
-    schemaMatcher: C8ySchemaMatcher = new C8ySchemaMatcher()
+    schemaMatcher: C8ySchemaMatcher = new C8yAjvSchemaMatcher()
   ) {
     this.propertyMatchers = propertyMatchers;
     this.schemaMatcher = schemaMatcher;
@@ -297,8 +305,15 @@ export class C8yISODateStringMatcher {
   }
 }
 
-export class C8ySchemaMatcher {
-  match(obj1: any, schema: any): boolean {
+/**
+ * Default implementation of C8ySchemaMatcher using AJV. By default
+ * the json-schema-draft-06 or json-schema-draft-07 schema are used. Other
+ * schema might require custom C8ySchemaMatcher implementations. If
+ * Cypress.c8ypact.strictMatching is disabled, additionalProperties will be
+ * set to true allowing additional properties in the object to match the schema.
+ */
+export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
+  match(obj: any, schema: SchemaObject): boolean {
     if (!schema) return false;
     const ajv = new Ajv();
     addFormats(ajv);
@@ -310,7 +325,7 @@ export class C8ySchemaMatcher {
       !Cypress.c8ypact.strictMatching
     );
 
-    const valid = ajv.validate(schemaClone, obj1);
+    const valid = ajv.validate(schemaClone, obj);
     if (!valid) {
       throw new Error(ajv.errorsText());
     }

@@ -276,6 +276,9 @@ declare global {
     match: (url1: string | URL, url2: string | URL) => boolean;
   }
 
+  /**
+   * A C8ySchemaGenerator is used to generate json schemas from json objects.
+   */
   interface C8ySchemaGenerator {
     /**
      * Generates a json schema for the given object.
@@ -562,7 +565,12 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   }
 }
 
-export class C8yDefaultSchemaGenerator implements C8ySchemaGenerator {
+/**
+ * C8ySchemaGenerator implementation using quicktype library with target language
+ * json-schema. From the generated schema, all non-standard keywords are removed
+ * to ensure compatibility with any json-schema validators.
+ */
+export class C8yQicktypeSchemaGenerator implements C8ySchemaGenerator {
   async generate(obj: any, options: any = {}): Promise<any> {
     const { name } = options;
     const inputData = new InputData();
@@ -607,7 +615,7 @@ Cypress.c8ypact = {
   urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
   preprocessor: new C8yPactDefaultPreprocessor(),
   pactRunner: new C8yDefaultPactRunner(),
-  schemaGenerator: new C8yDefaultSchemaGenerator(),
+  schemaGenerator: new C8yQicktypeSchemaGenerator(),
   failOnMissingPacts: true,
   strictMatching: true,
   debugLog: false,

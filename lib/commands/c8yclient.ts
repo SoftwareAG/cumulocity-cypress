@@ -22,7 +22,7 @@ import {
   IResultList,
 } from "@c8y/client";
 import { C8yDefaultPactRecord, isPactError } from "../pacts/c8ypact";
-import { C8ySchemaMatcher } from "../pacts/matcher";
+import { C8yAjvSchemaMatcher } from "../pacts/matcher";
 
 declare global {
   namespace Cypress {
@@ -771,7 +771,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
     matcher =
       ((_.isFunction(_.get(matcher, "schemaMatcher.match")) &&
         _.get(matcher, "schemaMatcher")) as C8ySchemaMatcher) ||
-      new C8ySchemaMatcher();
+      new C8yAjvSchemaMatcher();
     options.failOnPactValidation = true;
   }
 
@@ -924,6 +924,11 @@ export function isIResult(obj: any): obj is IResult<any> {
   );
 }
 
+/**
+ * Checks if the given object is a CypressError.
+ * @param error The object to check.
+ * @returns True if the object is a CypressError, false otherwise.
+ */
 export function isCypressError(error: any): boolean {
   return _.isError(error) && _.get(error, "name") === "CypressError";
 }

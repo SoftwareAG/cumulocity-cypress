@@ -4,19 +4,19 @@ import { SinonSpy } from "cypress/types/sinon";
 import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
-  C8yDefaultSchemaGenerator,
+  C8yQicktypeSchemaGenerator,
   isPactError,
 } from "../../../lib/pacts/c8ypact";
 import { defaultClientOptions } from "../../../lib/commands/c8yclient";
 import {
   C8yDefaultPactMatcher,
-  C8ySchemaMatcher,
+  C8yAjvSchemaMatcher,
 } from "../../../lib/pacts/matcher";
 
 const { _ } = Cypress;
 
 class AcceptAllMatcher implements C8yPactMatcher {
-  schemaMatcher: C8ySchemaMatcher = new C8ySchemaMatcher();
+  schemaMatcher: C8ySchemaMatcher = new C8yAjvSchemaMatcher();
   match(obj1: any, obj2: any): boolean {
     return true;
   }
@@ -401,7 +401,7 @@ describe("c8yclient", () => {
 
   context("C8yDefaultSchemaGenerator", function () {
     it("should generate schema from object", async function () {
-      const generator = new C8yDefaultSchemaGenerator();
+      const generator = new C8yQicktypeSchemaGenerator();
       const schema = await generator.generate({
         name: "test",
       });
@@ -465,7 +465,7 @@ describe("c8yclient", () => {
           },
         },
       };
-      const generator = new C8yDefaultSchemaGenerator();
+      const generator = new C8yQicktypeSchemaGenerator();
       const schema = await generator.generate(
         {
           self: "https://test.com",
