@@ -216,7 +216,7 @@ declare global {
     status?: number;
     statusText?: string;
     method?: string;
-    $body: any; // [key: `$${string}`]: any;
+    $body?: any; // [key: `$${string}`]: any;
   }
 
   /**
