@@ -179,7 +179,7 @@ declare global {
       baseUrl: string;
       client: Client;
       preferBasicAuth: boolean;
-      skipClientAuthenication: boolean;
+      skipClientAuthentication: boolean;
       failOnPactValidation: boolean;
       ignorePact: boolean;
       schema: any;
@@ -242,7 +242,7 @@ export const defaultClientOptions: C8yClientOptions = {
   timeout: Cypress.config().requestTimeout,
   failOnStatusCode: true,
   preferBasicAuth: false,
-  skipClientAuthenication: false,
+  skipClientAuthentication: false,
   ignorePact: false,
   failOnPactValidation: true,
   schema: undefined,
@@ -493,7 +493,7 @@ const c8yclientFn = (...args: any[]) => {
     auth.userAlias = Cypress.env("C8Y_LOGGED_IN_USER_ALIAS");
   }
 
-  if (!c8yclient._client && !tenant && !options.skipClientAuthenication) {
+  if (!c8yclient._client && !tenant && !options.skipClientAuthentication) {
     logOnce = options.log;
     authenticateClient(auth, options, baseUrl).then((c) => {
       return runClient(c, clientFn, prevSubject, baseUrl);
