@@ -98,33 +98,19 @@ const wrapFunctionRouteHandler = (fn: any) => {
     const reqContinue = req.continue;
     req.continue = (resFn: any) => {
       let unmodifiedRes: any;
-      let responsePromise: any;
-
-      const resWrapperFn = async (res: any) => {
-        if (responsePromise) {
-          await responsePromise;
-        }
-        resFn(res);
-        emitInterceptionEvent(
-          req,
-          unmodifiedRes ? unmodifiedRes : res,
-          unmodifiedRes ? res : undefined
-        );
-      };
 
       if (Cypress.c8ypact.isRecordingEnabled()) {
-        responsePromise = new Cypress.Promise((resolve, reject) => {
-          // "before:response" is the event to use as in "response" the continue handler seems to be called resulting in a timeout
-          // see Cypress before-request.ts for implementation details
-          req.on("before:response", (res: any) => {
-            unmodifiedRes = _.cloneDeep(res);
-            resolve(res);
-          });
+        req.on("before:response", (res: any) => {
+          unmodifiedRes = _.cloneDeep(res);
+        });
+
+        req.on("after:response", (res: any) => {
+          emitInterceptionEvent(req, unmodifiedRes, res);
         });
       }
 
       if (Cypress.c8ypact.current == null) {
-        reqContinue(resWrapperFn);
+        reqContinue(resFn);
       } else {
         const response = responseFromPact({}, req.url);
         req.reply(response);
@@ -236,14 +222,16 @@ function responseFromPact(obj: any, url: string): any {
   const p = Cypress.c8ypact.current as C8yDefaultPact;
   const record = p.getRecordsForUrl(url);
   if (record) {
-    // obj could be string
-    const r = _.first(record).response;
+    const first = _.first(record);
+    const r = first.modifiedResponse || first.response;
     const response = {
       body: r.body,
       headers: r.headers,
       statusCode: r.status,
       statusMessage: r.statusText,
     };
+
+    // obj could be a string
     if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
       _.extend(obj, response);
     } else if (_.isString(obj) || _.isArrayLike(obj)) {
