@@ -9,7 +9,16 @@ const { _ } = Cypress;
 
 // see documentation fo cy.intercept at https://docs.cypress.io/api/commands/intercept
 Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
-  if (!args || _.isEmpty(args)) return originalFn(...args);
+  // if c8ypact is not enabled, return original function without any changes or wrapping
+  // make sure we do not break things if c8ypact is not enabled
+  if (
+    !Cypress.c8ypact?.isEnabled() ||
+    Cypress.config().c8ypact?.ignore === true ||
+    !args ||
+    _.isEmpty(args)
+  ) {
+    return originalFn(...args);
+  }
 
   const method =
     _.isString(args[0]) && HTTP_METHODS.includes(args[0].toUpperCase())
@@ -45,7 +54,7 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
   return originalFn(...updatedArgs);
 });
 
-Cypress.env("C8Y_PACT_INTERCEPT_ENABLED", true);
+Cypress.env("C8Y_PACT_INTERCEPT_IMPORTED", true);
 
 Cypress.on("log:intercept", (options) => {
   if (!Cypress.c8ypact.isRecordingEnabled()) return;

@@ -18,6 +18,10 @@ describe("c8ypactintercept", () => {
     expect(spy).to.have.not.been.called;
   }
 
+  const errorListener = () => {
+    throw new Error("should not intercept");
+  };
+
   const testBody = { test: "test" };
   const testResponse = {
     body: JSON.stringify(testBody),
@@ -40,8 +44,33 @@ describe("c8ypactintercept", () => {
   // modified responses will however use the body as sent in the interception
 
   context("setup", () => {
-    it("should set env variable if enabled", () => {
-      expect(Cypress.env("C8Y_PACT_INTERCEPT_ENABLED")).to.be.true;
+    beforeEach(() => {
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
+    afterEach(() => {
+      Cypress.off("log:intercept", errorListener);
+    });
+
+    it(
+      "should not intercept if ignore is configured for Cypress.c8ypact",
+      { c8ypact: { ignore: true } },
+      () => {
+        Cypress.once("log:intercept", errorListener);
+        cy.intercept("/inventory/managedObjects*")
+          .as("inventory")
+          .then(fetchInventory)
+          .then((data) => {
+            expect(data).to.have.property("managedObjects");
+          })
+          .wait("@inventory")
+          .then(expectSavePactNotCalled);
+      }
+    );
+
+    it("should set env variable if imported", () => {
+      expect(Cypress.env("C8Y_PACT_INTERCEPT_IMPORTED")).to.be.true;
     });
   });
 
@@ -506,6 +535,25 @@ describe("c8ypactintercept", () => {
         .then(fetchInventory)
         .then((data) => {
           expect(data).to.eq("test");
+        })
+        .wait("@inventory")
+        .then(expectSavePactNotCalled);
+    });
+  });
+
+  context("suite ignore", { c8ypact: { ignore: true } }, () => {
+    beforeEach(() => {
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
+    it("should not intercept", () => {
+      Cypress.once("log:intercept", errorListener);
+      cy.intercept("/inventory/managedObjects*")
+        .as("inventory")
+        .then(fetchInventory)
+        .then((data) => {
+          expect(data).to.have.property("managedObjects");
         })
         .wait("@inventory")
         .then(expectSavePactNotCalled);
