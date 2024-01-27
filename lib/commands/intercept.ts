@@ -112,7 +112,7 @@ const wrapFunctionRouteHandler = (fn: any) => {
       if (Cypress.c8ypact.current == null) {
         reqContinue(resFn);
       } else {
-        const response = responseFromPact({}, req.url);
+        const response = responseFromPact({}, req);
         req.reply(response);
       }
     };
@@ -175,7 +175,7 @@ const wrapEmptyRoutHandler = () => {
         res.send();
       });
     } else {
-      const response = responseFromPact({}, req.url);
+      const response = responseFromPact({}, req);
       req.reply(response);
     }
   };
@@ -217,10 +217,10 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   }
 }
 
-function responseFromPact(obj: any, url: string): any {
+function responseFromPact(obj: any, req: any): any {
   if (Cypress.c8ypact.current == null) return obj;
   const p = Cypress.c8ypact.current as C8yDefaultPact;
-  const record = p.getRecordsForUrl(url);
+  const record = p.getRecordsMatchingRequest(req);
   if (record) {
     const first = _.first(record);
     const r = first.modifiedResponse || first.response;

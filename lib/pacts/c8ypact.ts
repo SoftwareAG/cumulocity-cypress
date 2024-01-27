@@ -418,13 +418,18 @@ export class C8yDefaultPact implements C8yPact {
   }
 
   /**
-   * Returns the pact record for the given url or null if no record is found.
-   * @param url The url to find the record for.
+   * Returns the pact record for the given request or null if no record is found.
+   * @param req The request of type CyHttpMessages.IncomingHttpRequest
    */
-  getRecordsForUrl(url: string | URL): C8yPactRecord[] | null {
+  getRecordsMatchingRequest(req: any): C8yPactRecord[] | null {
     const matcher = Cypress.c8ypact.urlMatcher;
     const records = this.records.filter((record) => {
-      return matcher.match(record.request.url, url);
+      return (
+        matcher.match(record.request.url, req.url) &&
+        (req.method != null
+          ? _.lowerCase(req.method) === _.lowerCase(record.request.method)
+          : true)
+      );
     });
     return records.length ? records : null;
   }
@@ -545,6 +550,7 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   }
 
   match(url1: string | URL, url2: string | URL): boolean {
+    if (!url1 || !url2) return false;
     const normalizeUrl = (
       url: string | URL,
       parametersToRemove: string[] = []

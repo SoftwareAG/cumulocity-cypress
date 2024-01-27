@@ -170,57 +170,61 @@ describe("c8yclient", () => {
       expect(pact.nextRecord()).to.be.null;
     });
 
-    it("getRecordsForUrl should return records matching the passed url", function () {
+    it("getRecordsMatchingRequest should return records matching the request", function () {
       const url1 = "/service/oee-bundle/configurationmanager/2/configuration";
       const url2 =
         "/inventory/managedObjects?pageSize=10&fragmentType=isISAObject";
       const url3 = "/service/oee-bundle/configurationmanager/2/configuration";
 
+      // matching of records is based on url and method
       const pact = C8yDefaultPact.from(response);
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records[0].request.url = url(url1);
       pact.records[1].request.url = url(url2);
       pact.records[2].request.url = url(url3);
+      pact.records[2].request.method = "GET";
 
-      expect(pact.getRecordsForUrl(url(url1))).to.deep.eq([
+      expect(
+        pact.getRecordsMatchingRequest({ url: url(url1), method: "PUT" })
+      ).to.deep.eq([pact.records[0]]);
+      expect(
+        pact.getRecordsMatchingRequest({ url: url(url2), method: "PUT" })
+      ).to.deep.eq([pact.records[1]]);
+      expect(pact.getRecordsMatchingRequest({ url: url(url3) })).to.deep.eq([
         pact.records[0],
         pact.records[2],
       ]);
-      expect(pact.getRecordsForUrl(url(url2))).to.deep.eq([pact.records[1]]);
-      expect(pact.getRecordsForUrl(url(url3))).to.deep.eq([
-        pact.records[0],
-        pact.records[2],
-      ]);
-      expect(pact.getRecordsForUrl(url("/test"))).to.be.null;
-
-      expect(pact.getRecordsForUrl(new URL(url(url1)))).to.deep.eq([
-        pact.records[0],
-        pact.records[2],
-      ]);
-      expect(pact.getRecordsForUrl(new URL(url(url2)))).to.deep.eq([
-        pact.records[1],
-      ]);
-      expect(pact.getRecordsForUrl(new URL(url(url3)))).to.deep.eq([
-        pact.records[0],
-        pact.records[2],
-      ]);
-      expect(pact.getRecordsForUrl(new URL(url("/test")))).to.be.null;
+      expect(
+        pact.getRecordsMatchingRequest({ url: url("/test"), method: "PUT" })
+      ).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ url: url("/test") })).to.be.null;
     });
 
-    it("getRecordsForUrl should allow filtering url parameters", function () {
+    it("getRecordsMatchingRequest should allow filtering url parameters", function () {
       const url1 =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&dateFrom=2024-01-17T14%3A57%3A32.671Z&dateTo=2024-01-17T16%3A57%3A32.671Z&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
       const pact = C8yDefaultPact.from(response);
       pact.records[0].request.url = url(url1);
+      pact.records[0].request.method = "GET";
 
       const url1WithoutParams =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
-      expect(pact.getRecordsForUrl(url(url1WithoutParams))).to.deep.eq([
-        pact.records[0],
-      ]);
+      expect(
+        pact.getRecordsMatchingRequest({ url: url(url1WithoutParams) })
+      ).to.deep.eq([pact.records[0]]);
+    });
+
+    it("getRecordsMatchingRequest should not fail for undefined url", function () {
+      const pact = C8yDefaultPact.from(response);
+      pact.records[0].request.method = "GET";
+
+      expect(pact.getRecordsMatchingRequest({ url: undefined })).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ url: null })).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ url: "" })).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ method: "GET" })).to.be.null;
     });
   });
 

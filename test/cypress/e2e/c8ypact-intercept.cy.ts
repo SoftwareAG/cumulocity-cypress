@@ -8,11 +8,22 @@ describe("c8ypactintercept", () => {
   function fetchInventory() {
     return $.get(url(`/inventory/managedObjects?fragmentType=abcd`));
   }
+  // mocked pact responses use post requests
+  function postInventory() {
+    return $.post(url(`/inventory/managedObjects?fragmentType=abcd`));
+  }
 
   function expectSavePactNotCalled() {
     const spy = Cypress.c8ypact.savePact as SinonSpy;
     expect(spy).to.have.not.been.called;
   }
+
+  const testBody = { test: "test" };
+  const testResponse = {
+    body: JSON.stringify(testBody),
+    statusCode: 201,
+    headers: { "x-test": "test" },
+  };
 
   afterEach(() => {
     // delete recorded pacts after each test
@@ -35,13 +46,6 @@ describe("c8ypactintercept", () => {
   });
 
   context("record interceptions", () => {
-    const testBody = { test: "test" };
-    const testResponse = {
-      body: JSON.stringify(testBody),
-      statusCode: 201,
-      headers: { "x-test": "test" },
-    };
-
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
       cy.spy(Cypress.c8ypact, "savePact").log(false);
@@ -312,13 +316,6 @@ describe("c8ypactintercept", () => {
   });
 
   context("recording disabled", () => {
-    const testBody = { test: "test" };
-    const testResponse = {
-      body: JSON.stringify(testBody),
-      statusCode: 201,
-      headers: { "x-test": "test" },
-    };
-
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", undefined);
       cy.spy(Cypress.c8ypact, "savePact").log(false);
@@ -433,6 +430,11 @@ describe("c8ypactintercept", () => {
   });
 
   context("mock interceptions", () => {
+    beforeEach(() => {
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
     const response: Cypress.Response<any> = {
       status: 200,
       statusText: "OK",
@@ -443,16 +445,11 @@ describe("c8ypactintercept", () => {
       requestBody: { id: "abc123124" },
       allRequestResponses: [],
       isOkStatusCode: false,
-      method: "PUT",
+      method: "POST",
       url:
         Cypress.config().baseUrl +
         "/inventory/managedObjects?fragmentType=abcd",
     };
-
-    beforeEach(() => {
-      Cypress.env("C8Y_PACT_MODE", undefined);
-      cy.spy(Cypress.c8ypact, "savePact").log(false);
-    });
 
     it("should ignore pact for static RouteHandlers", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
@@ -470,7 +467,7 @@ describe("c8ypactintercept", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")
-        .then(fetchInventory)
+        .then(postInventory)
         .then((data) => {
           expect(data).to.deep.eq(response.body);
         })
@@ -488,7 +485,7 @@ describe("c8ypactintercept", () => {
         });
       })
         .as("inventory")
-        .then(fetchInventory)
+        .then(postInventory)
         .then((data) => {
           expect(data).to.deep.eq(response.body);
         })
