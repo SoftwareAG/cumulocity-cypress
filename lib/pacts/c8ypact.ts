@@ -3,10 +3,12 @@ import {
   jsonInputForTargetLanguage,
   quicktype,
 } from "quicktype-core";
-import { C8yDefaultPactMatcher } from "./matcher";
-import { C8yPactDefaultPreprocessor } from "./preprocessor";
+import { C8yAjvSchemaMatcher, C8yDefaultPactMatcher } from "./matcher";
+import { C8yDefaultPactPreprocessor } from "./preprocessor";
 import { C8yDefaultPactRunner } from "./runner";
 const { _ } = Cypress;
+
+const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
 
 declare global {
   namespace Cypress {
@@ -160,6 +162,10 @@ declare global {
      * The C8ySchemaGenerator implementation used to generate json schemas from json objects.
      */
     schemaGenerator: C8ySchemaGenerator;
+    /**
+     * The C8ySchemaMatcher implementation used to match json schemas. Default is C8yAjvSchemaMatcher.
+     */
+    schemaMatcher: C8ySchemaMatcher;
     /**
      * Save the given response as a pact record in the pact for the current test case.
      */
@@ -624,21 +630,29 @@ function isURL(obj: any): obj is URL {
   return obj instanceof URL;
 }
 
-Cypress.c8ypact = {
-  current: null,
-  getCurrentTestId,
-  isRecordingEnabled,
-  savePact,
-  isEnabled,
-  matcher: new C8yDefaultPactMatcher(),
-  urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
-  preprocessor: new C8yPactDefaultPreprocessor(),
-  pactRunner: new C8yDefaultPactRunner(),
-  schemaGenerator: new C8yQicktypeSchemaGenerator(),
-  failOnMissingPacts: true,
-  strictMatching: true,
-  debugLog: false,
-};
+if (!Cypress.c8ypact) {
+  Cypress.c8ypact = {
+    current: null,
+    getCurrentTestId,
+    isRecordingEnabled,
+    savePact,
+    isEnabled,
+    matcher: new C8yDefaultPactMatcher(),
+    urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
+    pactRunner: new C8yDefaultPactRunner(),
+    schemaGenerator: new C8yQicktypeSchemaGenerator(),
+    schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
+    failOnMissingPacts: true,
+    strictMatching: true,
+    debugLog: false,
+    preprocessor: new C8yDefaultPactPreprocessor({
+      obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE") || [
+        "request.headers.Authorization",
+        "response.body.password",
+      ],
+    }),
+  };
+}
 
 function debugLogger(): Cypress.Loggable {
   return { log: Cypress.c8ypact.debugLog };
@@ -761,12 +775,7 @@ function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
   const info: C8yPactInfo = {
     title: Cypress.currentTest?.titlePath || [],
     id,
-    preprocessor: {
-      obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE") || [],
-      ignore: Cypress.env("C8Y_PACT_IGNORE") || [],
-      obfuscationPattern:
-        Cypress.c8ypact.preprocessor?.defaultObfuscationPattern,
-    },
+    preprocessor: Cypress.c8ypact.preprocessor?.options,
     consumer: _.isString(c8ypact?.consumer)
       ? { name: c8ypact.consumer }
       : c8ypact?.consumer,

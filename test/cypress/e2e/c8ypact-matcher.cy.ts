@@ -4,6 +4,7 @@ import {
   C8yISODateStringMatcher,
 } from "../../../lib/pacts/matcher";
 import { SinonSpy } from "cypress/types/sinon";
+import { C8yDefaultPactPreprocessor } from "../../../lib/pacts/preprocessor";
 
 const { _ } = Cypress;
 
@@ -48,22 +49,31 @@ describe("c8ypactmatcher", () => {
       };
 
       const pactSourceObj = _.cloneDeep(obj);
-      const preprocessor = {
+      const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "********",
         obfuscate: ["requestHeaders.Test", "body.Test"],
-      };
+      });
 
-      Cypress.c8ypact.preprocessor.apply(pactSourceObj, preprocessor);
+      preprocessor.apply(pactSourceObj);
       // preprocessor does not change source object
       expect(obj.requestHeaders.Test).to.eq("testauth");
       expect(obj.body.Test).to.eq("testpassword");
 
       const pact = C8yDefaultPactRecord.from(pactSourceObj);
       // @ts-ignore
-      expect(pact.request.headers.Test).to.eq(preprocessor.obfuscationPattern);
-      expect(pact.response.body.Test).to.eq(preprocessor.obfuscationPattern);
+      expect(pact.request.headers.Test).to.eq(
+        preprocessor.options.obfuscationPattern
+      );
+      expect(pact.response.body.Test).to.eq(
+        preprocessor.options.obfuscationPattern
+      );
 
-      cy.c8ymatch(obj, pact, { preprocessor }, { failOnPactValidation: true });
+      cy.c8ymatch(
+        obj,
+        pact,
+        { preprocessor: preprocessor.options },
+        { failOnPactValidation: true }
+      );
 
       // expect to fail as obj is not obfuscated and pact has been obfuscated
       Cypress.once("fail", (err) => {
@@ -346,14 +356,9 @@ describe("c8ypactmatcher", () => {
   });
 
   context("C8yDefaultPactMatcher schema matching", function () {
-    it("should have schema matcher", function () {
-      const matcher = new C8yDefaultPactMatcher();
-      expect(matcher.schemaMatcher).to.be.not.null;
-    });
-
     it("schema keys should not break object matching", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       Cypress.c8ypact.strictMatching = false;
 
@@ -382,7 +387,7 @@ describe("c8ypactmatcher", () => {
 
     it("matching should not fail for different number of keys in matched objects", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       Cypress.c8ypact.strictMatching = false;
 
@@ -398,7 +403,7 @@ describe("c8ypactmatcher", () => {
 
     it("should not fail if only schema is available for key", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       delete pact.response.body;
       pact.response["$body"] = {};
@@ -411,7 +416,7 @@ describe("c8ypactmatcher", () => {
 
     it("should prefer schema over object matching", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response.body = { other: 101 };
       pact.response["$body"] = {
@@ -431,7 +436,7 @@ describe("c8ypactmatcher", () => {
     it("should match schema with strictMatching disabled", function () {
       Cypress.c8ypact.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -449,7 +454,7 @@ describe("c8ypactmatcher", () => {
 
     it("should fail for not matching schema", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -469,7 +474,7 @@ describe("c8ypactmatcher", () => {
 
     it("should fail if schema validates not an object", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -489,7 +494,7 @@ describe("c8ypactmatcher", () => {
 
     it("should fail for properties not defined in schema", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -510,7 +515,7 @@ describe("c8ypactmatcher", () => {
     it("should not fail for additional properties with strictMatching disabled", function () {
       Cypress.c8ypact.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -528,10 +533,7 @@ describe("c8ypactmatcher", () => {
 
     it("should match nested schema", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(
-        _.get(matcher.propertyMatchers["body"], "schemaMatcher"),
-        "match"
-      );
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response.body = { id: "123", nested: { name: "abcd" } };
       pact.response.body.$nested = {

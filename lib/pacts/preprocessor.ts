@@ -9,6 +9,11 @@ declare global {
    */
   interface C8yPactPreprocessor {
     /**
+     * Preprocessor options used by preprocessor.
+     */
+    options: C8yPactPreprocessorOptions;
+
+    /**
      * Applies the preprocessor to the given object.
      *
      * @param obj Object to preprocess.
@@ -18,7 +23,6 @@ declare global {
       obj: Partial<Cypress.Response | C8yPactRecord | C8yPact>,
       options?: C8yPactPreprocessorOptions
     ) => void;
-    defaultObfuscationPattern: string;
   }
 
   /**
@@ -52,22 +56,36 @@ declare global {
  * Use C8ypactPreprocessorOptions to configure the preprocessor. Also uses environment
  * variables C8Y_PACT_OBFUSCATE and C8Y_PACT_IGNORE.
  */
-export class C8yPactDefaultPreprocessor implements C8yPactPreprocessor {
-  constructor() {}
+export class C8yDefaultPactPreprocessor implements C8yPactPreprocessor {
+  options: C8yPactPreprocessorOptions;
+  constructor(options: C8yPactPreprocessorOptions = {}) {
+    this.options = options;
+    if (!this.options.ignore) {
+      this.options.ignore = Cypress.env("C8Y_PACT_IGNORE") || [];
+    }
+    if (!this.options.obfuscate) {
+      this.options.obfuscate = Cypress.env("C8Y_PACT_OBFUSCATE") || [];
+    }
+    if (!this.options.obfuscationPattern) {
+      this.options.obfuscationPattern =
+        Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN") ||
+        C8yDefaultPactPreprocessor.defaultObfuscationPattern;
+    }
+  }
 
-  defaultObfuscationPattern = "********";
+  static defaultObfuscationPattern = "********";
 
   apply(
     obj: Partial<Cypress.Response | C8yPactRecord | C8yPact>,
-    options: C8yPactPreprocessorOptions = {}
+    options?: C8yPactPreprocessorOptions
   ): void {
     if (!obj || !_.isObjectLike(obj)) return;
     const objs: any[] = "records" in obj ? _.get(obj, "records") : [obj];
     const reservedKeys = ["id", "pact", "info", "records"];
 
-    const keysToObfuscate: string[] =
-      options.obfuscate || Cypress.env("C8Y_PACT_OBFUSCATE") || [];
-    const obfuscationPattern = options.obfuscationPattern || "********";
+    const keysToObfuscate = (options || this.options).obfuscate;
+    const obfuscationPattern = (options || this.options).obfuscationPattern;
+
     objs.forEach((obj) => {
       const notExistingKeys = keysToObfuscate.filter((key) => {
         return !_.get(obj, key);
@@ -79,8 +97,7 @@ export class C8yPactDefaultPreprocessor implements C8yPactPreprocessor {
       );
     });
 
-    const keysToRemove: string[] =
-      options.ignore || Cypress.env("C8Y_PACT_IGNORE") || [];
+    const keysToRemove = (options || this.options).ignore;
     _.without(keysToRemove, ...reservedKeys).forEach((key) => {
       objs.forEach((obj) => {
         _.unset(obj, key);

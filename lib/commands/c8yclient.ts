@@ -22,7 +22,6 @@ import {
   IResultList,
 } from "@c8y/client";
 import { C8yDefaultPactRecord, isPactError } from "../pacts/c8ypact";
-import { C8yAjvSchemaMatcher } from "../pacts/matcher";
 
 declare global {
   namespace Cypress {
@@ -768,10 +767,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   const isSchemaMatching =
     !("request" in pact) && !("response" in pact) && _.isObjectLike(pact);
   if (isSchemaMatching) {
-    matcher =
-      ((_.isFunction(_.get(matcher, "schemaMatcher.match")) &&
-        _.get(matcher, "schemaMatcher")) as C8ySchemaMatcher) ||
-      new C8yAjvSchemaMatcher();
+    matcher = Cypress.c8ypact.schemaMatcher;
     options.failOnPactValidation = true;
   }
 
