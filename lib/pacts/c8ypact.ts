@@ -311,6 +311,12 @@ declare global {
   function isPact(obj: any): obj is C8yPact;
 }
 
+/**
+ * Default implementation of C8yPact. Use C8yDefaultPact.from to create a C8yPact from
+ * a Cypress.Response object, a serialized pact as string or an object implementing the
+ * C8yPact interface. Note, objects implementing the C8yPact interface may not provide
+ * all required functions and properties.
+ */
 export class C8yDefaultPact implements C8yPact {
   records: C8yPactRecord[];
   info: C8yPactInfo;
@@ -451,7 +457,10 @@ export class C8yDefaultPact implements C8yPact {
 }
 
 /**
- * Default implementation of C8yPactRecord.
+ * Default implementation of C8yPactRecord. Use C8yDefaultPactRecord.from to create
+ * a C8yPactRecord from a Cypress.Response object or an C8yPactRecord object. Note,
+ * objects implementing the C8yPactRecord interface may not provide all required
+ * functions and properties.
  */
 export class C8yDefaultPactRecord implements C8yPactRecord {
   request: C8yPactRequest;
@@ -543,6 +552,10 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   }
 }
 
+/**
+ * Default implementation of C8yPactUrlMatcher. URL matching can be configured
+ * to ignore certain parameters (such as dateFrom, dateTo, etc.).
+ */
 export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   ignoreParameters: string[] = [];
   constructor(ignoreParameters: string[] = []) {
