@@ -1,11 +1,7 @@
-import {
-  InputData,
-  jsonInputForTargetLanguage,
-  quicktype,
-} from "quicktype-core";
-import { C8yAjvSchemaMatcher, C8yDefaultPactMatcher } from "./matcher";
+import { C8yDefaultPactMatcher } from "./matcher";
 import { C8yDefaultPactPreprocessor } from "./preprocessor";
 import { C8yDefaultPactRunner } from "./runner";
+import { C8yAjvSchemaMatcher, C8yQicktypeSchemaGenerator } from "./schema";
 const { _ } = Cypress;
 
 const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
@@ -280,19 +276,6 @@ declare global {
      * @param url2 Second url to match.
      */
     match: (url1: string | URL, url2: string | URL) => boolean;
-  }
-
-  /**
-   * A C8ySchemaGenerator is used to generate json schemas from json objects.
-   */
-  interface C8ySchemaGenerator {
-    /**
-     * Generates a json schema for the given object.
-     *
-     * @param obj The object to generate the schema for.
-     * @param options The options passed to the schema generator.
-     */
-    generate: (obj: any, options?: any) => Promise<any>;
   }
 
   /**
@@ -587,42 +570,6 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
       normalizeUrl(url1, this.ignoreParameters),
       normalizeUrl(url2, this.ignoreParameters)
     );
-  }
-}
-
-/**
- * C8ySchemaGenerator implementation using quicktype library with target language
- * json-schema. From the generated schema, all non-standard keywords are removed
- * to ensure compatibility with any json-schema validators.
- */
-export class C8yQicktypeSchemaGenerator implements C8ySchemaGenerator {
-  async generate(obj: any, options: any = {}): Promise<any> {
-    const { name } = options;
-    const inputData = new InputData();
-    const jsonInput = jsonInputForTargetLanguage("json-schema");
-    await jsonInput.addSource({
-      name: name || "root",
-      samples: [JSON.stringify(obj)],
-    });
-    inputData.addInput(jsonInput);
-
-    const result = await quicktype({
-      inputData,
-      lang: "json-schema",
-    });
-    const schema = JSON.parse(result.lines.join("\n"));
-    this.removeNonStandardKeywords(schema);
-    return schema;
-  }
-
-  protected removeNonStandardKeywords(schema: any) {
-    for (const key in schema) {
-      if (key.startsWith("qt-")) {
-        delete schema[key];
-      } else if (typeof schema[key] === "object") {
-        this.removeNonStandardKeywords(schema[key]);
-      }
-    }
   }
 }
 

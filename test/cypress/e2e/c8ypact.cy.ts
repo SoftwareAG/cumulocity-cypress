@@ -4,12 +4,12 @@ import { SinonSpy } from "cypress/types/sinon";
 import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
-  C8yQicktypeSchemaGenerator,
   isPactError,
 } from "../../../lib/pacts/c8ypact";
 import { defaultClientOptions } from "../../../lib/commands/c8yclient";
 import { C8yDefaultPactMatcher } from "../../../lib/pacts/matcher";
 import { C8yDefaultPactPreprocessor } from "../../../lib/pacts/preprocessor";
+import { C8yQicktypeSchemaGenerator } from "../../../lib/pacts/schema";
 
 const { _ } = Cypress;
 
