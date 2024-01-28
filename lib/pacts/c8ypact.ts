@@ -169,11 +169,11 @@ declare global {
       options?: C8yPactSaveOptions
     ) => Promise<void>;
     /**
-     * Checks if the C8yPact plugin is enabled.
+     * Checks if the C8yPact is enabled. Use C8Y_PACT_MODE "ignore" to disable by default.
      */
     isEnabled: () => boolean;
     /**
-     * Checks if the C8yPact plugin is enabled and in recording mode.
+     * Checks if the C8yPact is enabled and in recording mode.
      */
     isRecordingEnabled: () => boolean;
     /**
@@ -654,7 +654,10 @@ beforeEach(() => {
 });
 
 function isEnabled(): boolean {
-  return Cypress.env("C8Y_PACT_ENABLED") != null;
+  return (
+    Cypress.env("C8Y_PLUGIN_LOADED") != null &&
+    Cypress.env("C8Y_PACT_MODE") !== "ignore"
+  );
 }
 
 function isRecordingEnabled(): boolean {

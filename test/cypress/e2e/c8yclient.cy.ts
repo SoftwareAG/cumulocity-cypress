@@ -32,7 +32,7 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
-    Cypress.env("C8Y_PACT_ENABLED", undefined);
+    Cypress.env("C8Y_PLUGIN_LOADED", undefined);
 
     initRequestStub();
     stubResponses([

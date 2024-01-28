@@ -6,31 +6,22 @@ Contribute by raising pull requests. All commands must be documented and, if pos
 
 # Content
 
-- [Cypress commands for Cumulocity](#cypress-commands-for-cumulocity)
-- [Content](#content)
-- [Overview of commands](#overview-of-commands)
-- [Installation and setup](#installation-and-setup)
-- [Additional frameworks](#additional-frameworks)
-- [Concepts](#concepts)
-  - [Authentication and credentials](#authentication-and-credentials)
-    - [Authentication via getAuth and useAuth commands](#authentication-via-getauth-and-useauth-commands)
-    - [Authentication via test case annotations](#authentication-via-test-case-annotations)
-    - [Authentication via environment variables](#authentication-via-environment-variables)
-    - [Passing authentication to cy.request](#passing-authentication-to-cyrequest)
-  - [Chaining of commands](#chaining-of-commands)
-  - [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
-    - [c8yclient command](#c8yclient-command)
-  - [Environment Variables](#environment-variables)
-- [Development](#development)
-  - [Debugging](#debugging)
-    - [Console log debugging](#console-log-debugging)
-    - [Debugging in Visual Studio Code](#debugging-in-visual-studio-code)
-  - [Testing](#testing)
-    - [Test access of DOM elements](#test-access-of-dom-elements)
-    - [Test requests](#test-requests)
-    - [Test interceptions](#test-interceptions)
-- [Useful links](#useful-links)
-- [Disclaimer](#disclaimer)
+- [Authentication and credentials](#authentication-and-credentials)
+  - [Authentication via getAuth and useAuth commands](#authentication-via-getauth-and-useauth-commands)
+  - [Authentication via test case annotations](#authentication-via-test-case-annotations)
+  - [Authentication via environment variables](#authentication-via-environment-variables)
+  - [Passing authentication to cy.request](#passing-authentication-to-cyrequest)
+- [Chaining of commands](#chaining-of-commands)
+- [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
+  - [c8yclient command](#c8yclient-command)
+- [Environment Variables](#environment-variables)
+- [Debugging](#debugging)
+  - [Console log debugging](#console-log-debugging)
+  - [Debugging in Visual Studio Code](#debugging-in-visual-studio-code)
+- [Testing](#testing)
+  - [Test access of DOM elements](#test-access-of-dom-elements)
+  - [Test requests](#test-requests)
+  - [Test interceptions](#test-interceptions)
 
 # Overview of commands
 
@@ -357,11 +348,14 @@ Commands of this library make use of or provide a set of environment variables.
 - `C8Y_PASSWORD` (string) - password to be used by `getAuth`
 - `C8Y_LOGGED_IN_USER` (string) - username of user logged in with `login`
 - `C8Y_LOGGED_IN_USER_ALIAS` (string) - alias that resolves to username with `getAuth(userAlias)`
-- `C8Y_PACT_ENABLED` (string) - has configureC8yPlugin been called in config
-- `C8Y_PACT_MODE` (string) - if set to `recording` all requests with `c8yclient` will be saved.
+- `C8Y_PACT_MODE` (string) - possible values `ignore` and `recording`. If undefined, pact matching is enabled.
 - `C8Y_PACT_OBFUSCATE` (string[]) - pact properties to obfuscate before saving
 - `C8Y_PACT_IGNORE` (string[]) - pact properties to ignore and not save
 - `C8Y_PACT_FOLDER` (string) - folder where pacts are stored and restored from (read only)
+
+Internal:
+- `C8Y_PLUGIN_LOADED` (string) - has `configureC8yPlugin` been called in config (values `"true"` or `"false"`)
+- `C8Y_PACT_INTERCEPT_IMPORTED` (boolean) - `true` if intercept been imported
 
 # Development
 

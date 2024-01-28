@@ -69,8 +69,8 @@ function configureC8yPlugin(
 
   let pacts: { [key: string]: C8yPact } = {};
 
-  // use C8Y_PACT_ENABLED to see if the plugin has been loaded
-  config.env.C8Y_PACT_ENABLED = "true";
+  // use C8Y_PLUGIN_LOADED to see if the plugin has been loaded
+  config.env.C8Y_PLUGIN_LOADED = "true";
   // use C8Y_PACT_FOLDER to find out where the pact files have been loaded from
   config.env.C8Y_PACT_FOLDER = adapter.getFolder();
 

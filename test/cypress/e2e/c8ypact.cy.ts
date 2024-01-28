@@ -22,7 +22,7 @@ class AcceptAllMatcher implements C8yPactMatcher {
   }
 }
 
-describe("c8yclient", () => {
+describe("c8ypact", () => {
   beforeEach(() => {
     Cypress.c8ypact.strictMatching = true;
 
@@ -80,6 +80,12 @@ describe("c8yclient", () => {
       expect(Cypress.c8ypact.matcher).to.be.a("object");
       expect(Cypress.c8ypact.urlMatcher).to.be.a("object");
       expect(Cypress.c8ypact.schemaGenerator).to.be.a("object");
+    });
+
+    it("should be disabled if C8Y_PACT_MODE is set to ignore", function () {
+      Cypress.env("C8Y_PACT_MODE", "ignore");
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
     });
   });
 
@@ -486,38 +492,38 @@ describe("c8yclient", () => {
     });
   });
 
-  context("c8ypact config and environment variabless", function () {
+  context("c8ypact config and environment variables", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
     });
 
     it("recording should be enabled", function () {
-      Cypress.env("C8Y_PACT_ENABLED", "true");
+      Cypress.env("C8Y_PLUGIN_LOADED", "true");
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
     });
 
     it("recording should be disabled", function () {
-      const isEnabled = Cypress.env("C8Y_PACT_ENABLED");
-      Cypress.env("C8Y_PACT_ENABLED", "true");
+      const isEnabled = Cypress.env("C8Y_PLUGIN_LOADED");
+      Cypress.env("C8Y_PLUGIN_LOADED", "true");
       Cypress.env("C8Y_PACT_MODE", undefined);
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
-      Cypress.env("C8Y_PACT_ENABLED", isEnabled.toString());
+      Cypress.env("C8Y_PLUGIN_LOADED", isEnabled.toString());
     });
 
     it("recording should be disabled if plugin is disabled", function () {
-      const isEnabled = Cypress.env("C8Y_PACT_ENABLED");
-      Cypress.env("C8Y_PACT_ENABLED", undefined);
+      const isEnabled = Cypress.env("C8Y_PLUGIN_LOADED");
+      Cypress.env("C8Y_PLUGIN_LOADED", undefined);
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
-      Cypress.env("C8Y_PACT_ENABLED", isEnabled.toString());
+      Cypress.env("C8Y_PLUGIN_LOADED", isEnabled.toString());
     });
 
     it("plugin should be enabled", function () {
-      expect(Cypress.env("C8Y_PACT_ENABLED")).to.eq("true");
+      expect(Cypress.env("C8Y_PLUGIN_LOADED")).to.eq("true");
     });
 
     it("should create pact identifier from test case name", function () {
       expect(Cypress.c8ypact.getCurrentTestId()).to.equal(
-        "c8yclient__c8ypact_config_and_environment_variabless__should_create_pact_identifier_from_test_case_name"
+        "c8ypact__c8ypact_config_and_environment_variables__should_create_pact_identifier_from_test_case_name"
       );
     });
 
