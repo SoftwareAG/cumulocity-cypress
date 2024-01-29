@@ -587,7 +587,7 @@ function run(
             } else {
               if (
                 record == null &&
-                Cypress.c8ypact.failOnMissingPacts &&
+                Cypress.c8ypact.getConfigValue("failOnMissingPacts", true) &&
                 !ignore
               ) {
                 throwError(
@@ -762,7 +762,7 @@ Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
 
 Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   const p = Cypress.config().c8ypact;
-  let matcher = (p && p.matcher) || Cypress.c8ypact.matcher;
+  let matcher = Cypress.c8ypact.matcher;
 
   const isSchemaMatching =
     !("request" in pact) && !("response" in pact) && _.isObjectLike(pact);

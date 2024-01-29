@@ -106,7 +106,7 @@ export class C8yDefaultPactMatcher {
       );
     }
 
-    const strictMode = Cypress.c8ypact.strictMatching;
+    const strictMode = Cypress.c8ypact.getConfigValue("strictMatching");
     // get keys of objects without schema keys and schema keys separately
     const objectKeys = Object.keys(obj1).filter((k) => !k.startsWith("$"));
     const schemaKeys = Object.keys(obj2).filter((k) => k.startsWith("$"));

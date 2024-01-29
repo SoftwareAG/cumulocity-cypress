@@ -52,8 +52,13 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
     });
 
     this.ajv.addFormat("boolean", {
+      validate: (x: any) => _.isBoolean(x),
+    });
+
+    this.ajv.addFormat("boolean", {
       type: "string",
-      validate: (x) => _.isBoolean(x) || x === "true" || x === "false",
+      validate: (x: any) =>
+        _.isString(x) && ["true", "false"].includes(_.lowerCase(x)),
     });
 
     if (metas && _.isArrayLike(metas)) {
@@ -66,10 +71,8 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
   match(obj: any, schema: SchemaObject): boolean {
     if (!schema) return false;
     const schemaClone = _.cloneDeep(schema);
-    this.updateAdditionalProperties(
-      schemaClone,
-      !Cypress.c8ypact.strictMatching
-    );
+    const strict = Cypress.c8ypact.getConfigValue("strictMatching", true);
+    this.updateAdditionalProperties(schemaClone, !strict);
 
     const valid = this.ajv.validate(schemaClone, obj);
     if (!valid) {

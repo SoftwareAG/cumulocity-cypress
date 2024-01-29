@@ -12,7 +12,7 @@ describe("c8ypactmatcher", () => {
   let obj1: C8yPactRecord, obj2: C8yPactRecord;
 
   beforeEach(() => {
-    Cypress.c8ypact.strictMatching = true;
+    Cypress.c8ypact.config.strictMatching = true;
     cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
       obj1 = C8yDefaultPactRecord.from(pacts[0]);
       obj2 = C8yDefaultPactRecord.from(pacts[1]);
@@ -60,18 +60,15 @@ describe("c8ypactmatcher", () => {
       expect(obj.body.Test).to.eq("testpassword");
 
       const pact = C8yDefaultPactRecord.from(pactSourceObj);
+      const obfuscationPattern = preprocessor.getOptions().obfuscationPattern;
       // @ts-ignore
-      expect(pact.request.headers.Test).to.eq(
-        preprocessor.options.obfuscationPattern
-      );
-      expect(pact.response.body.Test).to.eq(
-        preprocessor.options.obfuscationPattern
-      );
+      expect(pact.request.headers.Test).to.eq(obfuscationPattern);
+      expect(pact.response.body.Test).to.eq(obfuscationPattern);
 
       cy.c8ymatch(
         obj,
         pact,
-        { preprocessor: preprocessor.options },
+        { preprocessor: preprocessor.getOptions() },
         { failOnPactValidation: true }
       );
 
@@ -199,7 +196,7 @@ describe("c8ypactmatcher", () => {
 
   context("C8yDefaultPactMatcher", function () {
     beforeEach(() => {
-      Cypress.c8ypact.strictMatching = true;
+      Cypress.c8ypact.config.strictMatching = true;
     });
 
     it("should match cloned object", function () {
@@ -244,7 +241,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should fail if ignored porperty is missing with strictMatching disabled", function () {
-      Cypress.c8ypact.strictMatching = false;
+      Cypress.c8ypact.config.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
       const obj = _.cloneDeep(obj1);
       delete obj.request.url;
@@ -334,7 +331,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should match strictMatching disabled", function () {
-      Cypress.c8ypact.strictMatching = false;
+      Cypress.c8ypact.config.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
       const obj = _.cloneDeep(obj1);
 
@@ -360,7 +357,7 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
-      Cypress.c8ypact.strictMatching = false;
+      Cypress.c8ypact.config.strictMatching = false;
 
       pact.response["$body"] = {};
       pact.request.body = {};
@@ -379,7 +376,7 @@ describe("c8ypactmatcher", () => {
       expect(spy).to.have.been.calledTwice;
       spy.resetHistory();
 
-      Cypress.c8ypact.strictMatching = true;
+      Cypress.c8ypact.config.strictMatching = true;
       delete pact.response.$body;
       expect(matcher.match(obj, pact)).to.be.true;
       expect(spy).to.have.been.calledOnce;
@@ -389,7 +386,7 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
-      Cypress.c8ypact.strictMatching = false;
+      Cypress.c8ypact.config.strictMatching = false;
 
       pact.response["$body"] = {};
       pact.request.body = {};
@@ -409,7 +406,7 @@ describe("c8ypactmatcher", () => {
       pact.response["$body"] = {};
       const obj = _.cloneDeep(obj1);
 
-      Cypress.c8ypact.strictMatching = false;
+      Cypress.c8ypact.config.strictMatching = false;
       expect(matcher.match(obj, pact)).to.be.true;
       expect(spy).to.have.been.calledOnce;
     });
@@ -434,7 +431,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should match schema with strictMatching disabled", function () {
-      Cypress.c8ypact.strictMatching = false;
+      Cypress.c8ypact.config.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
       const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);
@@ -513,7 +510,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should not fail for additional properties with strictMatching disabled", function () {
-      Cypress.c8ypact.strictMatching = false;
+      Cypress.c8ypact.config.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
       const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
       const pact = _.cloneDeep(obj1);

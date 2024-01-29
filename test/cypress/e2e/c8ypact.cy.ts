@@ -21,16 +21,17 @@ class AcceptAllMatcher implements C8yPactMatcher {
 
 describe("c8ypact", () => {
   beforeEach(() => {
-    Cypress.c8ypact.strictMatching = true;
+    Cypress.c8ypact.config.strictMatching = true;
 
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
-    Cypress.env("C8Y_PACT_IGNORE", undefined);
     Cypress.env("C8Y_PACT_MODE", undefined);
+    Cypress.env("C8Y_PACT_IGNORE", undefined);
     Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
+    Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", undefined);
 
     initRequestStub();
     stubResponses([
@@ -65,9 +66,11 @@ describe("c8ypact", () => {
     it("Cypress.c8ypact should be initialized with defaults", function () {
       expect(Cypress.c8ypact).to.not.be.null.and.undefined;
       expect(Cypress.c8ypact.debugLog).to.be.false;
-      expect(Cypress.c8ypact.failOnMissingPacts).to.be.true;
-      expect(Cypress.c8ypact.strictMatching).to.be.true;
       expect(Cypress.c8ypact.current).to.be.null;
+      expect(Cypress.c8ypact.config).to.be.a("object");
+      expect(Cypress.c8ypact.config.strictMatching).to.not.be.undefined;
+      expect(Cypress.c8ypact.config.failOnMissingPacts).to.not.be.undefined;
+      expect(Cypress.c8ypact.config.preprocessor).to.not.be.undefined;
 
       expect(Cypress.c8ypact.getCurrentTestId).to.be.a("function");
       expect(Cypress.c8ypact.isRecordingEnabled).to.be.a("function");
@@ -743,7 +746,7 @@ describe("c8ypact", () => {
       "should fail for missing pact - failOnMissingPacts enabled",
       { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
       function (done) {
-        Cypress.c8ypact.failOnMissingPacts = true;
+        Cypress.c8ypact.config.failOnMissingPacts = true;
         Cypress.c8ypact.current = null;
 
         Cypress.once("fail", (err) => {
@@ -766,7 +769,7 @@ describe("c8ypact", () => {
       "should fail for missing pact - failOnMissingPacts disbaled",
       { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
       function () {
-        Cypress.c8ypact.failOnMissingPacts = false;
+        Cypress.c8ypact.config.failOnMissingPacts = false;
         Cypress.c8ypact.current = null;
 
         cy.c8yclient<IManagedObject>([
@@ -905,7 +908,7 @@ describe("c8ypact", () => {
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["requestHeaders.MyAuthorization", "body.password2"],
       });
-      expect(preprocessor.options.ignore).to.deep.eq([]);
+      expect(preprocessor.getOptions().ignore).to.deep.eq([]);
 
       preprocessor.apply(obj);
       expect(obj.requestHeaders.Authorization).to.eq("asdasdasdasd");
@@ -927,7 +930,7 @@ describe("c8ypact", () => {
       ]);
       const obj = _.cloneDeep(cypressResponse);
       const preprocessor = new C8yDefaultPactPreprocessor();
-      expect(preprocessor.options).to.deep.eq({
+      expect(preprocessor.getOptions()).to.deep.eq({
         obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
         ignore: Cypress.env("C8Y_PACT_IGNORE"),
         obfuscationPattern:
@@ -941,28 +944,33 @@ describe("c8ypact", () => {
       expect(obj.body.creationTime).to.be.undefined;
     });
 
-    it("should use config from options over env variables", function () {
+    it("should use config from env variables over options", function () {
       Cypress.env("C8Y_PACT_OBFUSCATE", [
         "requestHeaders.Authorization",
         "body.password",
       ]);
-      Cypress.env("C8Y_PACT_IGNORE", ["requestHeaders.accept", "body.status"]);
+      Cypress.env("C8Y_PACT_IGNORE", [
+        "requestHeaders.date",
+        "body.creationTime",
+      ]);
+      Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", "xxxxxxxx");
+
       const obj = _.cloneDeep(cypressResponse);
       const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "<abcdefg>",
-        obfuscate: ["requestHeaders.Authorization", "body.password"],
-        ignore: ["requestHeaders.date", "body.creationTime"],
+        obfuscate: ["body.password"],
+        ignore: ["body.status"],
       });
 
-      expect(preprocessor.options).to.deep.eq({
-        obfuscate: ["requestHeaders.Authorization", "body.password"],
-        ignore: ["requestHeaders.date", "body.creationTime"],
-        obfuscationPattern: "<abcdefg>",
+      expect(preprocessor.getOptions()).to.deep.eq({
+        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
+        ignore: Cypress.env("C8Y_PACT_IGNORE"),
+        obfuscationPattern: Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN"),
       });
       preprocessor.apply(obj);
 
-      expect(obj.requestHeaders.Authorization).to.eq("<abcdefg>");
-      expect(obj.body.password).to.eq("<abcdefg>");
+      expect(obj.requestHeaders.Authorization).to.eq("xxxxxxxx");
+      expect(obj.body.password).to.eq("xxxxxxxx");
       expect(obj.requestHeaders.accept).to.not.be.undefined;
       expect(obj.body.status).to.not.be.undefined;
       expect(obj.requestHeaders.date).to.be.undefined;
@@ -1107,17 +1115,18 @@ describe("c8ypact", () => {
       ]);
       cy.c8yclient<IManagedObject>((c) => {
         return c.inventory.detail(1, { withChildren: false });
-      });
-      C8yDefaultPact.loadCurrent().then((pact) => {
-        expect(pact.records).to.have.length(1);
-        const record = pact.records[0];
-        expect(record).to.not.be.null;
-        expect(_.has(record, "request.headers.Authorization")).to.be.false;
-        expect(record.response.body.password).to.be.undefined;
+      }).then(() => {
+        C8yDefaultPact.loadCurrent().then((pact) => {
+          expect(pact.records).to.have.length(1);
+          const record = pact.records[0];
+          expect(record).to.not.be.null;
+          expect(_.has(record, "request.headers.Authorization")).to.be.false;
+          expect(record.response.body.password).to.be.undefined;
 
-        expect(pact.info.preprocessor).to.deep.eq(
-          Cypress.c8ypact.preprocessor.options
-        );
+          expect(pact.info.preprocessor).to.deep.eq(
+            Cypress.c8ypact.preprocessor.getOptions()
+          );
+        });
       });
     });
 

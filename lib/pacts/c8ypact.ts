@@ -25,21 +25,57 @@ declare global {
     }
   }
 
-  interface C8yPactConfigOptions {
-    id?: string;
-    log?: boolean;
-    matcher?: C8yPactMatcher;
-    producer?: { name: string; version?: string } | string;
-    consumer?: { name: string; version?: string } | string;
-    tags?: string[];
-    description?: string;
-    ignore?: boolean;
-  }
-
   /**
    * ID representing a pact object. Should be unique.
    */
   type C8yPactID = string;
+
+  interface C8yPactConfigOptions {
+    /**
+     * ID representing a pact object.
+     */
+    id?: C8yPactID;
+    /**
+     * Use to enable additional logging.
+     */
+    log?: boolean;
+    /**
+     * Information describing the producer of the pact. Includes name and version information
+     */
+    producer?: { name: string; version?: string } | string;
+    /**
+     * Information describing the consumer of the pact. Includes name and version information
+     */
+    consumer?: { name: string; version?: string } | string;
+    /**
+     * Tags describing the pact.
+     */
+    tags?: string[];
+    /**
+     * Description of the pact.
+     */
+    description?: string;
+    /**
+     * Use ignore to disable the pact for the current test case.
+     */
+    ignore?: boolean;
+    /**
+     * Use failOnMissingPacts to disable failing the test if no pact or no next record
+     * is found for the current test case.
+     */
+    failOnMissingPacts?: boolean;
+    /**
+     * Use strictMatching to enable strict matching of the pact records. If strict matching
+     * is enabled, all properties of the pact records must match and tests fail if a property
+     * is missing.
+     */
+    strictMatching?: boolean;
+    /**
+     * Options to configure the C8yPactPreprocessor.
+     */
+    preprocessor?: C8yPactPreprocessorOptions;
+  }
+  type C8yPactConfigKeys = keyof C8yPactConfigOptions;
 
   /**
    * Pact object. Contains all information about a recorded pact, including
@@ -73,27 +109,7 @@ declare global {
   /**
    * Meta information describing a pact and how it was recorded.
    */
-  interface C8yPactInfo {
-    /**
-     * Information describing the producer of the pact.
-     */
-    producer?: { name: string; version?: string };
-    /**
-     * Information describing the consumer of the pact.
-     */
-    consumer?: { name: string; version?: string };
-    /**
-     * Preprocessor used to preprocess the pact.
-     */
-    preprocessor?: C8yPactPreprocessorOptions;
-    /**
-     * Tags describing the pact.
-     */
-    tags?: string[];
-    /**
-     * Description of the pact.
-     */
-    description?: string;
+  interface C8yPactInfo extends C8yPactConfigOptions {
     /**
      * Version information of the system, runner and pact standard used to record the pact.
      */
@@ -103,10 +119,6 @@ declare global {
      */
     title?: string[];
     /**
-     * Id of the pact.
-     */
-    id?: C8yPactID;
-    /**
      * Base URL when recording the pact.
      */
     baseUrl?: string;
@@ -114,10 +126,6 @@ declare global {
      * Tenant when recording the pact.
      */
     tenant?: string;
-    /**
-     * Setting of strict matching when recording the pact.
-     */
-    strictMatching?: boolean;
   }
 
   /**
@@ -138,7 +146,7 @@ declare global {
      */
     getCurrentTestId(): C8yPactID;
     /**
-     * The pact object for the current test case. Null if no pact object is available.
+     * The pact object for the current test case. null if there is no recorded pact for current test.
      */
     current: C8yPact | null;
     /**
@@ -179,17 +187,6 @@ declare global {
      */
     isRecordingEnabled: () => boolean;
     /**
-     * Use failOnMissingPacts to disable failing the test if no pact or no next record
-     * is found for the current test case.
-     */
-    failOnMissingPacts: boolean;
-    /**
-     * Use strictMatching to enable strict matching of the pact records. If strict matching
-     * is enabled, all properties of the pact records must match and tests fail if a property
-     * is missing.
-     */
-    strictMatching: boolean;
-    /**
      * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
      */
     pactRunner: C8yPactRunner;
@@ -197,6 +194,21 @@ declare global {
      * Use debugLog to enable logging of debug information to the Cypress debug log.
      */
     debugLog: boolean;
+
+    config: Omit<C8yPactConfigOptions, "id">;
+    /**
+     * Resolves config values from current test annotation and global config in Cypress.c8ypact.config.
+     * If needed also resolves environment variables.
+     * @param key The key of the config value to resolve.
+     */
+    getConfigValue<T = any>(
+      key: C8yPactConfigKeys,
+      defaultValue?: any
+    ): T | undefined;
+    /**
+     * Resolves config values from current test annotation and global config in Cypress.c8ypact.config.
+     */
+    getConfigValues(): C8yPactConfigOptions;
   }
 
   /**
@@ -589,15 +601,35 @@ if (!Cypress.c8ypact) {
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: new C8yQicktypeSchemaGenerator(),
     schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
-    failOnMissingPacts: true,
-    strictMatching: true,
     debugLog: false,
-    preprocessor: new C8yDefaultPactPreprocessor({
-      obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE") || [
-        "request.headers.Authorization",
-        "response.body.password",
-      ],
-    }),
+    preprocessor: new C8yDefaultPactPreprocessor(),
+    config: {
+      failOnMissingPacts: true,
+      strictMatching: true,
+      preprocessor: {
+        obfuscate: ["request.headers.Authorization", "response.body.password"],
+      },
+    },
+    getConfigValue: (key: C8yPactConfigKeys, defaultValue?: any) => {
+      const value =
+        _.get(Cypress.config(), key) ?? _.get(Cypress.c8ypact.config, key);
+      return value != null ? value : defaultValue;
+    },
+    getConfigValues: () => {
+      const config = _.merge(
+        {},
+        Cypress.c8ypact.config,
+        Cypress.config().c8ypact
+      );
+      config.consumer = _.isString(config.consumer)
+        ? { name: config.consumer }
+        : config.consumer;
+      config.producer = _.isString(config.producer)
+        ? { name: config.producer }
+        : config.producer;
+      config.preprocessor = Cypress.c8ypact.preprocessor.getOptions();
+      return config;
+    },
   };
 }
 
@@ -718,25 +750,15 @@ function save(pact: any, options: C8yPactSaveOptions) {
 }
 
 function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
-  const c8ypact = Cypress.config().c8ypact;
   const info: C8yPactInfo = {
-    title: Cypress.currentTest?.titlePath || [],
+    ...Cypress.c8ypact.getConfigValues(),
     id,
-    preprocessor: Cypress.c8ypact.preprocessor?.options,
-    consumer: _.isString(c8ypact?.consumer)
-      ? { name: c8ypact.consumer }
-      : c8ypact?.consumer,
-    producer: _.isString(c8ypact?.producer)
-      ? { name: c8ypact.producer }
-      : c8ypact?.producer,
-    description: Cypress.config().c8ypact?.description,
-    tags: Cypress.config().c8ypact?.tags,
+    title: Cypress.currentTest?.titlePath || [],
     tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
     baseUrl: Cypress.config().baseUrl,
     version: Cypress.env("C8Y_VERSION") && {
       system: Cypress.env("C8Y_VERSION"),
     },
-    strictMatching: Cypress.c8ypact.strictMatching,
   };
   return info;
 }
