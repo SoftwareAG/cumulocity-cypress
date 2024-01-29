@@ -11,12 +11,7 @@ const { _ } = Cypress;
 Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
   // if c8ypact is not enabled, return original function without any changes or wrapping
   // make sure we do not break things if c8ypact is not enabled
-  if (
-    !Cypress.c8ypact?.isEnabled() ||
-    Cypress.config().c8ypact?.ignore === true ||
-    !args ||
-    _.isEmpty(args)
-  ) {
+  if (!Cypress.c8ypact?.isEnabled() || !args || _.isEmpty(args)) {
     return originalFn(...args);
   }
 

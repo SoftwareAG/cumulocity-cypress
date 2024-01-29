@@ -179,7 +179,7 @@ declare global {
       options?: C8yPactSaveOptions
     ) => Promise<void>;
     /**
-     * Checks if the C8yPact is enabled. Use C8Y_PACT_MODE "ignore" to disable by default.
+     * Checks if the C8yPact is enabled. Use C8Y_PACT_IGNORE="true" to disable by default.
      */
     isEnabled: () => boolean;
     /**
@@ -590,6 +590,8 @@ function isURL(obj: any): obj is URL {
 }
 
 if (!Cypress.c8ypact) {
+  const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
+
   Cypress.c8ypact = {
     current: null,
     getCurrentTestId,
@@ -604,6 +606,8 @@ if (!Cypress.c8ypact) {
     debugLog: false,
     preprocessor: new C8yDefaultPactPreprocessor(),
     config: {
+      log: false,
+      ignore: globalIgnore === "true" || globalIgnore === true,
       failOnMissingPacts: true,
       strictMatching: true,
       preprocessor: {
@@ -660,10 +664,18 @@ beforeEach(() => {
 });
 
 function isEnabled(): boolean {
-  return (
-    Cypress.env("C8Y_PLUGIN_LOADED") != null &&
-    Cypress.env("C8Y_PACT_MODE") !== "ignore"
-  );
+  if (Cypress.env("C8Y_PLUGIN_LOADED") == null) return false;
+  if (Cypress.config().c8ypact?.ignore === true) {
+    return false;
+  } else {
+    if (
+      Cypress.c8ypact.config.ignore === true ||
+      Cypress.env("C8Y_PACT_IGNORE") === "true"
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function isRecordingEnabled(): boolean {

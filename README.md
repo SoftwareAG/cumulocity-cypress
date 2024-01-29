@@ -348,7 +348,8 @@ Commands of this library make use of or provide a set of environment variables.
 - `C8Y_PASSWORD` (string) - password to be used by `getAuth`
 - `C8Y_LOGGED_IN_USER` (string) - username of user logged in with `login`
 - `C8Y_LOGGED_IN_USER_ALIAS` (string) - alias that resolves to username with `getAuth(userAlias)`
-- `C8Y_PACT_MODE` (string) - possible values `ignore` and `recording`. If undefined, pact matching is enabled.
+- `C8Y_PACT_MODE` (string) - use `recording` to enable recording, `undefined` for matching
+- `C8Y_PACT_IGNORE` (string) - if true, all pacts will be ignored. overwrite using test annotations
 - `C8Y_PACT_OBFUSCATE` (string[]) - pact properties to obfuscate before saving
 - `C8Y_PACT_IGNORE` (string[]) - pact properties to ignore and not save
 - `C8Y_PACT_FOLDER` (string) - folder where pacts are stored and restored from (read only)

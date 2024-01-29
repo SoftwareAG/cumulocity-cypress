@@ -22,6 +22,7 @@ class AcceptAllMatcher implements C8yPactMatcher {
 describe("c8ypact", () => {
   beforeEach(() => {
     Cypress.c8ypact.config.strictMatching = true;
+    Cypress.c8ypact.config.ignore = false;
 
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
@@ -32,6 +33,7 @@ describe("c8ypact", () => {
     Cypress.env("C8Y_PACT_IGNORE", undefined);
     Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
     Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", undefined);
+    Cypress.env("C8Y_PACT_IGNORE", undefined);
 
     initRequestStub();
     stubResponses([
@@ -71,6 +73,7 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.config.strictMatching).to.not.be.undefined;
       expect(Cypress.c8ypact.config.failOnMissingPacts).to.not.be.undefined;
       expect(Cypress.c8ypact.config.preprocessor).to.not.be.undefined;
+      expect(Cypress.c8ypact.config.ignore).to.be.false;
 
       expect(Cypress.c8ypact.getCurrentTestId).to.be.a("function");
       expect(Cypress.c8ypact.isRecordingEnabled).to.be.a("function");
@@ -83,8 +86,33 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.schemaMatcher).to.be.a("object");
     });
 
-    it("should be disabled if C8Y_PACT_MODE is set to ignore", function () {
-      Cypress.env("C8Y_PACT_MODE", "ignore");
+    it(
+      "should use ignore annotation configured for the test",
+      { c8ypact: { ignore: true } },
+      function () {
+        expect(Cypress.c8ypact.isEnabled()).to.be.false;
+        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+
+        Cypress.env("C8Y_PACT_IGNORE", "false");
+        expect(Cypress.c8ypact.isEnabled()).to.be.false;
+        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+
+        Cypress.c8ypact.config.ignore = false;
+        expect(Cypress.c8ypact.isEnabled()).to.be.false;
+        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      }
+    );
+
+    it("should work without ignore annotation configured for the test", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.true;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+
+      Cypress.env("C8Y_PACT_IGNORE", "true");
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      Cypress.env("C8Y_PACT_IGNORE", undefined);
+
+      Cypress.c8ypact.config.ignore = true;
       expect(Cypress.c8ypact.isEnabled()).to.be.false;
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
     });
