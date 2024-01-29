@@ -6,24 +6,31 @@ Contribute by raising pull requests. All commands must be documented and, if pos
 
 # Content
 
-- [Authentication and credentials](#authentication-and-credentials)
-  - [Authentication via getAuth and useAuth commands](#authentication-via-getauth-and-useauth-commands)
-  - [Authentication via test case annotations](#authentication-via-test-case-annotations)
-  - [Authentication via environment variables](#authentication-via-environment-variables)
-  - [Passing authentication to cy.request](#passing-authentication-to-cyrequest)
-- [Chaining of commands](#chaining-of-commands)
-- [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
-  - [c8yclient command](#c8yclient-command)
-- [Environment Variables](#environment-variables)
-- [Debugging](#debugging)
-  - [Console log debugging](#console-log-debugging)
-  - [Debugging in Visual Studio Code](#debugging-in-visual-studio-code)
-- [Testing](#testing)
-  - [Test access of DOM elements](#test-access-of-dom-elements)
-  - [Test requests](#test-requests)
-  - [Test interceptions](#test-interceptions)
+- [Overview of commands](#overview-of-commands)
+- [Installation and setup](#installation-and-setup)
+- [Additional frameworks](#additional-frameworks)
+- [Concepts](#concepts)
+  - [Authentication and credentials](#authentication-and-credentials)
+    - [Authentication via getAuth and useAuth commands](#authentication-via-getauth-and-useauth-commands)
+    - [Authentication via test case annotations](#authentication-via-test-case-annotations)
+    - [Authentication via environment variables](#authentication-via-environment-variables)
+    - [Passing authentication to cy.request](#passing-authentication-to-cyrequest)
+  - [Chaining of commands](#chaining-of-commands)
+  - [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
+    - [c8yclient command](#c8yclient-command)
+  - [Environment Variables](#environment-variables)
+- [Development](#development)
+  - [Debugging](#debugging)
+    - [Console log debugging](#console-log-debugging)
+    - [Debugging in Visual Studio Code](#debugging-in-visual-studio-code)
+  - [Testing](#testing)
+    - [Test access of DOM elements](#test-access-of-dom-elements)
+    - [Test requests](#test-requests)
+    - [Test interceptions](#test-interceptions)
+- [Useful links](#useful-links)
+- [Disclaimer](#disclaimer)
 
-# Overview of commands
+## Overview of commands
 
 Current set of commands include
 
@@ -40,7 +47,7 @@ Current set of commands include
 - `getSystemVersion`
 - `bootstrapDeviceCredentials`
 
-# Installation and setup
+## Installation and setup
 
 Add dependency to your package.json.
 
@@ -103,7 +110,7 @@ before(() => {
 });
 ```
 
-# Additional frameworks
+## Additional frameworks
 
 Other frameworks that might help improve efficiency, quality and reliability of Cypress tests include:
 
@@ -112,13 +119,13 @@ Other frameworks that might help improve efficiency, quality and reliability of 
 - [cypress-recurse](https://github.com/bahmutov/cypress-recurse)
 - [cypress-file-upload](https://github.com/abramenal/cypress-file-upload)
 
-# Concepts
+## Concepts
 
 To use the custom commands provided in this library across different projects, it comes with some concepts to allow more flexible use.
 
 The most important use case has been accessing credentials for authentication, as probably every project uses a different approach to pass credentials into it's tests.
 
-## Authentication and credentials
+### Authentication and credentials
 
 This library supports different ways to configure authentication and credentials in your tests. The `getAuth` and `useAuth` commands create or read authentication options from environment and pass or configure it for given commands or the entire test.
 
@@ -127,7 +134,7 @@ Within this library, all commands must use and support authentication based on `
 - `cy.request()` as defined in [HTPP Authentication](https://github.com/request/request#http-authentication)
 - `ICredentials` as defined by `c8y/client`
 
-### Authentication via getAuth and useAuth commands
+#### Authentication via getAuth and useAuth commands
 
 For accessing authentication credentials, the `getAuth()` and `useAuth()` commands are provided. Both accept any arguments and create, if possible, a `C8yAuthOptions` object.
 
@@ -176,7 +183,7 @@ cy.getApplicationsByName("OEE").subscribeApplications("newuser");
 cy.getAuth("newuser").login();
 ```
 
-### Authentication via test case annotations
+#### Authentication via test case annotations
 
 Instead of calling `useAuth()`, it is also possible to annotate the test with authentication options.
 
@@ -194,7 +201,7 @@ it("another test requiring authentication", { auth: "myadmin" }, () => {
 });
 ```
 
-### Authentication via environment variables
+#### Authentication via environment variables
 
 To provide authentication options into all tests, use `C8Y_USERNAME` and `C8Y_PASSWORD` env variables. Set env variables in your tests or use one of the ways descibed in [Cypress documentation](https://docs.cypress.io/guides/guides/environment-variables#Setting).
 
@@ -205,7 +212,7 @@ Cypress.env("C8Y_USERNAME", "admin");
 Cypress.env("C8Y_PASSWORD", "password");
 ```
 
-### Passing authentication to cy.request
+#### Passing authentication to cy.request
 
 With `import "cumulocity-cypress/lib/commands/request"`, it is also possible to add authentication support to `cy.request()` command. If enabled, `cy.request()` will use authentication from environment, `useAuth()` and test case auth annotation. As this feature is considered experimental, it is not automatically imported.
 
@@ -239,7 +246,7 @@ it("standard request authentication", function () {
 });
 ```
 
-## Chaining of commands
+### Chaining of commands
 
 Custom commands provided by this library should support chaining. This means commands need to accept `previousSubject` and yield it's result for next command in the chain.
 
@@ -250,11 +257,11 @@ cy.getAuth("admin", "password").login();
 cy.wrap("admin").getAuth().login();
 ```
 
-## c8y/client and Web SDK types
+### c8y/client and Web SDK types
 
 In general, all custom commands should use `c8y/client` type definitions working with Cumulocity API.
 
-### c8yclient command
+#### c8yclient command
 
 To interact with Cumulocity REST endpoints, `cy.c8yclient` custom command is provided. `cy.c8yclient` mimics `cy.request` to easily exchange or replace `cy.request` within your tests. For compatibility, the yielded result of `cy.c8yclient` is a `Cypress.Response<T>` (as used by `cy.request`) to make all assertions work as expected for `cy.request` and `cy.c8yclient`.
 
@@ -338,7 +345,7 @@ cy.c8yclient((c) => c.userGroup.list({ pageSize: 10000}))
   })
 ```
 
-## Environment Variables
+### Environment Variables
 
 Commands of this library make use of or provide a set of environment variables.
 
@@ -358,13 +365,13 @@ Internal:
 - `C8Y_PLUGIN_LOADED` (string) - has `configureC8yPlugin` been called in config (values `"true"` or `"false"`)
 - `C8Y_PACT_INTERCEPT_IMPORTED` (boolean) - `true` if intercept been imported
 
-# Development
+## Development
 
-## Debugging
+### Debugging
 
 Debugging Cypress tests is tricky. To help debugging custom commands, this library comes with needed setup for debugging in Cypress.
 
-### Console log debugging
+#### Console log debugging
 
 All custom commands of this library are logged within the Command Log of the [Cypress App](https://docs.cypress.io/guides/core-concepts/cypress-app). By clicking the logged command in Command Log of Cypress App, extra information are printed to the console for debugging. Extra information should include at least subject as well as the value yielded by the command. Every command can add any additional information.
 
@@ -403,7 +410,7 @@ When adding extra information to the log, keep overall object size in mind. You 
 
 See [Get console log for commands](https://docs.cypress.io/guides/guides/debugging#Get-console-logs-for-commands) from Cypress documentation for more details.
 
-### Debugging in Visual Studio Code
+#### Debugging in Visual Studio Code
 
 Debugging in Visual Studio Code is not very straight forward, but after all it is or should be possible. The project does contain the launch configuration `Attach to Chrome`, wich requires the Cypress app to be started with `npm run test:open`.
 
@@ -429,7 +436,7 @@ it.only("debugging test", () => {
 
 For more information see [Debug just like you always do](https://docs.cypress.io/guides/guides/debugging#Debug-just-like-you-always-do) in the official Cypress documentation.
 
-## Testing
+### Testing
 
 Cypress is used for testing commands. All tests a located in `test/cypress` folder. If needed, add HTML fixtures in `test/cypress/app/` folder.
 
@@ -445,11 +452,11 @@ or with opening the Cypress console
 npm run test:open
 ```
 
-### Test access of DOM elements
+#### Test access of DOM elements
 
 tbd.
 
-### Test requests
+#### Test requests
 
 Testing requests and the processing of it's responses a set of utilities is provided by this library.
 
@@ -476,7 +483,7 @@ cy.getAuth("admin")
   });
 ```
 
-### Test interceptions
+#### Test interceptions
 
 Interceptions are a very important concept to test with stubbed network responses. If custom commands use interceptions, it can be easily triggered using `JQueryStatic` provided by Cypress.
 
@@ -500,7 +507,7 @@ cy.disableGainsight()
   .wait("@interception");
 ```
 
-# Useful links
+## Useful links
 
 📘 Explore the Knowledge Base  
 Dive into a wealth of Cumulocity IoT tutorials and articles in our [Tech Community Knowledge Base](https://tech.forums.softwareag.com/tags/c/knowledge-base/6/cumulocity-iot).
@@ -519,6 +526,6 @@ More to discover
 - [Recommended E2E testing framework](https://tech.forums.softwareag.com/t/recommended-e2e-testing-framework/285616)
 - [How to setup component testing in CY8 CLI](https://tech.forums.softwareag.com/t/how-to-setup-component-testing-in-cy8-cli/285731)
 
-# Disclaimer
+## Disclaimer
 
 These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
