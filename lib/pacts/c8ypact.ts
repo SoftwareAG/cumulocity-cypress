@@ -1,12 +1,10 @@
-import {
-  InputData,
-  jsonInputForTargetLanguage,
-  quicktype,
-} from "quicktype-core";
 import { C8yDefaultPactMatcher } from "./matcher";
-import { C8yPactDefaultPreprocessor } from "./preprocessor";
+import { C8yDefaultPactPreprocessor } from "./preprocessor";
 import { C8yDefaultPactRunner } from "./runner";
+import { C8yAjvSchemaMatcher, C8yQicktypeSchemaGenerator } from "./schema";
 const { _ } = Cypress;
+
+const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
 
 declare global {
   namespace Cypress {
@@ -27,21 +25,57 @@ declare global {
     }
   }
 
-  interface C8yPactConfigOptions {
-    id?: string;
-    log?: boolean;
-    matcher?: C8yPactMatcher;
-    producer?: { name: string; version?: string } | string;
-    consumer?: { name: string; version?: string } | string;
-    tags?: string[];
-    description?: string;
-    ignore?: boolean;
-  }
-
   /**
    * ID representing a pact object. Should be unique.
    */
   type C8yPactID = string;
+
+  interface C8yPactConfigOptions {
+    /**
+     * ID representing a pact object.
+     */
+    id?: C8yPactID;
+    /**
+     * Use to enable additional logging.
+     */
+    log?: boolean;
+    /**
+     * Information describing the producer of the pact. Includes name and version information
+     */
+    producer?: { name: string; version?: string } | string;
+    /**
+     * Information describing the consumer of the pact. Includes name and version information
+     */
+    consumer?: { name: string; version?: string } | string;
+    /**
+     * Tags describing the pact.
+     */
+    tags?: string[];
+    /**
+     * Description of the pact.
+     */
+    description?: string;
+    /**
+     * Use ignore to disable the pact for the current test case.
+     */
+    ignore?: boolean;
+    /**
+     * Use failOnMissingPacts to disable failing the test if no pact or no next record
+     * is found for the current test case.
+     */
+    failOnMissingPacts?: boolean;
+    /**
+     * Use strictMatching to enable strict matching of the pact records. If strict matching
+     * is enabled, all properties of the pact records must match and tests fail if a property
+     * is missing.
+     */
+    strictMatching?: boolean;
+    /**
+     * Options to configure the C8yPactPreprocessor.
+     */
+    preprocessor?: C8yPactPreprocessorOptions;
+  }
+  type C8yPactConfigKeys = keyof C8yPactConfigOptions;
 
   /**
    * Pact object. Contains all information about a recorded pact, including
@@ -75,27 +109,7 @@ declare global {
   /**
    * Meta information describing a pact and how it was recorded.
    */
-  interface C8yPactInfo {
-    /**
-     * Information describing the producer of the pact.
-     */
-    producer?: { name: string; version?: string };
-    /**
-     * Information describing the consumer of the pact.
-     */
-    consumer?: { name: string; version?: string };
-    /**
-     * Preprocessor used to preprocess the pact.
-     */
-    preprocessor?: C8yPactPreprocessorOptions;
-    /**
-     * Tags describing the pact.
-     */
-    tags?: string[];
-    /**
-     * Description of the pact.
-     */
-    description?: string;
+  interface C8yPactInfo extends C8yPactConfigOptions {
     /**
      * Version information of the system, runner and pact standard used to record the pact.
      */
@@ -105,10 +119,6 @@ declare global {
      */
     title?: string[];
     /**
-     * Id of the pact.
-     */
-    id?: C8yPactID;
-    /**
      * Base URL when recording the pact.
      */
     baseUrl?: string;
@@ -116,10 +126,6 @@ declare global {
      * Tenant when recording the pact.
      */
     tenant?: string;
-    /**
-     * Setting of strict matching when recording the pact.
-     */
-    strictMatching?: boolean;
   }
 
   /**
@@ -140,7 +146,7 @@ declare global {
      */
     getCurrentTestId(): C8yPactID;
     /**
-     * The pact object for the current test case. Null if no pact object is available.
+     * The pact object for the current test case. null if there is no recorded pact for current test.
      */
     current: C8yPact | null;
     /**
@@ -161,6 +167,10 @@ declare global {
      */
     schemaGenerator: C8ySchemaGenerator;
     /**
+     * The C8ySchemaMatcher implementation used to match json schemas. Default is C8yAjvSchemaMatcher.
+     */
+    schemaMatcher: C8ySchemaMatcher;
+    /**
      * Save the given response as a pact record in the pact for the current test case.
      */
     savePact: (
@@ -169,24 +179,13 @@ declare global {
       options?: C8yPactSaveOptions
     ) => Promise<void>;
     /**
-     * Checks if the C8yPact plugin is enabled.
+     * Checks if the C8yPact is enabled. Use C8Y_PACT_IGNORE="true" to disable by default.
      */
     isEnabled: () => boolean;
     /**
-     * Checks if the C8yPact plugin is enabled and in recording mode.
+     * Checks if the C8yPact is enabled and in recording mode.
      */
     isRecordingEnabled: () => boolean;
-    /**
-     * Use failOnMissingPacts to disable failing the test if no pact or no next record
-     * is found for the current test case.
-     */
-    failOnMissingPacts: boolean;
-    /**
-     * Use strictMatching to enable strict matching of the pact records. If strict matching
-     * is enabled, all properties of the pact records must match and tests fail if a property
-     * is missing.
-     */
-    strictMatching: boolean;
     /**
      * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
      */
@@ -195,6 +194,21 @@ declare global {
      * Use debugLog to enable logging of debug information to the Cypress debug log.
      */
     debugLog: boolean;
+
+    config: Omit<C8yPactConfigOptions, "id">;
+    /**
+     * Resolves config values from current test annotation and global config in Cypress.c8ypact.config.
+     * If needed also resolves environment variables.
+     * @param key The key of the config value to resolve.
+     */
+    getConfigValue<T = any>(
+      key: C8yPactConfigKeys,
+      defaultValue?: any
+    ): T | undefined;
+    /**
+     * Resolves config values from current test annotation and global config in Cypress.c8ypact.config.
+     */
+    getConfigValues(): C8yPactConfigOptions;
   }
 
   /**
@@ -277,19 +291,6 @@ declare global {
   }
 
   /**
-   * A C8ySchemaGenerator is used to generate json schemas from json objects.
-   */
-  interface C8ySchemaGenerator {
-    /**
-     * Generates a json schema for the given object.
-     *
-     * @param obj The object to generate the schema for.
-     * @param options The options passed to the schema generator.
-     */
-    generate: (obj: any, options?: any) => Promise<any>;
-  }
-
-  /**
    * The C8yPactNextRecord contains a single pact record and the info object.
    */
   type C8yPactNextRecord = { record: C8yPactRecord; info?: C8yPactInfo };
@@ -311,6 +312,12 @@ declare global {
   function isPact(obj: any): obj is C8yPact;
 }
 
+/**
+ * Default implementation of C8yPact. Use C8yDefaultPact.from to create a C8yPact from
+ * a Cypress.Response object, a serialized pact as string or an object implementing the
+ * C8yPact interface. Note, objects implementing the C8yPact interface may not provide
+ * all required functions and properties.
+ */
 export class C8yDefaultPact implements C8yPact {
   records: C8yPactRecord[];
   info: C8yPactInfo;
@@ -418,13 +425,18 @@ export class C8yDefaultPact implements C8yPact {
   }
 
   /**
-   * Returns the pact record for the given url or null if no record is found.
-   * @param url The url to find the record for.
+   * Returns the pact record for the given request or null if no record is found.
+   * @param req The request of type CyHttpMessages.IncomingHttpRequest
    */
-  getRecordsForUrl(url: string | URL): C8yPactRecord[] | null {
+  getRecordsMatchingRequest(req: any): C8yPactRecord[] | null {
     const matcher = Cypress.c8ypact.urlMatcher;
     const records = this.records.filter((record) => {
-      return matcher.match(record.request.url, url);
+      return (
+        matcher.match(record.request.url, req.url) &&
+        (req.method != null
+          ? _.lowerCase(req.method) === _.lowerCase(record.request.method)
+          : true)
+      );
     });
     return records.length ? records : null;
   }
@@ -446,7 +458,10 @@ export class C8yDefaultPact implements C8yPact {
 }
 
 /**
- * Default implementation of C8yPactRecord.
+ * Default implementation of C8yPactRecord. Use C8yDefaultPactRecord.from to create
+ * a C8yPactRecord from a Cypress.Response object or an C8yPactRecord object. Note,
+ * objects implementing the C8yPactRecord interface may not provide all required
+ * functions and properties.
  */
 export class C8yDefaultPactRecord implements C8yPactRecord {
   request: C8yPactRequest;
@@ -538,6 +553,10 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   }
 }
 
+/**
+ * Default implementation of C8yPactUrlMatcher. URL matching can be configured
+ * to ignore certain parameters (such as dateFrom, dateTo, etc.).
+ */
 export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   ignoreParameters: string[] = [];
   constructor(ignoreParameters: string[] = []) {
@@ -545,6 +564,7 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   }
 
   match(url1: string | URL, url2: string | URL): boolean {
+    if (!url1 || !url2) return false;
     const normalizeUrl = (
       url: string | URL,
       parametersToRemove: string[] = []
@@ -565,61 +585,57 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   }
 }
 
-/**
- * C8ySchemaGenerator implementation using quicktype library with target language
- * json-schema. From the generated schema, all non-standard keywords are removed
- * to ensure compatibility with any json-schema validators.
- */
-export class C8yQicktypeSchemaGenerator implements C8ySchemaGenerator {
-  async generate(obj: any, options: any = {}): Promise<any> {
-    const { name } = options;
-    const inputData = new InputData();
-    const jsonInput = jsonInputForTargetLanguage("json-schema");
-    await jsonInput.addSource({
-      name: name || "root",
-      samples: [JSON.stringify(obj)],
-    });
-    inputData.addInput(jsonInput);
-
-    const result = await quicktype({
-      inputData,
-      lang: "json-schema",
-    });
-    const schema = JSON.parse(result.lines.join("\n"));
-    this.removeNonStandardKeywords(schema);
-    return schema;
-  }
-
-  protected removeNonStandardKeywords(schema: any) {
-    for (const key in schema) {
-      if (key.startsWith("qt-")) {
-        delete schema[key];
-      } else if (typeof schema[key] === "object") {
-        this.removeNonStandardKeywords(schema[key]);
-      }
-    }
-  }
-}
-
 function isURL(obj: any): obj is URL {
   return obj instanceof URL;
 }
 
-Cypress.c8ypact = {
-  current: null,
-  getCurrentTestId,
-  isRecordingEnabled,
-  savePact,
-  isEnabled,
-  matcher: new C8yDefaultPactMatcher(),
-  urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
-  preprocessor: new C8yPactDefaultPreprocessor(),
-  pactRunner: new C8yDefaultPactRunner(),
-  schemaGenerator: new C8yQicktypeSchemaGenerator(),
-  failOnMissingPacts: true,
-  strictMatching: true,
-  debugLog: false,
-};
+if (!Cypress.c8ypact) {
+  const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
+
+  Cypress.c8ypact = {
+    current: null,
+    getCurrentTestId,
+    isRecordingEnabled,
+    savePact,
+    isEnabled,
+    matcher: new C8yDefaultPactMatcher(),
+    urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
+    pactRunner: new C8yDefaultPactRunner(),
+    schemaGenerator: new C8yQicktypeSchemaGenerator(),
+    schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
+    debugLog: false,
+    preprocessor: new C8yDefaultPactPreprocessor(),
+    config: {
+      log: false,
+      ignore: globalIgnore === "true" || globalIgnore === true,
+      failOnMissingPacts: true,
+      strictMatching: true,
+      preprocessor: {
+        obfuscate: ["request.headers.Authorization", "response.body.password"],
+      },
+    },
+    getConfigValue: (key: C8yPactConfigKeys, defaultValue?: any) => {
+      const value =
+        _.get(Cypress.config(), key) ?? _.get(Cypress.c8ypact.config, key);
+      return value != null ? value : defaultValue;
+    },
+    getConfigValues: () => {
+      const config = _.merge(
+        {},
+        Cypress.c8ypact.config,
+        Cypress.config().c8ypact
+      );
+      config.consumer = _.isString(config.consumer)
+        ? { name: config.consumer }
+        : config.consumer;
+      config.producer = _.isString(config.producer)
+        ? { name: config.producer }
+        : config.producer;
+      config.preprocessor = Cypress.c8ypact.preprocessor.getOptions();
+      return config;
+    },
+  };
+}
 
 function debugLogger(): Cypress.Loggable {
   return { log: Cypress.c8ypact.debugLog };
@@ -648,7 +664,18 @@ beforeEach(() => {
 });
 
 function isEnabled(): boolean {
-  return Cypress.env("C8Y_PACT_ENABLED") != null;
+  if (Cypress.env("C8Y_PLUGIN_LOADED") == null) return false;
+  if (Cypress.config().c8ypact?.ignore === true) {
+    return false;
+  } else {
+    if (
+      Cypress.c8ypact.config.ignore === true ||
+      Cypress.env("C8Y_PACT_IGNORE") === "true"
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function isRecordingEnabled(): boolean {
@@ -735,30 +762,15 @@ function save(pact: any, options: C8yPactSaveOptions) {
 }
 
 function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
-  const c8ypact = Cypress.config().c8ypact;
   const info: C8yPactInfo = {
-    title: Cypress.currentTest?.titlePath || [],
+    ...Cypress.c8ypact.getConfigValues(),
     id,
-    preprocessor: {
-      obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE") || [],
-      ignore: Cypress.env("C8Y_PACT_IGNORE") || [],
-      obfuscationPattern:
-        Cypress.c8ypact.preprocessor?.defaultObfuscationPattern,
-    },
-    consumer: _.isString(c8ypact?.consumer)
-      ? { name: c8ypact.consumer }
-      : c8ypact?.consumer,
-    producer: _.isString(c8ypact?.producer)
-      ? { name: c8ypact.producer }
-      : c8ypact?.producer,
-    description: Cypress.config().c8ypact?.description,
-    tags: Cypress.config().c8ypact?.tags,
+    title: Cypress.currentTest?.titlePath || [],
     tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
     baseUrl: Cypress.config().baseUrl,
     version: Cypress.env("C8Y_VERSION") && {
       system: Cypress.env("C8Y_VERSION"),
     },
-    strictMatching: Cypress.c8ypact.strictMatching,
   };
   return info;
 }

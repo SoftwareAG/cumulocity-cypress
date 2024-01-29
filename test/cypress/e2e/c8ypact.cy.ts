@@ -4,36 +4,36 @@ import { SinonSpy } from "cypress/types/sinon";
 import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
-  C8yQicktypeSchemaGenerator,
   isPactError,
 } from "../../../lib/pacts/c8ypact";
 import { defaultClientOptions } from "../../../lib/commands/c8yclient";
-import {
-  C8yDefaultPactMatcher,
-  C8yAjvSchemaMatcher,
-} from "../../../lib/pacts/matcher";
+import { C8yDefaultPactMatcher } from "../../../lib/pacts/matcher";
+import { C8yDefaultPactPreprocessor } from "../../../lib/pacts/preprocessor";
+import { C8yQicktypeSchemaGenerator } from "../../../lib/pacts/schema";
 
 const { _ } = Cypress;
 
 class AcceptAllMatcher implements C8yPactMatcher {
-  schemaMatcher: C8ySchemaMatcher = new C8yAjvSchemaMatcher();
   match(obj1: any, obj2: any): boolean {
     return true;
   }
 }
 
-describe("c8yclient", () => {
+describe("c8ypact", () => {
   beforeEach(() => {
-    Cypress.c8ypact.strictMatching = true;
+    Cypress.c8ypact.config.strictMatching = true;
+    Cypress.c8ypact.config.ignore = false;
 
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
-    Cypress.env("C8Y_PACT_IGNORE", undefined);
     Cypress.env("C8Y_PACT_MODE", undefined);
+    Cypress.env("C8Y_PACT_IGNORE", undefined);
     Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
+    Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", undefined);
+    Cypress.env("C8Y_PACT_IGNORE", undefined);
 
     initRequestStub();
     stubResponses([
@@ -68,9 +68,12 @@ describe("c8yclient", () => {
     it("Cypress.c8ypact should be initialized with defaults", function () {
       expect(Cypress.c8ypact).to.not.be.null.and.undefined;
       expect(Cypress.c8ypact.debugLog).to.be.false;
-      expect(Cypress.c8ypact.failOnMissingPacts).to.be.true;
-      expect(Cypress.c8ypact.strictMatching).to.be.true;
       expect(Cypress.c8ypact.current).to.be.null;
+      expect(Cypress.c8ypact.config).to.be.a("object");
+      expect(Cypress.c8ypact.config.strictMatching).to.not.be.undefined;
+      expect(Cypress.c8ypact.config.failOnMissingPacts).to.not.be.undefined;
+      expect(Cypress.c8ypact.config.preprocessor).to.not.be.undefined;
+      expect(Cypress.c8ypact.config.ignore).to.be.false;
 
       expect(Cypress.c8ypact.getCurrentTestId).to.be.a("function");
       expect(Cypress.c8ypact.isRecordingEnabled).to.be.a("function");
@@ -80,6 +83,38 @@ describe("c8yclient", () => {
       expect(Cypress.c8ypact.matcher).to.be.a("object");
       expect(Cypress.c8ypact.urlMatcher).to.be.a("object");
       expect(Cypress.c8ypact.schemaGenerator).to.be.a("object");
+      expect(Cypress.c8ypact.schemaMatcher).to.be.a("object");
+    });
+
+    it(
+      "should use ignore annotation configured for the test",
+      { c8ypact: { ignore: true } },
+      function () {
+        expect(Cypress.c8ypact.isEnabled()).to.be.false;
+        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+
+        Cypress.env("C8Y_PACT_IGNORE", "false");
+        expect(Cypress.c8ypact.isEnabled()).to.be.false;
+        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+
+        Cypress.c8ypact.config.ignore = false;
+        expect(Cypress.c8ypact.isEnabled()).to.be.false;
+        expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      }
+    );
+
+    it("should work without ignore annotation configured for the test", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.true;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+
+      Cypress.env("C8Y_PACT_IGNORE", "true");
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      Cypress.env("C8Y_PACT_IGNORE", undefined);
+
+      Cypress.c8ypact.config.ignore = true;
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
     });
   });
 
@@ -170,57 +205,61 @@ describe("c8yclient", () => {
       expect(pact.nextRecord()).to.be.null;
     });
 
-    it("getRecordsForUrl should return records matching the passed url", function () {
+    it("getRecordsMatchingRequest should return records matching the request", function () {
       const url1 = "/service/oee-bundle/configurationmanager/2/configuration";
       const url2 =
         "/inventory/managedObjects?pageSize=10&fragmentType=isISAObject";
       const url3 = "/service/oee-bundle/configurationmanager/2/configuration";
 
+      // matching of records is based on url and method
       const pact = C8yDefaultPact.from(response);
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records[0].request.url = url(url1);
       pact.records[1].request.url = url(url2);
       pact.records[2].request.url = url(url3);
+      pact.records[2].request.method = "GET";
 
-      expect(pact.getRecordsForUrl(url(url1))).to.deep.eq([
+      expect(
+        pact.getRecordsMatchingRequest({ url: url(url1), method: "PUT" })
+      ).to.deep.eq([pact.records[0]]);
+      expect(
+        pact.getRecordsMatchingRequest({ url: url(url2), method: "PUT" })
+      ).to.deep.eq([pact.records[1]]);
+      expect(pact.getRecordsMatchingRequest({ url: url(url3) })).to.deep.eq([
         pact.records[0],
         pact.records[2],
       ]);
-      expect(pact.getRecordsForUrl(url(url2))).to.deep.eq([pact.records[1]]);
-      expect(pact.getRecordsForUrl(url(url3))).to.deep.eq([
-        pact.records[0],
-        pact.records[2],
-      ]);
-      expect(pact.getRecordsForUrl(url("/test"))).to.be.null;
-
-      expect(pact.getRecordsForUrl(new URL(url(url1)))).to.deep.eq([
-        pact.records[0],
-        pact.records[2],
-      ]);
-      expect(pact.getRecordsForUrl(new URL(url(url2)))).to.deep.eq([
-        pact.records[1],
-      ]);
-      expect(pact.getRecordsForUrl(new URL(url(url3)))).to.deep.eq([
-        pact.records[0],
-        pact.records[2],
-      ]);
-      expect(pact.getRecordsForUrl(new URL(url("/test")))).to.be.null;
+      expect(
+        pact.getRecordsMatchingRequest({ url: url("/test"), method: "PUT" })
+      ).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ url: url("/test") })).to.be.null;
     });
 
-    it("getRecordsForUrl should allow filtering url parameters", function () {
+    it("getRecordsMatchingRequest should allow filtering url parameters", function () {
       const url1 =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&dateFrom=2024-01-17T14%3A57%3A32.671Z&dateTo=2024-01-17T16%3A57%3A32.671Z&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
       const pact = C8yDefaultPact.from(response);
       pact.records[0].request.url = url(url1);
+      pact.records[0].request.method = "GET";
 
       const url1WithoutParams =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
-      expect(pact.getRecordsForUrl(url(url1WithoutParams))).to.deep.eq([
-        pact.records[0],
-      ]);
+      expect(
+        pact.getRecordsMatchingRequest({ url: url(url1WithoutParams) })
+      ).to.deep.eq([pact.records[0]]);
+    });
+
+    it("getRecordsMatchingRequest should not fail for undefined url", function () {
+      const pact = C8yDefaultPact.from(response);
+      pact.records[0].request.method = "GET";
+
+      expect(pact.getRecordsMatchingRequest({ url: undefined })).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ url: null })).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ url: "" })).to.be.null;
+      expect(pact.getRecordsMatchingRequest({ method: "GET" })).to.be.null;
     });
   });
 
@@ -482,38 +521,38 @@ describe("c8yclient", () => {
     });
   });
 
-  context("c8ypact config and environment variabless", function () {
+  context("c8ypact config and environment variables", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
     });
 
     it("recording should be enabled", function () {
-      Cypress.env("C8Y_PACT_ENABLED", "true");
+      Cypress.env("C8Y_PLUGIN_LOADED", "true");
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
     });
 
     it("recording should be disabled", function () {
-      const isEnabled = Cypress.env("C8Y_PACT_ENABLED");
-      Cypress.env("C8Y_PACT_ENABLED", "true");
+      const isEnabled = Cypress.env("C8Y_PLUGIN_LOADED");
+      Cypress.env("C8Y_PLUGIN_LOADED", "true");
       Cypress.env("C8Y_PACT_MODE", undefined);
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
-      Cypress.env("C8Y_PACT_ENABLED", isEnabled.toString());
+      Cypress.env("C8Y_PLUGIN_LOADED", isEnabled.toString());
     });
 
     it("recording should be disabled if plugin is disabled", function () {
-      const isEnabled = Cypress.env("C8Y_PACT_ENABLED");
-      Cypress.env("C8Y_PACT_ENABLED", undefined);
+      const isEnabled = Cypress.env("C8Y_PLUGIN_LOADED");
+      Cypress.env("C8Y_PLUGIN_LOADED", undefined);
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
-      Cypress.env("C8Y_PACT_ENABLED", isEnabled.toString());
+      Cypress.env("C8Y_PLUGIN_LOADED", isEnabled.toString());
     });
 
     it("plugin should be enabled", function () {
-      expect(Cypress.env("C8Y_PACT_ENABLED")).to.eq("true");
+      expect(Cypress.env("C8Y_PLUGIN_LOADED")).to.eq("true");
     });
 
     it("should create pact identifier from test case name", function () {
       expect(Cypress.c8ypact.getCurrentTestId()).to.equal(
-        "c8yclient__c8ypact_config_and_environment_variabless__should_create_pact_identifier_from_test_case_name"
+        "c8ypact__c8ypact_config_and_environment_variables__should_create_pact_identifier_from_test_case_name"
       );
     });
 
@@ -735,7 +774,7 @@ describe("c8yclient", () => {
       "should fail for missing pact - failOnMissingPacts enabled",
       { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
       function (done) {
-        Cypress.c8ypact.failOnMissingPacts = true;
+        Cypress.c8ypact.config.failOnMissingPacts = true;
         Cypress.c8ypact.current = null;
 
         Cypress.once("fail", (err) => {
@@ -758,7 +797,7 @@ describe("c8yclient", () => {
       "should fail for missing pact - failOnMissingPacts disbaled",
       { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
       function () {
-        Cypress.c8ypact.failOnMissingPacts = false;
+        Cypress.c8ypact.config.failOnMissingPacts = false;
         Cypress.c8ypact.current = null;
 
         cy.c8yclient<IManagedObject>([
@@ -813,23 +852,26 @@ describe("c8yclient", () => {
         },
       };
 
-      Cypress.env("C8Y_PACT_IGNORE", [
-        "request.headers",
-        "response.isOkStatusCode",
-      ]);
+      const storedPreprocessor = Cypress.c8ypact.preprocessor;
+      Cypress.c8ypact.preprocessor = new C8yDefaultPactPreprocessor({
+        ignore: ["request.headers", "response.isOkStatusCode"],
+      });
 
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
       Cypress.c8ypact.current.records[0].response.$body = schema;
 
       const matcher = Cypress.c8ypact.matcher as C8yDefaultPactMatcher;
-      cy.spy(matcher.schemaMatcher, "match").log(false);
+      cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
 
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
         .c8yclient((c) => c.inventory.detail(1, { withChildren: false }))
         .then((response) => {
-          const matchSpy = matcher.schemaMatcher.match as SinonSpy;
+          const matchSpy = Cypress.c8ypact.schemaMatcher.match as SinonSpy;
           expect(matchSpy).to.have.been.calledOnce;
           expect(matchSpy.getCall(0).args).to.deep.eq([response.body, schema]);
+        })
+        .then(() => {
+          Cypress.c8ypact.preprocessor = storedPreprocessor;
         });
     });
 
@@ -864,7 +906,7 @@ describe("c8yclient", () => {
     });
   });
 
-  context("c8ypact preprocessing", function () {
+  context("C8yDefaultPactPreprocessor", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
     });
@@ -890,10 +932,13 @@ describe("c8yclient", () => {
 
     it("should not add any non-existing path", function () {
       const obj = _.cloneDeep(cypressResponse);
-      Cypress.c8ypact.preprocessor.apply(obj, {
+      const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["requestHeaders.MyAuthorization", "body.password2"],
       });
+      expect(preprocessor.getOptions().ignore).to.deep.eq([]);
+
+      preprocessor.apply(obj);
       expect(obj.requestHeaders.Authorization).to.eq("asdasdasdasd");
       expect(obj.body.password).to.eq("abasasapksasas");
       expect(obj.requestHeaders.MyAuthorization).to.be.undefined;
@@ -912,27 +957,48 @@ describe("c8yclient", () => {
         "body.creationTime",
       ]);
       const obj = _.cloneDeep(cypressResponse);
-      Cypress.c8ypact.preprocessor.apply(obj);
+      const preprocessor = new C8yDefaultPactPreprocessor();
+      expect(preprocessor.getOptions()).to.deep.eq({
+        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
+        ignore: Cypress.env("C8Y_PACT_IGNORE"),
+        obfuscationPattern:
+          C8yDefaultPactPreprocessor.defaultObfuscationPattern,
+      });
+      preprocessor.apply(obj);
+
       expect(obj.requestHeaders.Authorization).to.eq("********");
       expect(obj.body.password).to.eq("********");
       expect(obj.requestHeaders.date).to.be.undefined;
       expect(obj.body.creationTime).to.be.undefined;
     });
 
-    it("should use config from options over env variables", function () {
+    it("should use config from env variables over options", function () {
       Cypress.env("C8Y_PACT_OBFUSCATE", [
         "requestHeaders.Authorization",
         "body.password",
       ]);
-      Cypress.env("C8Y_PACT_IGNORE", ["requestHeaders.accept", "body.status"]);
+      Cypress.env("C8Y_PACT_IGNORE", [
+        "requestHeaders.date",
+        "body.creationTime",
+      ]);
+      Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", "xxxxxxxx");
+
       const obj = _.cloneDeep(cypressResponse);
-      Cypress.c8ypact.preprocessor.apply(obj, {
+      const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "<abcdefg>",
-        obfuscate: ["requestHeaders.Authorization", "body.password"],
-        ignore: ["requestHeaders.date", "body.creationTime"],
+        obfuscate: ["body.password"],
+        ignore: ["body.status"],
       });
-      expect(obj.requestHeaders.Authorization).to.eq("<abcdefg>");
-      expect(obj.body.password).to.eq("<abcdefg>");
+
+      expect(preprocessor.getOptions()).to.deep.eq({
+        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
+        ignore: Cypress.env("C8Y_PACT_IGNORE"),
+        obfuscationPattern: Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN"),
+      });
+      preprocessor.apply(obj);
+
+      expect(obj.requestHeaders.Authorization).to.eq("xxxxxxxx");
+      expect(obj.body.password).to.eq("xxxxxxxx");
       expect(obj.requestHeaders.accept).to.not.be.undefined;
       expect(obj.body.status).to.not.be.undefined;
       expect(obj.requestHeaders.date).to.be.undefined;
@@ -941,11 +1007,12 @@ describe("c8yclient", () => {
 
     it("should preprocess Cypress.Response", function () {
       const obj = _.cloneDeep(cypressResponse);
-      Cypress.c8ypact.preprocessor.apply(obj, {
+      const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["requestHeaders.Authorization", "body.password"],
         ignore: ["requestHeaders.date", "body.creationTime"],
       });
+      preprocessor.apply(obj);
       expect(obj.requestHeaders.Authorization).to.eq("<abcdefg>");
       expect(obj.body.password).to.eq("<abcdefg>");
       expect(obj.requestHeaders.date).to.be.undefined;
@@ -955,11 +1022,12 @@ describe("c8yclient", () => {
     it("should preprocess C8yDefaultPactRecord", function () {
       const obj = C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse));
       expect(obj).to.not.be.null;
-      Cypress.c8ypact.preprocessor.apply(obj, {
+      const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["request.headers.Authorization", "response.body.password"],
         ignore: ["request.headers.date", "response.body.creationTime"],
       });
+      preprocessor.apply(obj);
       // @ts-ignore
       expect(obj.request.headers.Authorization).to.eq("<abcdefg>");
       expect(obj.response.body.password).to.eq("<abcdefg>");
@@ -976,11 +1044,12 @@ describe("c8yclient", () => {
         },
         id: "test",
       };
-      Cypress.c8ypact.preprocessor.apply(obj, {
+      const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["info", "id", "records"],
         ignore: ["info", "id", "records"],
       });
+      preprocessor.apply(obj);
       expect(obj.records).to.deep.eq([
         C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
       ]);
@@ -996,11 +1065,12 @@ describe("c8yclient", () => {
           C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
         ],
       };
-      Cypress.c8ypact.preprocessor.apply(obj, {
+      const preprocessor = new C8yDefaultPactPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["request.headers.Authorization", "response.body.password"],
         ignore: ["request.headers.date", "response.body.creationTime"],
       });
+      preprocessor.apply(obj);
       // @ts-ignore
       expect(obj.records[0].request.headers.Authorization).to.eq("<abcdefg>");
       expect(obj.records[0].response.body.password).to.eq("<abcdefg>");
@@ -1023,11 +1093,7 @@ describe("c8yclient", () => {
 
     it("should preprocess response when saving pact", function () {
       const obfuscationPattern =
-        Cypress.c8ypact.preprocessor.defaultObfuscationPattern;
-      Cypress.env("C8Y_PACT_OBFUSCATE", [
-        "request.headers.Authorization",
-        "response.body.password",
-      ]);
+        C8yDefaultPactPreprocessor.defaultObfuscationPattern;
 
       stubResponses([
         new window.Response(JSON.stringify({ password: "sdqadasdadasd" }), {
@@ -1064,7 +1130,7 @@ describe("c8yclient", () => {
       });
     });
 
-    it("should not add preprocessed properties", function () {
+    it("should not add preprocessed properties and store options in info", function () {
       cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
       Cypress.env("C8Y_TENANT", "t1234");
 
@@ -1077,14 +1143,35 @@ describe("c8yclient", () => {
       ]);
       cy.c8yclient<IManagedObject>((c) => {
         return c.inventory.detail(1, { withChildren: false });
+      }).then(() => {
+        C8yDefaultPact.loadCurrent().then((pact) => {
+          expect(pact.records).to.have.length(1);
+          const record = pact.records[0];
+          expect(record).to.not.be.null;
+          expect(_.has(record, "request.headers.Authorization")).to.be.false;
+          expect(record.response.body.password).to.be.undefined;
+
+          expect(pact.info.preprocessor).to.deep.eq(
+            Cypress.c8ypact.preprocessor.getOptions()
+          );
+        });
       });
-      C8yDefaultPact.loadCurrent().then((pact) => {
-        expect(pact.records).to.have.length(1);
-        const record = pact.records[0];
-        expect(record).to.not.be.null;
-        expect(_.has(record, "request.headers.Authorization")).to.be.false;
-        expect(record.response.body.password).to.be.undefined;
+    });
+
+    it("should allow overriding preprocessor options with apply options", function () {
+      const obj = _.cloneDeep(cypressResponse);
+      const preprocessor = new C8yDefaultPactPreprocessor({
+        obfuscationPattern: "<abcdefg>",
+        obfuscate: ["requestHeaders.Authorization"],
+        ignore: ["requestHeaders.date", "body.creationTime"],
       });
+      preprocessor.apply(obj, {
+        obfuscationPattern: "test",
+        obfuscate: ["body.password"],
+        ignore: ["requestHeaders.UseXBasic"],
+      });
+      expect(obj.body.password).to.eq("test");
+      expect(obj.requestHeaders.UseXBasic).to.be.undefined;
     });
   });
 

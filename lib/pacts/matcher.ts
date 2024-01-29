@@ -1,8 +1,5 @@
 const { _ } = Cypress;
 import * as datefns from "date-fns";
-import Ajv, { SchemaObject } from "ajv";
-import addFormats from "ajv-formats";
-import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 
 declare global {
   /**
@@ -25,14 +22,6 @@ declare global {
       loggerProps?: { [key: string]: any }
     ) => boolean;
   }
-
-  /**
-   * Matcher for matching objects against a schema. If the object does not match
-   * the schema an Error will be thrown.
-   */
-  interface C8ySchemaMatcher {
-    match(obj: any, schema: any): boolean;
-  }
 }
 
 /**
@@ -43,15 +32,13 @@ declare global {
  * missing in matched objects. In case objects do not match an C8yPactError is thrown.
  */
 export class C8yDefaultPactMatcher {
-  schemaMatcher: C8ySchemaMatcher;
-
   propertyMatchers: { [key: string]: C8yPactMatcher } = {};
   private parents: string[] = [];
 
   constructor(
     propertyMatchers: { [key: string]: C8yPactMatcher } = {
-      body: new C8yPactContentMatcher(),
-      requestBody: new C8yPactContentMatcher(),
+      body: new C8yPactBodyMatcher(),
+      requestBody: new C8yPactBodyMatcher(),
       duration: new C8yNumberMatcher(),
       date: new C8yIgnoreMatcher(),
       Authorization: new C8yIgnoreMatcher(),
@@ -62,11 +49,9 @@ export class C8yDefaultPactMatcher {
       url: new C8yIgnoreMatcher(),
       "X-XSRF-TOKEN": new C8yIgnoreMatcher(),
       lastMessage: new C8yISODateStringMatcher(),
-    },
-    schemaMatcher: C8ySchemaMatcher = new C8yAjvSchemaMatcher()
+    }
   ) {
     this.propertyMatchers = propertyMatchers;
-    this.schemaMatcher = schemaMatcher;
   }
 
   match(
@@ -121,7 +106,7 @@ export class C8yDefaultPactMatcher {
       );
     }
 
-    const strictMode = Cypress.c8ypact.strictMatching;
+    const strictMode = Cypress.c8ypact.getConfigValue("strictMatching");
     // get keys of objects without schema keys and schema keys separately
     const objectKeys = Object.keys(obj1).filter((k) => !k.startsWith("$"));
     const schemaKeys = Object.keys(obj2).filter((k) => k.startsWith("$"));
@@ -160,9 +145,9 @@ export class C8yDefaultPactMatcher {
           } object.`
         );
       }
-      if (isSchema) {
+      if (isSchema && Cypress.c8ypact.schemaMatcher != null) {
         try {
-          if (!this.schemaMatcher.match(value, pact)) {
+          if (!Cypress.c8ypact.schemaMatcher.match(value, pact)) {
             throwPactError(`Schema for "${keyPath(key)}" does not match.`, key);
           }
         } catch (error) {
@@ -171,7 +156,7 @@ export class C8yDefaultPactMatcher {
             key
           );
         }
-      } else if (this.propertyMatchers[key]) {
+      } else if (this.propertyMatchers[key] != null) {
         if (!strictMode && !value) {
           continue;
         }
@@ -238,7 +223,7 @@ export class C8yDefaultPactMatcher {
  * id, statistics, lastUpdated, creationTime, next, self, password, owner, tenantId
  * and lastPasswordChange. It is registered for the properties body and requestBody.
  */
-export class C8yPactContentMatcher extends C8yDefaultPactMatcher {
+export class C8yPactBodyMatcher extends C8yDefaultPactMatcher {
   constructor(propertyMatchers = {}) {
     super(propertyMatchers);
 
@@ -302,46 +287,5 @@ export class C8yISODateStringMatcher {
     const d1 = datefns.parseISO(obj1);
     const d2 = datefns.parseISO(obj2);
     return datefns.isValid(d1) && datefns.isValid(d2);
-  }
-}
-
-/**
- * Default implementation of C8ySchemaMatcher using AJV. By default
- * the json-schema-draft-06 or json-schema-draft-07 schema are used. Other
- * schema might require custom C8ySchemaMatcher implementations. If
- * Cypress.c8ypact.strictMatching is disabled, additionalProperties will be
- * set to true allowing additional properties in the object to match the schema.
- */
-export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
-  match(obj: any, schema: SchemaObject): boolean {
-    if (!schema) return false;
-    const ajv = new Ajv();
-    addFormats(ajv);
-    ajv.addMetaSchema(draft06Schema);
-
-    const schemaClone = _.cloneDeep(schema);
-    this.updateAdditionalProperties(
-      schemaClone,
-      !Cypress.c8ypact.strictMatching
-    );
-
-    const valid = ajv.validate(schemaClone, obj);
-    if (!valid) {
-      throw new Error(ajv.errorsText());
-    }
-    return valid;
-  }
-
-  protected updateAdditionalProperties(schema: any, value: boolean) {
-    if (_.isObjectLike(schema)) {
-      schema.additionalProperties = value;
-      Object.values(schema).forEach((v: any) => {
-        this.updateAdditionalProperties(v, value);
-      });
-    } else if (_.isArray(schema)) {
-      schema.forEach((v: any) => {
-        this.updateAdditionalProperties(v, value);
-      });
-    }
   }
 }

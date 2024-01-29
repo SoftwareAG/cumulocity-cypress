@@ -22,7 +22,6 @@ import {
   IResultList,
 } from "@c8y/client";
 import { C8yDefaultPactRecord, isPactError } from "../pacts/c8ypact";
-import { C8yAjvSchemaMatcher } from "../pacts/matcher";
 
 declare global {
   namespace Cypress {
@@ -179,7 +178,7 @@ declare global {
       baseUrl: string;
       client: Client;
       preferBasicAuth: boolean;
-      skipClientAuthenication: boolean;
+      skipClientAuthentication: boolean;
       failOnPactValidation: boolean;
       ignorePact: boolean;
       schema: any;
@@ -242,7 +241,7 @@ export const defaultClientOptions: C8yClientOptions = {
   timeout: Cypress.config().requestTimeout,
   failOnStatusCode: true,
   preferBasicAuth: false,
-  skipClientAuthenication: false,
+  skipClientAuthentication: false,
   ignorePact: false,
   failOnPactValidation: true,
   schema: undefined,
@@ -493,7 +492,7 @@ const c8yclientFn = (...args: any[]) => {
     auth.userAlias = Cypress.env("C8Y_LOGGED_IN_USER_ALIAS");
   }
 
-  if (!c8yclient._client && !tenant && !options.skipClientAuthenication) {
+  if (!c8yclient._client && !tenant && !options.skipClientAuthentication) {
     logOnce = options.log;
     authenticateClient(auth, options, baseUrl).then((c) => {
       return runClient(c, clientFn, prevSubject, baseUrl);
@@ -588,7 +587,7 @@ function run(
             } else {
               if (
                 record == null &&
-                Cypress.c8ypact.failOnMissingPacts &&
+                Cypress.c8ypact.getConfigValue("failOnMissingPacts", true) &&
                 !ignore
               ) {
                 throwError(
@@ -763,15 +762,12 @@ Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
 
 Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   const p = Cypress.config().c8ypact;
-  let matcher = (p && p.matcher) || Cypress.c8ypact.matcher;
+  let matcher = Cypress.c8ypact.matcher;
 
   const isSchemaMatching =
     !("request" in pact) && !("response" in pact) && _.isObjectLike(pact);
   if (isSchemaMatching) {
-    matcher =
-      ((_.isFunction(_.get(matcher, "schemaMatcher.match")) &&
-        _.get(matcher, "schemaMatcher")) as C8ySchemaMatcher) ||
-      new C8yAjvSchemaMatcher();
+    matcher = Cypress.c8ypact.schemaMatcher;
     options.failOnPactValidation = true;
   }
 

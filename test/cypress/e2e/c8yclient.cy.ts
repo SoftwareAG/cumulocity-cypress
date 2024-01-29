@@ -32,7 +32,7 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
-    Cypress.env("C8Y_PACT_ENABLED", undefined);
+    Cypress.env("C8Y_PLUGIN_LOADED", undefined);
 
     initRequestStub();
     stubResponses([
@@ -430,7 +430,7 @@ describe("c8yclient", () => {
   context("schema matching", () => {
     it("should use schema for matching response", () => {
       //@ts-ignore
-      cy.spy(Cypress.c8ypact.matcher.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match");
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
         .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
           schema: {
@@ -444,7 +444,6 @@ describe("c8yclient", () => {
         })
         .then(() => {
           // @ts-ignore
-          const spy = Cypress.c8ypact.matcher.schemaMatcher.match as SinonSpy;
           expect(spy).to.have.been.calledOnce;
         });
     });

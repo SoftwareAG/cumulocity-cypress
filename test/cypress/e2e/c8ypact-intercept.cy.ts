@@ -8,11 +8,26 @@ describe("c8ypactintercept", () => {
   function fetchInventory() {
     return $.get(url(`/inventory/managedObjects?fragmentType=abcd`));
   }
+  // mocked pact responses use post requests
+  function postInventory() {
+    return $.post(url(`/inventory/managedObjects?fragmentType=abcd`));
+  }
 
   function expectSavePactNotCalled() {
     const spy = Cypress.c8ypact.savePact as SinonSpy;
     expect(spy).to.have.not.been.called;
   }
+
+  const errorListener = () => {
+    throw new Error("should not intercept");
+  };
+
+  const testBody = { test: "test" };
+  const testResponse = {
+    body: JSON.stringify(testBody),
+    statusCode: 201,
+    headers: { "x-test": "test" },
+  };
 
   afterEach(() => {
     // delete recorded pacts after each test
@@ -29,19 +44,37 @@ describe("c8ypactintercept", () => {
   // modified responses will however use the body as sent in the interception
 
   context("setup", () => {
-    it("should set env variable if enabled", () => {
-      expect(Cypress.env("C8Y_PACT_INTERCEPT_ENABLED")).to.be.true;
+    beforeEach(() => {
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
+    afterEach(() => {
+      Cypress.off("log:intercept", errorListener);
+    });
+
+    it(
+      "should not intercept if ignore is configured for Cypress.c8ypact",
+      { c8ypact: { ignore: true } },
+      () => {
+        Cypress.once("log:intercept", errorListener);
+        cy.intercept("/inventory/managedObjects*")
+          .as("inventory")
+          .then(fetchInventory)
+          .then((data) => {
+            expect(data).to.have.property("managedObjects");
+          })
+          .wait("@inventory")
+          .then(expectSavePactNotCalled);
+      }
+    );
+
+    it("should set env variable if imported", () => {
+      expect(Cypress.env("C8Y_PACT_INTERCEPT_IMPORTED")).to.be.true;
     });
   });
 
   context("record interceptions", () => {
-    const testBody = { test: "test" };
-    const testResponse = {
-      body: JSON.stringify(testBody),
-      statusCode: 201,
-      headers: { "x-test": "test" },
-    };
-
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
       cy.spy(Cypress.c8ypact, "savePact").log(false);
@@ -312,13 +345,6 @@ describe("c8ypactintercept", () => {
   });
 
   context("recording disabled", () => {
-    const testBody = { test: "test" };
-    const testResponse = {
-      body: JSON.stringify(testBody),
-      statusCode: 201,
-      headers: { "x-test": "test" },
-    };
-
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", undefined);
       cy.spy(Cypress.c8ypact, "savePact").log(false);
@@ -433,6 +459,11 @@ describe("c8ypactintercept", () => {
   });
 
   context("mock interceptions", () => {
+    beforeEach(() => {
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
     const response: Cypress.Response<any> = {
       status: 200,
       statusText: "OK",
@@ -443,16 +474,11 @@ describe("c8ypactintercept", () => {
       requestBody: { id: "abc123124" },
       allRequestResponses: [],
       isOkStatusCode: false,
-      method: "PUT",
+      method: "POST",
       url:
         Cypress.config().baseUrl +
         "/inventory/managedObjects?fragmentType=abcd",
     };
-
-    beforeEach(() => {
-      Cypress.env("C8Y_PACT_MODE", undefined);
-      cy.spy(Cypress.c8ypact, "savePact").log(false);
-    });
 
     it("should ignore pact for static RouteHandlers", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
@@ -470,7 +496,7 @@ describe("c8ypactintercept", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(response);
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")
-        .then(fetchInventory)
+        .then(postInventory)
         .then((data) => {
           expect(data).to.deep.eq(response.body);
         })
@@ -488,7 +514,7 @@ describe("c8ypactintercept", () => {
         });
       })
         .as("inventory")
-        .then(fetchInventory)
+        .then(postInventory)
         .then((data) => {
           expect(data).to.deep.eq(response.body);
         })
@@ -509,6 +535,25 @@ describe("c8ypactintercept", () => {
         .then(fetchInventory)
         .then((data) => {
           expect(data).to.eq("test");
+        })
+        .wait("@inventory")
+        .then(expectSavePactNotCalled);
+    });
+  });
+
+  context("suite ignore", { c8ypact: { ignore: true } }, () => {
+    beforeEach(() => {
+      cy.spy(Cypress.c8ypact, "savePact").log(false);
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
+    it("should not intercept", () => {
+      Cypress.once("log:intercept", errorListener);
+      cy.intercept("/inventory/managedObjects*")
+        .as("inventory")
+        .then(fetchInventory)
+        .then((data) => {
+          expect(data).to.have.property("managedObjects");
         })
         .wait("@inventory")
         .then(expectSavePactNotCalled);

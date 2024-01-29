@@ -9,7 +9,11 @@ const { _ } = Cypress;
 
 // see documentation fo cy.intercept at https://docs.cypress.io/api/commands/intercept
 Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
-  if (!args || _.isEmpty(args)) return originalFn(...args);
+  // if c8ypact is not enabled, return original function without any changes or wrapping
+  // make sure we do not break things if c8ypact is not enabled
+  if (!Cypress.c8ypact?.isEnabled() || !args || _.isEmpty(args)) {
+    return originalFn(...args);
+  }
 
   const method =
     _.isString(args[0]) && HTTP_METHODS.includes(args[0].toUpperCase())
@@ -45,7 +49,7 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
   return originalFn(...updatedArgs);
 });
 
-Cypress.env("C8Y_PACT_INTERCEPT_ENABLED", true);
+Cypress.env("C8Y_PACT_INTERCEPT_IMPORTED", true);
 
 Cypress.on("log:intercept", (options) => {
   if (!Cypress.c8ypact.isRecordingEnabled()) return;
@@ -79,6 +83,18 @@ function toCypressResponse(req: any, res: any): Cypress.Response {
     allRequestResponses: [],
     isOkStatusCode: statusCode >= 200 && statusCode < 300,
   };
+  // required to fix inconsistencies between c8yclient and interceptions
+  // using lowercase and uppercase. fix here.
+  if (result.requestHeaders?.["x-xsrf-token"]) {
+    result.requestHeaders["X-XSRF-TOKEN"] =
+      result.requestHeaders["x-xsrf-token"];
+    delete result.requestHeaders["x-xsrf-token"];
+  }
+  if (result.requestHeaders?.["authentication"]) {
+    result.requestHeaders["Authorization"] =
+      result.requestHeaders["authentication"];
+    delete result.requestHeaders["authentication"];
+  }
   return result;
 }
 
@@ -98,35 +114,21 @@ const wrapFunctionRouteHandler = (fn: any) => {
     const reqContinue = req.continue;
     req.continue = (resFn: any) => {
       let unmodifiedRes: any;
-      let responsePromise: any;
-
-      const resWrapperFn = async (res: any) => {
-        if (responsePromise) {
-          await responsePromise;
-        }
-        resFn(res);
-        emitInterceptionEvent(
-          req,
-          unmodifiedRes ? unmodifiedRes : res,
-          unmodifiedRes ? res : undefined
-        );
-      };
 
       if (Cypress.c8ypact.isRecordingEnabled()) {
-        responsePromise = new Cypress.Promise((resolve, reject) => {
-          // "before:response" is the event to use as in "response" the continue handler seems to be called resulting in a timeout
-          // see Cypress before-request.ts for implementation details
-          req.on("before:response", (res: any) => {
-            unmodifiedRes = _.cloneDeep(res);
-            resolve(res);
-          });
+        req.on("before:response", (res: any) => {
+          unmodifiedRes = _.cloneDeep(res);
+        });
+
+        req.on("after:response", (res: any) => {
+          emitInterceptionEvent(req, unmodifiedRes, res);
         });
       }
 
       if (Cypress.c8ypact.current == null) {
-        reqContinue(resWrapperFn);
+        reqContinue(resFn);
       } else {
-        const response = responseFromPact({}, req.url);
+        const response = responseFromPact({}, req);
         req.reply(response);
       }
     };
@@ -189,7 +191,7 @@ const wrapEmptyRoutHandler = () => {
         res.send();
       });
     } else {
-      const response = responseFromPact({}, req.url);
+      const response = responseFromPact({}, req);
       req.reply(response);
     }
   };
@@ -231,19 +233,21 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   }
 }
 
-function responseFromPact(obj: any, url: string): any {
+function responseFromPact(obj: any, req: any): any {
   if (Cypress.c8ypact.current == null) return obj;
   const p = Cypress.c8ypact.current as C8yDefaultPact;
-  const record = p.getRecordsForUrl(url);
+  const record = p.getRecordsMatchingRequest(req);
   if (record) {
-    // obj could be string
-    const r = _.first(record).response;
+    const first = _.first(record);
+    const r = first.modifiedResponse || first.response;
     const response = {
       body: r.body,
       headers: r.headers,
       statusCode: r.status,
       statusMessage: r.statusText,
     };
+
+    // obj could be a string
     if (_.isObjectLike(obj) && !_.isArrayLike(obj)) {
       _.extend(obj, response);
     } else if (_.isString(obj) || _.isArrayLike(obj)) {

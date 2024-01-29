@@ -61,14 +61,16 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
       if (
         _.isString(options.consumer) &&
-        info?.consumer?.name !== options.consumer
+        (_.isString(info?.consumer) ? info?.consumer : info?.consumer.name) !==
+          options.consumer
       ) {
         continue;
       }
 
       if (
         _.isString(options.producer) &&
-        info?.producer?.name !== options.producer
+        (_.isString(info?.producer) ? info?.consumer : info?.producer.name) !==
+          options.consumer
       ) {
         continue;
       }
@@ -125,7 +127,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
     for (const record of pact?.records) {
       cy.then(() => {
-        Cypress.c8ypact.strictMatching =
+        Cypress.c8ypact.config.strictMatching =
           pact.info?.strictMatching != null ? pact.info.strictMatching : true;
 
         const url = this.createURL(record, pact.info);
@@ -142,7 +144,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
         const cOpts: C8yClientOptions = {
           // pact: { record: record, info: pact.info },
           ..._.pick(record.options, [
-            "skipClientAuthenication",
+            "skipClientAuthentication",
             "preferBasicAuth",
             "failOnStatusCode",
             "timeout",
