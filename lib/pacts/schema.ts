@@ -43,7 +43,8 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
   ajv: Ajv;
 
   constructor(metas?: AnySchemaObject[]) {
-    this.ajv = new Ajv();
+    //https://ajv.js.org/options.html
+    this.ajv = new Ajv({ strict: "log" });
     addFormats(this.ajv);
 
     this.ajv.addFormat("integer", {
@@ -83,7 +84,9 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
 
   protected updateAdditionalProperties(schema: any, value: boolean) {
     if (_.isObjectLike(schema)) {
-      schema.additionalProperties = value;
+      if ("additionalProperties" in schema) {
+        schema.additionalProperties = value;
+      }
       Object.values(schema).forEach((v: any) => {
         this.updateAdditionalProperties(v, value);
       });
