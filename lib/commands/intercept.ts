@@ -88,6 +88,18 @@ function toCypressResponse(req: any, res: any): Cypress.Response {
     allRequestResponses: [],
     isOkStatusCode: statusCode >= 200 && statusCode < 300,
   };
+  // required to fix inconsistencies between c8yclient and interceptions
+  // using lowercase and uppercase. fix here.
+  if (result.requestHeaders?.["x-xsrf-token"]) {
+    result.requestHeaders["X-XSRF-TOKEN"] =
+      result.requestHeaders["x-xsrf-token"];
+    delete result.requestHeaders["x-xsrf-token"];
+  }
+  if (result.requestHeaders?.["authentication"]) {
+    result.requestHeaders["Authorization"] =
+      result.requestHeaders["authentication"];
+    delete result.requestHeaders["authentication"];
+  }
   return result;
 }
 
