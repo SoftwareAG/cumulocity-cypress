@@ -5,7 +5,7 @@ Collection of commands and utilities to be used for automating tests for [Cumulo
 Contribute by raising pull requests. All commands must be documented and, if possible, tested using test suite in this repository.
 
 # Content
-
+<!-- set markdown.extension.toc.levels 2..6 - level 1 is ignored in auto generated toc -->
 - [Overview of commands](#overview-of-commands)
 - [Installation and setup](#installation-and-setup)
 - [Additional frameworks](#additional-frameworks)
@@ -17,8 +17,6 @@ Contribute by raising pull requests. All commands must be documented and, if pos
     - [Passing authentication to cy.request](#passing-authentication-to-cyrequest)
   - [Chaining of commands](#chaining-of-commands)
   - [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
-    - [c8yclient command](#c8yclient-command)
-  - [Environment Variables](#environment-variables)
 - [Development](#development)
   - [Debugging](#debugging)
     - [Console log debugging](#console-log-debugging)
@@ -34,18 +32,35 @@ Contribute by raising pull requests. All commands must be documented and, if pos
 
 Current set of commands include
 
-- `login`
-- `setAuth` and `useAuth`
+General commands
+
+- `visitAndWaitForSelector`
 - `setLanguage`
 - `hideCookieBanner`
 - `disableGainsights`
+
+Authentication related commands
+- `login`
+- `setAuth`
+- `useAuth`
+- `bootstrapDeviceCredentials`
+
+Date related commands
+- `toDate`
+- `toISODate`
+- `compareDates`
+  
+Administration related commands
 - `getCurrentTenant` and `getTenantId`
-- `visitAndWaitForSelector`
-- `toDate`, `toISODate` and `compareDates`
-- `c8yclient`, `c8yclientf` and `c8ymatch`
 - `createUser` and `deleteUser`
 - `getSystemVersion`
-- `bootstrapDeviceCredentials`
+
+[Integration and API testing](./doc/API%20and%20Integration%20Testing.md) related commands
+- `c8yclient`, `c8yclientf`
+- `c8ymatch`
+- `retryRequest`
+
+See [Integration and API testing](./doc/API%20and%20Integration%20Testing.md) for more information.
 
 ## Installation and setup
 
@@ -261,109 +276,9 @@ cy.wrap("admin").getAuth().login();
 
 In general, all custom commands should use `c8y/client` type definitions working with Cumulocity API.
 
-#### c8yclient command
-
 To interact with Cumulocity REST endpoints, `cy.c8yclient` custom command is provided. `cy.c8yclient` mimics `cy.request` to easily exchange or replace `cy.request` within your tests. For compatibility, the yielded result of `cy.c8yclient` is a `Cypress.Response<T>` (as used by `cy.request`) to make all assertions work as expected for `cy.request` and `cy.c8yclient`.
 
-Configuration supports most of the options accepted by `cy.request`, as for example `Loggable` and `Failable`.
-
-Note: via the `Failable` interface it is possible to configure a test not to fail on status codes less than 200 or greater or equal to 300.
-
-`cy.c8yclient` will choose authentication automatically. If there is a `X-XSRF-TOKEN` cookie, it will automatically choose `CookieAuth` without `BasicAuth`. This is important as basic authentication is disabled by default in Cumulocity. To use `cy.c8yclient`, you should login first to set the auth token.
-
-```typescript
-cy.getAuth("admin").login();
-cy.c8yclient().then((c) => c.user.delete("usertodelete"));
-```
-
-To override the default behaviour, pass `preferBasicAuth` option with `true` value. By overriding, `BasicAuth` will be used instead of `CookieAuth` even if a `X-XSRF-TOKEN` is found.
-
-Feature overview:
-
-- creates `Client` automatically configures with `BasicAuth` or `CookieAuth`
-- uses authentication from `cy.getAuth`, `cy.useAuth`, etc. (see [Authentication and credentials](#Authentication-and-credentials))
-- chaining of clients via Cypress command chain or by passing as array
-- returns `Cypress.Response<T>` to be compatible with `cy.request`
-- console debug logging compatible with `cy.request`
-- custom error logging compatibile with `cy.request`
-- get current tenant if C8Y_TENANT is not defined
-
-Examples:
-
-```typescript
-// create a client and store tenant from client C8Y_TENANT environment variable
-cy.getAuth("admin")
-  .c8yclient().then((c) => {
-    Cypress.env("C8Y_TENANT", c.core.tenant);
-  });
-
-// query current tenant via TenantService forcing BasicAuth
-cy.getAuth({ user: "admin", password: "mypassword" })
-  .c8yclient((client) => client.tenant.current())
-  .then((response) => {
-    // response body will have ICurrentTenant type derived from client.tenant.current()
-    console.log(response.body.domainName);
-  });
-
-// chaining of c8yclient via Cypress command chain. response will be passed as second
-// argument to next command in the chain. provide type information if required.
-cy.c8yclient<ICurrentTenant>((client) => client.tenant.current())
-  .c8yclient<IManagedObject, ICurrentTenant>((c, tenantResponse) => {
-    // do something with tenantResponse and query managed object
-    console.log(tenantResponse.body.domainName);
-    return c.inventory.detail(1, { withChildren: false });
-  })
-  .then((response) => {
-    // response body will be of type IManagedObject
-    console.log(response.body.lastUpdated);
-  });
-
-// chaining via array of c8yclient service functions. again, responses will be passed
-// as second argument.
-cy.c8yclient<IManagedObject>([
-  (c) => c.tenant.current(),
-  (c, tenantResponse: Cypress.Response<ICurrentTenant>) => {
-    // do something with tenant response and query managed object
-    return c.inventory.detail(1, { withChildren: false });
-  },
-]).then((response) => {
-  // response body will be of type IManagedObject
-  console.log(response.body.lastUpdated);
-});
-
-// create array of Promise<C8yClientIResult<T>>
-cy.c8yclient((c) => c.userGroup.list({ pageSize: 10000}))
-  .c8yclient((c, groups) => {
-    const assignments = permissions
-      .map(p => groups.body.find(group => group.name === "mygroupname"))
-      .filter(group => !!group)
-      .map(group => c.userGroup.addUserToGroup(group.id, <userself>));
-      return assignments
-    })
-  .then((resonse) => {
-    ...
-  })
-```
-
-### Environment Variables
-
-Commands of this library make use of or provide a set of environment variables.
-
-- `C8Y_TENANT` (string) - store tenant for base url. set by `getTenantId` and `c8yclient`.
-- `C8Y_VERSION` (string) - Cumulocity version for base url. set by `getSystemVersion`.
-- `C8Y_USERNAME` (string) - username to be used by `getAuth`
-- `C8Y_PASSWORD` (string) - password to be used by `getAuth`
-- `C8Y_LOGGED_IN_USER` (string) - username of user logged in with `login`
-- `C8Y_LOGGED_IN_USER_ALIAS` (string) - alias that resolves to username with `getAuth(userAlias)`
-- `C8Y_PACT_MODE` (string) - use `recording` to enable recording, `undefined` for matching
-- `C8Y_PACT_IGNORE` (string) - if true, all pacts will be ignored. overwrite using test annotations
-- `C8Y_PACT_OBFUSCATE` (string[]) - pact properties to obfuscate before saving
-- `C8Y_PACT_IGNORE` (string[]) - pact properties to ignore and not save
-- `C8Y_PACT_FOLDER` (string) - folder where pacts are stored and restored from (read only)
-
-Internal:
-- `C8Y_PLUGIN_LOADED` (string) - has `configureC8yPlugin` been called in config (values `"true"` or `"false"`)
-- `C8Y_PACT_INTERCEPT_IMPORTED` (boolean) - `true` if intercept been imported
+See [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md) for more information.
 
 ## Development
 
