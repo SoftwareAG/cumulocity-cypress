@@ -786,7 +786,7 @@ function isPact(obj: any): obj is C8yPact {
     _.isFunction(_.get(obj, "nextRecord"))
   );
 }
-global.isPact = isPact;
+globalThis.isPact = isPact;
 
 function isPactRecord(obj: any): obj is C8yPactRecord {
   return (
@@ -798,7 +798,7 @@ function isPactRecord(obj: any): obj is C8yPactRecord {
     _.isFunction(_.get(obj, "toCypressResponse"))
   );
 }
-global.isPactRecord = isPactRecord;
+globalThis.isPactRecord = isPactRecord;
 
 export function isPactError(error: any): boolean {
   return _.isError(error) && _.get(error, "name") === "C8yPactError";

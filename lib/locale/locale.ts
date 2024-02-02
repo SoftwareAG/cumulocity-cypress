@@ -1,13 +1,14 @@
 import { FormatWidth } from "../commands/dates";
 
 // default locales to be registered automatically
-import localeDe = require("./de");
-import localeEn = require("./en-GB");
+import * as localeDe from "./de";
+import * as localeEn from "./en-GB";
 
 // @ts-ignore
-import buildLocalizeFn = require("date-fns/locale/_lib/buildLocalizeFn");
+import buildLocalizeFn from "date-fns/locale/_lib/buildLocalizeFn";
 // @ts-ignore
-import buildMatchFn = require("date-fns/locale/_lib/buildMatchFn");
+import buildMatchFn from "date-fns/locale/_lib/buildMatchFn";
+
 const { shortestUniquePrefixes } = require("./localeutil");
 
 const { _ } = Cypress;
@@ -125,7 +126,7 @@ export function getNgLocale(localeId: string): any {
     if (!(normalizedLocale in LOCALE_DATA)) {
       LOCALE_DATA[normalizedLocale] =
         // @ts-ignore
-        global.ng?.common?.locales?.[normalizedLocale];
+        globalThis.ng?.common?.locales?.[normalizedLocale];
     }
     return LOCALE_DATA[normalizedLocale];
   };

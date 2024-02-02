@@ -814,7 +814,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   }
 });
 
-global.toCypressResponse = toCypressResponse;
+globalThis.toCypressResponse = toCypressResponse;
 function toCypressResponse(
   obj:
     | Partial<Response>
@@ -861,7 +861,7 @@ function toCypressResponse(
   };
 }
 
-global.isCypressResponse = isCypressResponse;
+globalThis.isCypressResponse = isCypressResponse;
 function isCypressResponse(obj: any): obj is Cypress.Response {
   return (
     _.isObjectLike(obj) &&

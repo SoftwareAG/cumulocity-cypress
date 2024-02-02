@@ -1177,7 +1177,7 @@ describe("c8ypact", () => {
 
   context("c8ypact typeguards", function () {
     it("isPactRecord is registered globally", function () {
-      expect(global.isPactRecord).to.be.a("function");
+      expect(globalThis.isPactRecord).to.be.a("function");
     });
 
     it("isPactRecord validates undefined", function () {
@@ -1220,7 +1220,7 @@ describe("c8ypact", () => {
     });
 
     it("isPact is registered globally", function () {
-      expect(global.isPact).to.be.a("function");
+      expect(globalThis.isPact).to.be.a("function");
     });
 
     it("isPact validates pact object", function () {
