@@ -54,7 +54,7 @@ declare global {
  * Default implementation of C8yPactPreprocessor. Preprocessor for C8yPact objects
  * that can be used to obfuscate or remove sensitive data from the pact objects.
  * Use C8ypactPreprocessorOptions to configure the preprocessor. Also uses environment
- * variables C8Y_PACT_OBFUSCATE and C8Y_PACT_IGNORE.
+ * variables C8Y_PACT_PREPROCESSOR_OBFUSCATE and C8Y_PACT_PREPROCESSOR_IGNORE.
  */
 export class C8yDefaultPactPreprocessor implements C8yPactPreprocessor {
   private options: C8yPactPreprocessorOptions;
@@ -67,9 +67,9 @@ export class C8yDefaultPactPreprocessor implements C8yPactPreprocessor {
   getOptions() {
     return _.defaults(
       {
-        ignore: Cypress.env("C8Y_PACT_IGNORE"),
-        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
-        obfuscationPattern: Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN"),
+        ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
+        obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
+        obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
       } as C8yPactPreprocessorOptions,
       this.options,
       Cypress.c8ypact?.getConfigValue<C8yPactPreprocessorOptions>(

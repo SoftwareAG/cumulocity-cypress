@@ -84,7 +84,7 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
 
   protected updateAdditionalProperties(schema: any, value: boolean) {
     if (_.isObjectLike(schema)) {
-      if ("additionalProperties" in schema) {
+      if ("additionalProperties" in schema || schema.type === "object") {
         schema.additionalProperties = value;
       }
       Object.values(schema).forEach((v: any) => {

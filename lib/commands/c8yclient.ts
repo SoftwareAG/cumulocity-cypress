@@ -591,7 +591,7 @@ function run(
                 !ignore
               ) {
                 throwError(
-                  `${Cypress.c8ypact.getCurrentTestId()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
+                  `${Cypress.c8ypact.getCurrentTestId()} not found. Disable Cypress.c8ypact.config.failOnMissingPacts to ignore.`
                 );
               }
             }
@@ -600,68 +600,78 @@ function run(
       }
     };
 
-    const response = await new Cypress.Promise(async (resolve, reject) => {
-      const isErrorResponse = (resp: any) => {
-        return (
-          (_.isArray(resp) ? resp : [resp]).filter(
-            (r) =>
-              (r.isOkStatusCode !== true && options.failOnStatusCode) ||
-              _.isError(r)
-          ).length > 0
-        );
-      };
+    try {
+      const response = await new Cypress.Promise(async (resolve, reject) => {
+        const isErrorResponse = (resp: any) => {
+          return (
+            (_.isArray(resp) ? resp : [resp]).filter(
+              (r) =>
+                (r.isOkStatusCode !== true && options.failOnStatusCode) ||
+                _.isError(r)
+            ).length > 0
+          );
+        };
 
-      const preprocessedResponse = async (promise: Promise<any>) => {
-        let result;
-        try {
-          result = await promise;
-        } catch (error) {
-          result = error;
-        }
-        result = toCypressResponse(result);
-        result.$body = options.schema;
-        if (savePact) {
-          await Cypress.c8ypact.savePact(result, client);
-        }
-        if (isErrorResponse(result)) {
-          throw result;
-        }
-        return result;
-      };
-
-      const resultPromise = clientFn(client._client, prevSubject);
-      if (_.isError(resultPromise)) {
-        reject(resultPromise);
-        return;
-      }
-
-      if (_.isArray(resultPromise)) {
-        let toReject = false;
-        let result = [];
-        for (const task of resultPromise) {
+        const preprocessedResponse = async (promise: Promise<any>) => {
+          let result;
           try {
-            result.push(await preprocessedResponse(task));
+            result = await promise;
+          } catch (error) {
+            result = error;
+          }
+          result = toCypressResponse(result);
+          result.$body = options.schema;
+          if (savePact) {
+            await Cypress.c8ypact.savePact(result, client);
+          }
+          if (isErrorResponse(result)) {
+            throw result;
+          }
+          return result;
+        };
+
+        const resultPromise = clientFn(client._client, prevSubject);
+        if (_.isError(resultPromise)) {
+          reject(resultPromise);
+          return;
+        }
+
+        if (_.isArray(resultPromise)) {
+          let toReject = false;
+          let result = [];
+          for (const task of resultPromise) {
+            try {
+              result.push(await preprocessedResponse(task));
+            } catch (err) {
+              result.push(err);
+              toReject = true;
+            }
+          }
+          if (toReject) {
+            reject(result);
+          } else {
+            resolve(result);
+          }
+        } else {
+          try {
+            resolve(await preprocessedResponse(resultPromise));
           } catch (err) {
-            result.push(err);
-            toReject = true;
+            reject(err);
           }
         }
-        if (toReject) {
-          reject(result);
+      });
+
+      matchPact(response, options.schema);
+
+      cy.then(() => {
+        if (isArrayOfFunctions(fns) && !_.isEmpty(fns)) {
+          run(client, fns, response, options, baseUrl);
         } else {
-          resolve(result);
+          cy.wrap(response, { log: Cypress.c8ypact.debugLog });
         }
-      } else {
-        try {
-          resolve(await preprocessedResponse(resultPromise));
-        } catch (err) {
-          reject(err);
-        }
-      }
-    }).catch((err) => {
-      if (_.isError(err)) {
-        throw err;
-      }
+      });
+    } catch (err) {
+      if (_.isError(err)) throw err;
 
       matchPact(err, options.schema);
 
@@ -672,17 +682,7 @@ function run(
           stack: false,
         });
       });
-    });
-
-    matchPact(response, options.schema);
-
-    cy.then(() => {
-      if (isArrayOfFunctions(fns) && !_.isEmpty(fns)) {
-        run(client, fns, response, options, baseUrl);
-      } else {
-        cy.wrap(response, { log: Cypress.c8ypact.debugLog });
-      }
-    });
+    }
   });
 }
 

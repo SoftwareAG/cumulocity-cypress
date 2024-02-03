@@ -30,9 +30,9 @@ describe("c8ypact", () => {
     Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
     Cypress.env("C8Y_PACT_MODE", undefined);
     Cypress.env("C8Y_PACT_IGNORE", undefined);
-    Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
-    Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", undefined);
-    Cypress.env("C8Y_PACT_IGNORE", undefined);
+    Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE", undefined);
+    Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", undefined);
+    Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", undefined);
 
     initRequestStub();
     stubResponses([
@@ -720,6 +720,51 @@ describe("c8ypact", () => {
     });
   });
 
+  context("c8ypact record failing last request", function () {
+    // requires afterEach to check recorded pact as in Cypress.once("fail")
+    // C8yDefaultPact.loadCurrent() can not be used
+    it("should record last failing request", function (done) {
+      Cypress.env("C8Y_PACT_MODE", "recording");
+      stubResponses([
+        new window.Response(JSON.stringify({ name: "t123456789" }), {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+        new window.Response("{}", {
+          status: 201,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+        new window.Response("{}", {
+          status: 409,
+          statusText: "Conflict",
+          headers: { "content-type": "application/json" },
+        }),
+      ]);
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("c8yclient failed with: 409 (Conflict)");
+        done();
+      });
+
+      const auth = { user: "admin", password: "mypassword", tenant: "test" };
+      cy.getAuth(auth).c8yclient([
+        (c) => c.inventory.detail(1, { withChildren: false }),
+        (c) => c.inventory.detail(1, { withChildren: false }),
+        (c) => c.inventory.detail(1, { withChildren: false }),
+      ]);
+    });
+
+    afterEach(() => {
+      C8yDefaultPact.loadCurrent().then((pact) => {
+        expect(pact.records).to.have.length(3);
+        expect(pact.records[2].response.status).to.eq(409);
+        expect(pact.records[2].response.statusText).to.eq("Conflict");
+      });
+    });
+  });
+
   context("c8ypact matching", function () {
     const response: Cypress.Response<any> = {
       status: 200,
@@ -793,7 +838,7 @@ describe("c8ypact", () => {
     );
 
     it(
-      "should fail for missing pact - failOnMissingPacts disbaled",
+      "should not fail for missing pact - failOnMissingPacts disbaled",
       { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
       function () {
         Cypress.c8ypact.config.failOnMissingPacts = false;
@@ -842,6 +887,49 @@ describe("c8ypact", () => {
         });
     });
 
+    it("should match with existing pact from failing request", function (done) {
+      stubResponses([
+        new window.Response(JSON.stringify({ name: "t123456789" }), {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+        new window.Response("{}", {
+          status: 409,
+          statusText: "Conflict",
+          headers: { "content-type": "application/json" },
+        }),
+      ]);
+
+      Cypress.c8ypact.matcher = new AcceptAllMatcher();
+      Cypress.c8ypact.current = new C8yDefaultPact(
+        // @ts-ignore
+        [{ request: { url: "test" } }, { request: { url: "test2" } }],
+        {},
+        "test"
+      );
+
+      const recordSpy = cy.spy(Cypress.c8ypact.current, "nextRecord");
+      const matchSpy = cy.spy(Cypress.c8ypact.matcher, "match");
+
+      Cypress.once("fail", (err) => {
+        // test should not fail with pact not found error, but with original error 409
+        expect(err.message).to.contain("c8yclient failed with: 409 (Conflict)");
+        expect(recordSpy).to.have.been.calledTwice;
+        expect(matchSpy).to.have.been.calledTwice;
+        done();
+      });
+
+      cy.getAuth({
+        user: "admin",
+        password: "mypassword",
+        tenant: "t123456789",
+      }).c8yclient<IManagedObject>([
+        (c) => c.inventory.detail(1, { withChildren: false }),
+        (c) => c.inventory.detail(1, { withChildren: false }),
+      ]);
+    });
+
     it("should match with schema", function () {
       const schema = {
         type: "object",
@@ -886,7 +974,7 @@ describe("c8ypact", () => {
         },
       };
 
-      Cypress.env("C8Y_PACT_IGNORE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", [
         "request.headers",
         "response.isOkStatusCode",
       ]);
@@ -949,19 +1037,19 @@ describe("c8ypact", () => {
     });
 
     it("should use env variables if no options provided", function () {
-      Cypress.env("C8Y_PACT_OBFUSCATE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE", [
         "requestHeaders.Authorization",
         "body.password",
       ]);
-      Cypress.env("C8Y_PACT_IGNORE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", [
         "requestHeaders.date",
         "body.creationTime",
       ]);
       const obj = _.cloneDeep(cypressResponse);
       const preprocessor = new C8yDefaultPactPreprocessor();
       expect(preprocessor.getOptions()).to.deep.eq({
-        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
-        ignore: Cypress.env("C8Y_PACT_IGNORE"),
+        obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
+        ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
         obfuscationPattern:
           C8yDefaultPactPreprocessor.defaultObfuscationPattern,
       });
@@ -974,15 +1062,15 @@ describe("c8ypact", () => {
     });
 
     it("should use config from env variables over options", function () {
-      Cypress.env("C8Y_PACT_OBFUSCATE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE", [
         "requestHeaders.Authorization",
         "body.password",
       ]);
-      Cypress.env("C8Y_PACT_IGNORE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", [
         "requestHeaders.date",
         "body.creationTime",
       ]);
-      Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", "xxxxxxxx");
+      Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", "xxxxxxxx");
 
       const obj = _.cloneDeep(cypressResponse);
       const preprocessor = new C8yDefaultPactPreprocessor({
@@ -992,9 +1080,9 @@ describe("c8ypact", () => {
       });
 
       expect(preprocessor.getOptions()).to.deep.eq({
-        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
-        ignore: Cypress.env("C8Y_PACT_IGNORE"),
-        obfuscationPattern: Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN"),
+        obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
+        ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
+        obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
       });
       preprocessor.apply(obj);
 
