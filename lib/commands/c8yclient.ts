@@ -591,7 +591,7 @@ function run(
                 !ignore
               ) {
                 throwError(
-                  `${Cypress.c8ypact.getCurrentTestId()} not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore.`
+                  `${Cypress.c8ypact.getCurrentTestId()} not found. Disable Cypress.c8ypact.config.failOnMissingPacts to ignore.`
                 );
               }
             }
