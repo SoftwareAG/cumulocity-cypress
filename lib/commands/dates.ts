@@ -178,13 +178,13 @@ const defaultOptions: ISODateOptions = {
   strictFormats: true,
 };
 
-global.registerLocale = registerLocale;
-global.registerDefaultLocales = registerDefaultLocales;
+globalThis.registerLocale = registerLocale;
+globalThis.registerDefaultLocales = registerDefaultLocales;
 (async () => {
   await registerDefaultLocales();
 })();
 
-global.setLocale = (localeId: string) => {
+globalThis.setLocale = (localeId: string) => {
   const l = getNgLocale(localeId);
   if (l && _.isArray(l)) {
     Cypress.datefns.setDefaultOptions({

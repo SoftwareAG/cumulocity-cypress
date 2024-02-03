@@ -1,7 +1,6 @@
-import { SinonSpy } from "cypress/types/sinon";
 import { url } from "../support/util";
 import { C8yDefaultPact } from "../../../lib/pacts/c8ypact";
-const { $, _ } = Cypress;
+const { $, _, sinon } = Cypress;
 
 describe("c8ypactintercept", () => {
   // use inventory mock from app/inventory/manageObjects.json
@@ -14,7 +13,7 @@ describe("c8ypactintercept", () => {
   }
 
   function expectSavePactNotCalled() {
-    const spy = Cypress.c8ypact.savePact as SinonSpy;
+    const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
     expect(spy).to.have.not.been.called;
   }
 
@@ -90,7 +89,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
           const args = spy.getCall(0).args;
           expect(args).to.have.length(3);
@@ -120,7 +119,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
 
           const args = spy.getCall(0).args;
@@ -156,7 +155,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
 
           const args = spy.getCall(0).args;
@@ -185,7 +184,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
           const args = spy.getCall(0).args;
           expect(args).to.have.length(3);
@@ -214,7 +213,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
 
           const args = spy.getCall(0).args;
@@ -247,7 +246,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
 
           const args = spy.getCall(0).args;
@@ -288,7 +287,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
           const args = spy.getCall(0).args;
           cy.wrap(spy.getCall(0).args).then(() => {
@@ -326,7 +325,7 @@ describe("c8ypactintercept", () => {
         })
         .wait("@inventory")
         .then(() => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
           const args = spy.getCall(0).args;
           expect(args).to.have.length(3);

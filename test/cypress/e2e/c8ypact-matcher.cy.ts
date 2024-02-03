@@ -3,10 +3,9 @@ import {
   C8yDefaultPactMatcher,
   C8yISODateStringMatcher,
 } from "../../../lib/pacts/matcher";
-import { SinonSpy } from "cypress/types/sinon";
 import { C8yDefaultPactPreprocessor } from "../../../lib/pacts/preprocessor";
 
-const { _ } = Cypress;
+const { _, sinon } = Cypress;
 
 describe("c8ypactmatcher", () => {
   let obj1: C8yPactRecord, obj2: C8yPactRecord;
@@ -100,7 +99,7 @@ describe("c8ypactmatcher", () => {
       const matchKeys = ["request", "response"];
       cy.c8ymatch(response, pact, {}, { failOnPactValidation: true }).then(
         () => {
-          const spy = Cypress.c8ypact.matcher.match as SinonSpy;
+          const spy = Cypress.c8ypact.matcher.match as sinon.SinonSpy;
           expect(spy).to.have.been.called;
           expect(Object.keys(spy.getCall(0).args[0])).to.deep.eq(matchKeys);
           expect(Object.keys(spy.getCall(0).args[1])).to.deep.eq(matchKeys);
@@ -148,7 +147,7 @@ describe("c8ypactmatcher", () => {
       const pact = C8yDefaultPactRecord.from(response);
       cy.c8ymatch(response, pact, {}, { failOnPactValidation: true }).then(
         () => {
-          const spy = Cypress.c8ypact.matcher.match as SinonSpy;
+          const spy = Cypress.c8ypact.matcher.match as sinon.SinonSpy;
           expect(spy).to.have.been.called;
           expect(spy.getCall(0).args).to.have.length(3);
           const consoleProps = spy.getCall(0).args[2];
@@ -171,7 +170,7 @@ describe("c8ypactmatcher", () => {
       pact.request.body = { x: { y: { z: "test2" } } };
 
       Cypress.once("fail", () => {
-        const spy = Cypress.c8ypact.matcher.match as SinonSpy;
+        const spy = Cypress.c8ypact.matcher.match as sinon.SinonSpy;
         expect(spy).to.have.been.called;
         expect(spy.getCall(0).args).to.have.length(3);
         const consoleProps = spy.getCall(0).args[2];
@@ -195,10 +194,6 @@ describe("c8ypactmatcher", () => {
   });
 
   context("C8yDefaultPactMatcher", function () {
-    beforeEach(() => {
-      Cypress.c8ypact.config.strictMatching = true;
-    });
-
     it("should match cloned object", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
@@ -225,7 +220,7 @@ describe("c8ypactmatcher", () => {
     it("should fail if duration is not a number", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
-      pact.response.duration = "1212121";
+      _.set(pact, "response.duration", "1212121");
       expect(() => matcher.match(obj1, pact)).to.throw(
         `Pact validation failed! Values for "response > duration" do not match.`
       );
@@ -390,7 +385,7 @@ describe("c8ypactmatcher", () => {
 
       pact.response["$body"] = {};
       pact.request.body = {};
-      pact.request["$body"] = {};
+      _.set(pact, "request.$body", {});
       const obj = _.cloneDeep(obj1);
       obj.request.body = { id: "123" };
 

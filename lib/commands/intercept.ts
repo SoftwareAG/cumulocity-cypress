@@ -7,6 +7,14 @@ import {
 
 const { _ } = Cypress;
 
+declare global {
+  namespace Cypress {
+    interface Actions {
+      (action: "log:intercept", fn: (options: any) => void): Cypress;
+    }
+  }
+}
+
 // see documentation fo cy.intercept at https://docs.cypress.io/api/commands/intercept
 Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
   // if c8ypact is not enabled, return original function without any changes or wrapping

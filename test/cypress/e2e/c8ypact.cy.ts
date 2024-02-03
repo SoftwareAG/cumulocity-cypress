@@ -1,6 +1,5 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/util";
-import { SinonSpy } from "cypress/types/sinon";
 import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
@@ -11,7 +10,7 @@ import { C8yDefaultPactMatcher } from "../../../lib/pacts/matcher";
 import { C8yDefaultPactPreprocessor } from "../../../lib/pacts/preprocessor";
 import { C8yQicktypeSchemaGenerator } from "../../../lib/pacts/schema";
 
-const { _ } = Cypress;
+const { _, sinon } = Cypress;
 
 class AcceptAllMatcher implements C8yPactMatcher {
   match(obj1: any, obj2: any): boolean {
@@ -630,7 +629,7 @@ describe("c8ypact", () => {
         .then((response) => {
           expect(response.status).to.eq(201);
           // pacts are not validated when recording
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
           expect(spy.getCall(0).args[1]._auth).to.deep.eq({
             user: "admin",
@@ -665,7 +664,7 @@ describe("c8ypact", () => {
           }
         )
         .then((response) => {
-          const spy = Cypress.c8ypact.savePact as SinonSpy;
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
           expect(spy.getCall(0).args[0].$body).to.deep.eq(schema);
         })
@@ -779,7 +778,7 @@ describe("c8ypact", () => {
 
         Cypress.once("fail", (err) => {
           expect(err.message).to.contain(
-            "non-existing-pact-id not found. Disable Cypress.c8ypact.failOnMissingPacts to ignore."
+            "non-existing-pact-id not found. Disable Cypress.c8ypact.config.failOnMissingPacts to ignore."
           );
           done();
         });
@@ -828,10 +827,11 @@ describe("c8ypact", () => {
         ])
         .then((response) => {
           expect(response.status).to.eq(202);
-          const recordSpy = Cypress.c8ypact.current.nextRecord as SinonSpy;
+          const recordSpy = Cypress.c8ypact.current
+            .nextRecord as sinon.SinonSpy;
           expect(recordSpy).to.have.been.calledTwice;
 
-          const matchSpy = Cypress.c8ypact.matcher.match as SinonSpy;
+          const matchSpy = Cypress.c8ypact.matcher.match as sinon.SinonSpy;
           expect(matchSpy).to.have.been.calledTwice;
           expect(matchSpy.getCall(0).args[1]).to.deep.eq({
             request: { url: "test" },
@@ -866,7 +866,8 @@ describe("c8ypact", () => {
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
         .c8yclient((c) => c.inventory.detail(1, { withChildren: false }))
         .then((response) => {
-          const matchSpy = Cypress.c8ypact.schemaMatcher.match as SinonSpy;
+          const matchSpy = Cypress.c8ypact.schemaMatcher
+            .match as sinon.SinonSpy;
           expect(matchSpy).to.have.been.calledOnce;
           expect(matchSpy.getCall(0).args).to.deep.eq([response.body, schema]);
         })
@@ -1177,7 +1178,7 @@ describe("c8ypact", () => {
 
   context("c8ypact typeguards", function () {
     it("isPactRecord is registered globally", function () {
-      expect(global.isPactRecord).to.be.a("function");
+      expect(globalThis.isPactRecord).to.be.a("function");
     });
 
     it("isPactRecord validates undefined", function () {
@@ -1220,7 +1221,7 @@ describe("c8ypact", () => {
     });
 
     it("isPact is registered globally", function () {
-      expect(global.isPact).to.be.a("function");
+      expect(globalThis.isPact).to.be.a("function");
     });
 
     it("isPact validates pact object", function () {
