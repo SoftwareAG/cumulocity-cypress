@@ -793,7 +793,7 @@ describe("c8ypact", () => {
     );
 
     it(
-      "should fail for missing pact - failOnMissingPacts disbaled",
+      "should not fail for missing pact - failOnMissingPacts disbaled",
       { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
       function () {
         Cypress.c8ypact.config.failOnMissingPacts = false;
@@ -840,6 +840,49 @@ describe("c8ypact", () => {
             request: { url: "test2" },
           });
         });
+    });
+
+    it("should match with existing pact from failing request", function (done) {
+      stubResponses([
+        new window.Response(JSON.stringify({ name: "t123456789" }), {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+        new window.Response("{}", {
+          status: 409,
+          statusText: "Conflict",
+          headers: { "content-type": "application/json" },
+        }),
+      ]);
+
+      Cypress.c8ypact.matcher = new AcceptAllMatcher();
+      Cypress.c8ypact.current = new C8yDefaultPact(
+        // @ts-ignore
+        [{ request: { url: "test" } }, { request: { url: "test2" } }],
+        {},
+        "test"
+      );
+
+      const recordSpy = cy.spy(Cypress.c8ypact.current, "nextRecord");
+      const matchSpy = cy.spy(Cypress.c8ypact.matcher, "match");
+
+      Cypress.once("fail", (err) => {
+        // test should not fail with pact not found error, but with original error 409
+        expect(err.message).to.contain("c8yclient failed with: 409 (Conflict)");
+        expect(recordSpy).to.have.been.calledTwice;
+        expect(matchSpy).to.have.been.calledTwice;
+        done();
+      });
+
+      cy.getAuth({
+        user: "admin",
+        password: "mypassword",
+        tenant: "t123456789",
+      }).c8yclient<IManagedObject>([
+        (c) => c.inventory.detail(1, { withChildren: false }),
+        (c) => c.inventory.detail(1, { withChildren: false }),
+      ]);
     });
 
     it("should match with schema", function () {
