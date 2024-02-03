@@ -30,9 +30,9 @@ describe("c8ypact", () => {
     Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
     Cypress.env("C8Y_PACT_MODE", undefined);
     Cypress.env("C8Y_PACT_IGNORE", undefined);
-    Cypress.env("C8Y_PACT_OBFUSCATE", undefined);
-    Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", undefined);
-    Cypress.env("C8Y_PACT_IGNORE", undefined);
+    Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE", undefined);
+    Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", undefined);
+    Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", undefined);
 
     initRequestStub();
     stubResponses([
@@ -886,7 +886,7 @@ describe("c8ypact", () => {
         },
       };
 
-      Cypress.env("C8Y_PACT_IGNORE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", [
         "request.headers",
         "response.isOkStatusCode",
       ]);
@@ -949,19 +949,19 @@ describe("c8ypact", () => {
     });
 
     it("should use env variables if no options provided", function () {
-      Cypress.env("C8Y_PACT_OBFUSCATE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE", [
         "requestHeaders.Authorization",
         "body.password",
       ]);
-      Cypress.env("C8Y_PACT_IGNORE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", [
         "requestHeaders.date",
         "body.creationTime",
       ]);
       const obj = _.cloneDeep(cypressResponse);
       const preprocessor = new C8yDefaultPactPreprocessor();
       expect(preprocessor.getOptions()).to.deep.eq({
-        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
-        ignore: Cypress.env("C8Y_PACT_IGNORE"),
+        obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
+        ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
         obfuscationPattern:
           C8yDefaultPactPreprocessor.defaultObfuscationPattern,
       });
@@ -974,15 +974,15 @@ describe("c8ypact", () => {
     });
 
     it("should use config from env variables over options", function () {
-      Cypress.env("C8Y_PACT_OBFUSCATE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE", [
         "requestHeaders.Authorization",
         "body.password",
       ]);
-      Cypress.env("C8Y_PACT_IGNORE", [
+      Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", [
         "requestHeaders.date",
         "body.creationTime",
       ]);
-      Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN", "xxxxxxxx");
+      Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", "xxxxxxxx");
 
       const obj = _.cloneDeep(cypressResponse);
       const preprocessor = new C8yDefaultPactPreprocessor({
@@ -992,9 +992,9 @@ describe("c8ypact", () => {
       });
 
       expect(preprocessor.getOptions()).to.deep.eq({
-        obfuscate: Cypress.env("C8Y_PACT_OBFUSCATE"),
-        ignore: Cypress.env("C8Y_PACT_IGNORE"),
-        obfuscationPattern: Cypress.env("C8Y_PACT_OBFUSCATION_PATTERN"),
+        obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
+        ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
+        obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
       });
       preprocessor.apply(obj);
 

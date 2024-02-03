@@ -572,6 +572,7 @@ User defined variables:
 - `C8Y_PACT_MODE` (string) - if set to `recording` requests and responses will be saved
 - `C8Y_PACT_IGNORE` (string) - disable all pacts by default and enable for specific test cases
 - `C8Y_PACT_PREPROCESSOR_OBFUSCATE` (string[]) - pact property paths to be obfuscated before saving or matching pacts. Use for example to obfuscate passwords or other sensitive data.
+- `C8Y_PACT_PREPROCESSOR_PATTERN` (string) - pattern to use for obfuscation, by default `********` is used
 - `C8Y_PACT_PREPROCESSOR_IGNORE` (string[]) - pact properties to ignore and not save
 
 More environment variables are planned to be used for configuration.
