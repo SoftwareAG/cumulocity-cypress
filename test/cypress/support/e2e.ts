@@ -16,4 +16,5 @@
 // Import commands.js using ES2015 syntax:
 import "../../../lib/commands";
 import "../../../lib/commands/request";
+import "../../../lib/commands/c8ypact";
 import "../../../lib/commands/intercept";

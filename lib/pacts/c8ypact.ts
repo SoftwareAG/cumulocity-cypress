@@ -589,7 +589,8 @@ function isURL(obj: any): obj is URL {
   return obj instanceof URL;
 }
 
-if (!Cypress.c8ypact) {
+if (_.get(Cypress.c8ypact, "initialized") === undefined) {
+  _.set(Cypress.c8ypact, "initialized", true);
   const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
 
   Cypress.c8ypact = {

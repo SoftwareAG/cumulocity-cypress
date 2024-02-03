@@ -356,9 +356,9 @@ module.exports = defineConfig({
 });
 ```
 
-Update the project's `e2e.supportFile` (e.g. `cypress/support/e2e.ts`) to import `c8ypact` commands. If you want to use recording from `cy.intercept` also import intercept separately.
+Update the project's `e2e.supportFile` (e.g. `cypress/support/e2e.ts`) to import `c8ypact` and `intercept` commands. As `intercept` requires `c8ypact` recording, it automatically imports `c8ypact`.
 
-Import all commands:
+Overview of commands:
 
 ```typescript
 import "cumulocity-cypress/lib/commands/";
@@ -367,7 +367,9 @@ import "cumulocity-cypress/lib/commands/intercept";
 import "cumulocity-cypress/lib/commands/request";
 ```
 
-The import for `intercept` command will also import `c8ypact`. `request` command is only required for authentication and retrying of requests. It is not related to recording and matching of requests and responses.
+By importing `request` command, only authentication and retrying of requests is enabled for `cy.request`. There is currently no support for recording or matching of requests and responses supported by `cy.request`.
+
+Without importing `c8ypact` or `intercept` commands, recording capabilities are disabled and `cy.c8yclient` and `cy.intercept` will not record any data even if `C8Y_PACT_MODE` is set to `recording`! If you experience issues after importing either of the commands, try to remove the import and check if the issue persists.
 
 ### File format
 

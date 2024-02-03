@@ -105,6 +105,8 @@ Import selected commands:
 import "cumulocity-cypress/lib/commands/request";
 ```
 
+See [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md) for more information on how to enable recording and matching of requests and responses using `cy.c8yclient` and `cy.intercept`.
+
 With this, also in the support file of your Cypress project, you can init environment variables as for example with:
 
 ```typescript
