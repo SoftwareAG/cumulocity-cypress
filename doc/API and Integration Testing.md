@@ -148,7 +148,7 @@ cy.getAuth("admin")
 
 #### Bootstrap and device credentials
 
-Using bootstrap authentication and possibly device credentials is is supported by `cy.c8yclient`. `cumulocity-cypress` even provides `cy.bootstrapDeviceCredentials` wrapping `/devicecontrol/deviceCredentials` requests. Bootstrap credentials should be provided as environment variables named `devicebootstrap_username` and `devicebootstrap_password` to enable use with `cy.getAuth("devicebootstrap")`. This is not required, but `cumulocity-cypress` uses `devicebootstrap` when running tests from contracts. See information on runners in [Contract Testing](./Contract%20Testing.md) for more information.
+Using bootstrap authentication and possibly device credentials is supported by `cy.c8yclient`. `cumulocity-cypress` even provides `cy.bootstrapDeviceCredentials` wrapping `/devicecontrol/deviceCredentials` requests. Bootstrap credentials should be provided as environment variables named `devicebootstrap_username` and `devicebootstrap_password` to enable use with `cy.getAuth("devicebootstrap")`. This is not required, but `cumulocity-cypress` uses `devicebootstrap` when running tests from recorded requests and responses.
 
 Following example uses bootstrap authentication and device credentials.
 
@@ -578,6 +578,7 @@ User defined variables:
 - `C8Y_PACT_MODE` (string) - if set to `recording` requests and responses will be saved
 - `C8Y_PACT_IGNORE` (string) - disable all pacts by default and enable for specific test cases
 - `C8Y_PACT_PREPROCESSOR_OBFUSCATE` (string[]) - pact property paths to be obfuscated before saving or matching pacts. Use for example to obfuscate passwords or other sensitive data.
+- `C8Y_PACT_PREPROCESSOR_PATTERN` (string) - pattern to use for obfuscation, by default `********` is used
 - `C8Y_PACT_PREPROCESSOR_IGNORE` (string[]) - pact properties to ignore and not save
 
 More environment variables are planned to be used for configuration.
