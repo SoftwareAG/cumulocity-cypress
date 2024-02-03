@@ -148,7 +148,7 @@ cy.getAuth("admin")
 
 #### Bootstrap and device credentials
 
-Using bootstrap authentication and possibly device credentials is is supported by `cy.c8yclient`. `cumulocity-cypress` even provides `cy.bootstrapDeviceCredentials` wrapping `/devicecontrol/deviceCredentials` requests. Bootstrap credentials should be provided as environment variables named `devicebootstrap_username` and `devicebootstrap_password` to enable use with `cy.getAuth("devicebootstrap")`. This is not required, but `cumulocity-cypress` uses `devicebootstrap` when running tests from contracts. See information on runners in [Contract Testing](./Contract%20Testing.md) for more information.
+Using bootstrap authentication and possibly device credentials is supported by `cy.c8yclient`. `cumulocity-cypress` even provides `cy.bootstrapDeviceCredentials` wrapping `/devicecontrol/deviceCredentials` requests. Bootstrap credentials should be provided as environment variables named `devicebootstrap_username` and `devicebootstrap_password` to enable use with `cy.getAuth("devicebootstrap")`. This is not required, but `cumulocity-cypress` uses `devicebootstrap` when running tests from recorded requests and responses.
 
 Following example uses bootstrap authentication and device credentials.
 
@@ -356,14 +356,18 @@ module.exports = defineConfig({
 });
 ```
 
-Update the project's `e2e.supportFile` (e.g. `cypress/support/e2e.ts`) to import all commands. If you want to use recording from `cy.intercept` also import intercept separately.
+Update the project's `e2e.supportFile` (e.g. `cypress/support/e2e.ts`) to import `c8ypact` commands. If you want to use recording from `cy.intercept` also import intercept separately.
 
 Import all commands:
 
 ```typescript
 import "cumulocity-cypress/lib/commands/";
+import "cumulocity-cypress/lib/commands/c8ypact";
 import "cumulocity-cypress/lib/commands/intercept";
+import "cumulocity-cypress/lib/commands/request";
 ```
+
+The import for `intercept` command will also import `c8ypact`. `request` command is only required for authentication and retrying of requests. It is not related to recording and matching of requests and responses.
 
 ### File format
 
