@@ -1,5 +1,4 @@
-import { SinonSpyCall } from "cypress/types/sinon";
-const { _ } = Cypress;
+const { _, sinon } = Cypress;
 
 declare global {
   interface Window {
@@ -117,8 +116,8 @@ export function expectHttpRequest(expectedOptions: any | any[]): any[] {
   expect(Cypress.backend).to.have.callCount(all.length);
 
   // @ts-ignore
-  const calls: SinonSpyCall<any, any>[] = Cypress.backend.getCalls(
-    Array<SinonSpyCall<any, any>>
+  const calls: sinon.SinonSpyCall<any, any>[] = Cypress.backend.getCalls(
+    Array<sinon.SinonSpyCall<any, any>>
   );
   const requests = calls
     .filter((call) => _.isArray(call.args) && call.args[0] === "http:request")
@@ -186,7 +185,7 @@ export function expectC8yClientRequest(
 }
 
 function expectCallsWithArgs(
-  requests: SinonSpyCall<any, any>[],
+  requests: sinon.SinonSpyCall<any, any>[],
   expected: any[]
 ): any[] {
   expect(

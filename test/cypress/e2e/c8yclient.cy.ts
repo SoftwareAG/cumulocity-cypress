@@ -11,15 +11,14 @@ import {
   stubResponse,
   stubResponses,
 } from "../support/util";
-
-import { SinonSpy } from "cypress/types/sinon";
 import {
   isArrayOfFunctions,
   isCypressError,
   isIResult,
   isWindowFetchResponse,
 } from "../../../lib/commands/c8yclient";
-const { _ } = Cypress;
+
+const { _, sinon } = Cypress;
 
 declare global {
   interface Window {
@@ -406,11 +405,11 @@ describe("c8yclient", () => {
       cy.getAuth({ user: "admin3", password: "mypassword", tenant: "t12345" })
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then((response) => {
-          const spy = Cypress.log as SinonSpy;
+          const spy = Cypress.log as sinon.SinonSpy;
           // last log is the one from fetchStub, get the last c8yclient log
-          const args = _.findLast(
+          const args: any = _.findLast(
             _.flatten(spy.args),
-            (arg) => arg.name === "c8yclient"
+            (arg: any) => arg.name === "c8yclient"
           );
           expect(args).to.not.be.undefined;
           expect(args.consoleProps).to.not.be.undefined;
@@ -468,7 +467,8 @@ describe("c8yclient", () => {
         })
         .then(() => {
           // @ts-ignore
-          const spy = Cypress.c8ypact.matcher.schemaMatcher.match as SinonSpy;
+          const spy = Cypress.c8ypact.matcher.schemaMatcher
+            .match as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
         });
     });
