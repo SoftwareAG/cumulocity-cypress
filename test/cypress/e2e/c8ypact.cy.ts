@@ -720,6 +720,51 @@ describe("c8ypact", () => {
     });
   });
 
+  context("c8ypact record failing last request", function () {
+    // requires afterEach to check recorded pact as in Cypress.once("fail")
+    // C8yDefaultPact.loadCurrent() can not be used
+    it("should record last failing request", function (done) {
+      Cypress.env("C8Y_PACT_MODE", "recording");
+      stubResponses([
+        new window.Response(JSON.stringify({ name: "t123456789" }), {
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+        new window.Response("{}", {
+          status: 201,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+        }),
+        new window.Response("{}", {
+          status: 409,
+          statusText: "Conflict",
+          headers: { "content-type": "application/json" },
+        }),
+      ]);
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("c8yclient failed with: 409 (Conflict)");
+        done();
+      });
+
+      const auth = { user: "admin", password: "mypassword", tenant: "test" };
+      cy.getAuth(auth).c8yclient([
+        (c) => c.inventory.detail(1, { withChildren: false }),
+        (c) => c.inventory.detail(1, { withChildren: false }),
+        (c) => c.inventory.detail(1, { withChildren: false }),
+      ]);
+    });
+
+    afterEach(() => {
+      C8yDefaultPact.loadCurrent().then((pact) => {
+        expect(pact.records).to.have.length(3);
+        expect(pact.records[2].response.status).to.eq(409);
+        expect(pact.records[2].response.statusText).to.eq("Conflict");
+      });
+    });
+  });
+
   context("c8ypact matching", function () {
     const response: Cypress.Response<any> = {
       status: 200,
