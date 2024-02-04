@@ -57,7 +57,7 @@ describe("c8ypact", () => {
   afterEach(() => {
     // delete recorded pacts after each test
     cy.task("c8ypact:remove", Cypress.c8ypact.getCurrentTestId()).then(() => {
-      C8yDefaultPact.loadCurrent().then((pact) => {
+      Cypress.c8ypact.loadCurrent().then((pact) => {
         expect(pact).to.be.null;
       });
     });
@@ -595,7 +595,7 @@ describe("c8ypact", () => {
 
       cy.then(() => {
         // pacts should have been written to expected folder
-        C8yDefaultPact.loadCurrent().then((pact) => {
+        Cypress.c8ypact.loadCurrent().then((pact) => {
           expect(pact.records).to.have.length(2);
           const pactId = Cypress.c8ypact.getCurrentTestId();
           // check recorded file exists
@@ -669,7 +669,7 @@ describe("c8ypact", () => {
           expect(spy.getCall(0).args[0].$body).to.deep.eq(schema);
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             expect(pact.records[0].response.$body).to.deep.equal(schema);
           });
@@ -692,7 +692,7 @@ describe("c8ypact", () => {
         ])
         .c8yclient((c) => c.inventory.detail(1), { schema })
         .then((response) => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(3);
             expect(pact.records[0].response.$body).to.not.be.null;
             expect(pact.records[1].response.$body).to.not.be.null;
@@ -711,7 +711,7 @@ describe("c8ypact", () => {
         ])
         .then((response) => {
           Cypress.c8ypact.schemaGenerator = generator;
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(2);
             expect(pact.records[0].response.$body).to.be.undefined;
             expect(pact.records[1].response.$body).to.be.undefined;
@@ -722,7 +722,7 @@ describe("c8ypact", () => {
 
   context("c8ypact record failing last request", function () {
     // requires afterEach to check recorded pact as in Cypress.once("fail")
-    // C8yDefaultPact.loadCurrent() can not be used
+    // Cypress.c8ypact.loadCurrent() can not be used
     it("should record last failing request", function (done) {
       Cypress.env("C8Y_PACT_MODE", "recording");
       stubResponses([
@@ -757,7 +757,7 @@ describe("c8ypact", () => {
     });
 
     afterEach(() => {
-      C8yDefaultPact.loadCurrent().then((pact) => {
+      Cypress.c8ypact.loadCurrent().then((pact) => {
         expect(pact.records).to.have.length(3);
         expect(pact.records[2].response.status).to.eq(409);
         expect(pact.records[2].response.statusText).to.eq("Conflict");
@@ -1206,7 +1206,7 @@ describe("c8ypact", () => {
           );
         });
 
-      C8yDefaultPact.loadCurrent().then((pact) => {
+      Cypress.c8ypact.loadCurrent().then((pact) => {
         expect(pact.records).to.have.length(1);
         const record = pact.records[0];
         expect(record).to.not.be.null;
@@ -1233,7 +1233,7 @@ describe("c8ypact", () => {
       cy.c8yclient<IManagedObject>((c) => {
         return c.inventory.detail(1, { withChildren: false });
       }).then(() => {
-        C8yDefaultPact.loadCurrent().then((pact) => {
+        Cypress.c8ypact.loadCurrent().then((pact) => {
           expect(pact.records).to.have.length(1);
           const record = pact.records[0];
           expect(record).to.not.be.null;

@@ -1,2 +1,2 @@
-import "../pacts/c8ypact";
+import "../pacts/cypresspact";
 import "../pacts/c8ymatch";
