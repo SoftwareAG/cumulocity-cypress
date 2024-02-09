@@ -1,4 +1,4 @@
-import { IUser, IApplication, ICurrentTenant, IDeviceCredentials } from "@c8y/client";
+import { IUser, IApplication, ICurrentTenant, IDeviceCredentials } from '@c8y/client';
 
 declare global {
   namespace Cypress {
@@ -64,12 +64,56 @@ declare global {
       deleteUser(
         ...args:
           | [username: string | IUser, c8yoptions?: C8yClientOptions]
+          | [authOptions: C8yAuthOptions, username: string | IUser, c8yoptions?: C8yClientOptions]
+      ): Chainable<Cypress.Response<null>>;
+
+      /**
+       * Clear all roles currently assigned to a user.
+       *
+       * Pass auth if required or call `cy.login()` before to use `XSRF-TOKEN`cookie for
+       * authentication.
+       *
+       * @example
+       * cy.clearUserRoles("user");
+       *
+       * @param {C8yAuthOptions} authOptions the C8yAuthOptions authentication options including username and password
+       * @param {string} username the name of the user to be deleted
+       * @param {C8yClientOptions} c8yoptions the C8yClientOptions options passed to cy.c8yclient
+       *
+       * @returns {C8yAuthOptions} the auth options for chaining
+       */
+      clearUserRoles(
+        ...args:
+          | [username: string | IUser, c8yoptions?: C8yClientOptions]
+          | [authOptions: C8yAuthOptions, username: string | IUser, c8yoptions?: C8yClientOptions]
+      ): Chainable<C8yAuthOptions>;
+
+      /**
+       * Assign roles to a user.
+       *
+       * Pass auth if required or call `cy.login()` before to use `XSRF-TOKEN`cookie for
+       * authentication.
+       *
+       * @example
+       * cy.assignUserRoles("user", ["role1", "role2"]);
+       *
+       * @param {C8yAuthOptions} authOptions the C8yAuthOptions authentication options including username and password
+       * @param {string} username the name of the user to be deleted
+       * @param {string[]} roles the roles to be assigned to the user
+       * @param {C8yClientOptions} c8yoptions the C8yClientOptions options passed to cy.c8yclient
+       *
+       * @returns {C8yAuthOptions} the auth options for chaining
+       */
+      assignUserRoles(
+        ...args:
+          | [username: string | IUser, roles: string[], c8yoptions?: C8yClientOptions]
           | [
               authOptions: C8yAuthOptions,
               username: string | IUser,
+              roles: string[],
               c8yoptions?: C8yClientOptions
             ]
-      ): Chainable<Cypress.Response<null>>;
+      ): Chainable<C8yAuthOptions>;
 
       /**
        * Gets information about the current tenant.
@@ -119,7 +163,7 @@ declare global {
       /**
        * Bootstrap device credentials. Doing the same as c.deviceRegistration.bootstrap(), but works
        * with getAuth(). Requires bootstrap credentials to be passed via getAuth().
-       * 
+       *
        * @example
        * cy.getAuth("devicebootstrap")
        *   .bootstrapDeviceCredentials(id)
@@ -131,11 +175,7 @@ declare global {
       bootstrapDeviceCredentials(
         ...args:
           | [id: string | IUser, c8yoptions?: C8yClientOptions]
-          | [
-              authOptions: C8yAuthOptions,
-              id: string,
-              c8yoptions?: C8yClientOptions
-            ]
+          | [authOptions: C8yAuthOptions, id: string, c8yoptions?: C8yClientOptions]
       ): Chainable<IDeviceCredentials>;
     }
   }
