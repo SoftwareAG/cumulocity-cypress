@@ -347,7 +347,7 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     auth?: C8yAuthOptions,
     client?: C8yClient
   ): C8yPactRecord {
-    if (obj == null) return obj;
+    // if (obj == null) return obj;
     if ("request" in obj && "response" in obj) {
       return new C8yDefaultPactRecord(
         _.get(obj, "request"),

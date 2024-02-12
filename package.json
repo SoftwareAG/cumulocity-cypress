@@ -11,7 +11,7 @@
     "debug": "CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open --project test",
     "clean": "rimraf dist/ && rimraf runner/dist/ && rimraf runner/.yalc && rimraf runner/yalc.lock",
     "copy-files": "copyfiles lib/**/*.*js lib/**/*.d.ts README.md package.json dist/",
-    "build": "npm run clean && npm run copy-files && tsc -b -v && cd dist/ && npm run clean-package-json",
+    "build": "npm run clean && npm run copy-files && tsc -b -v lib/ && cd dist/ && npm run clean-package-json",
     "runner:yalc": "npm run clean && npm run build && cd dist/ && yalc publish && cd ../runner && yalc add cumulocity-cypress",
     "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },

@@ -98,14 +98,17 @@ describe("c8ypactmatcher", () => {
       };
 
       const matchKeys = ["request", "response"];
-      cy.c8ymatch(response, pact, {}, { failOnPactValidation: true }).then(
-        () => {
-          const spy = Cypress.c8ypact.matcher.match as sinon.SinonSpy;
-          expect(spy).to.have.been.called;
-          expect(Object.keys(spy.getCall(0).args[0])).to.deep.eq(matchKeys);
-          expect(Object.keys(spy.getCall(0).args[1])).to.deep.eq(matchKeys);
-        }
-      );
+      cy.c8ymatch(
+        response,
+        pact,
+        { id: "123" },
+        { failOnPactValidation: true }
+      ).then(() => {
+        const spy = Cypress.c8ypact.matcher.match as sinon.SinonSpy;
+        expect(spy).to.have.been.called;
+        expect(Object.keys(spy.getCall(0).args[0])).to.deep.eq(matchKeys);
+        expect(Object.keys(spy.getCall(0).args[1])).to.deep.eq(matchKeys);
+      });
     });
 
     it("should throw error if response and pact do not match", function (done) {
@@ -122,7 +125,12 @@ describe("c8ypactmatcher", () => {
         expect(err.name).to.eq("C8yPactError");
         done();
       });
-      cy.c8ymatch(response, pact, {}, { failOnPactValidation: true });
+      cy.c8ymatch(
+        response,
+        pact,
+        { id: "123" },
+        { failOnPactValidation: true }
+      );
     });
 
     it("should not throw if response and pact do not match and failOnPactValidation is false", function () {
@@ -135,7 +143,12 @@ describe("c8ypactmatcher", () => {
       pact.response.status = 200;
       pact.response.body = "test2";
 
-      cy.c8ymatch(response, pact, {}, { failOnPactValidation: false });
+      cy.c8ymatch(
+        response,
+        pact,
+        { id: "123" },
+        { failOnPactValidation: false }
+      );
     });
 
     it("should pass consoleProps", function () {

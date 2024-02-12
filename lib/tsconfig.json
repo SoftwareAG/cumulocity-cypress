@@ -8,13 +8,14 @@
     "lib": ["dom", "dom.iterable", "ES2020"],
     "types": ["cypress", "node"],
     "declaration": true,
-    "outDir": "./dist",
+    "outDir": "../dist/lib",
     "strict": true,
     "module": "Node16",
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "paths": {
+      "@shared/*": ["./../shared/*"]
+    }
   },
-  "include": ["./lib/**/*.ts"],
-  "files": [],
-  "references": [{ "path": "./shared" }]
+  "references": [{ "path": "./../shared" }]
 }

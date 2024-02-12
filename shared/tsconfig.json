@@ -3,10 +3,11 @@
     "rootDir": ".",
     "outDir": "../dist/shared",
     "target": "ES2020",
-    "lib": ["ES2020"],
+    "lib": ["dom", "dom.iterable", "ES2020"],
     "types": ["node"],
     "declaration": true,
     "strict": true,
+    "strictNullChecks": false,
     "module": "Node16",
     "skipLibCheck": true,
     "composite": true

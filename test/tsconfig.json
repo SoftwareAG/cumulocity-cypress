@@ -1,17 +1,23 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "rootDir": ".",
     "strictNullChecks": false,
     "target": "ES2020",
     "lib": ["dom", "dom.iterable", "ES2020"],
-    "types": ["cypress", "node"],
     "declaration": true,
     "strict": true,
     "module": "Node16",
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "paths": {
+      "@shared/*": ["./../shared/*"]
+    },
   },
-  "include": ["./**/*.ts"],
   "files": [],
-  "references": [{ "path": "./../shared" }]
+  "include": [
+    "**/*.ts",
+    "../node_modules/cypress"
+  ],
+  "references": [{ "path": "./../shared" }, { "path": "./../lib" }]
 }

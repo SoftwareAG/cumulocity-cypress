@@ -21,7 +21,8 @@ import {
   IResult,
   IResultList,
 } from "@c8y/client";
-import { C8yPactRecord, isPactRecord } from "../../shared/c8ypact";
+import { C8yAuthentication } from "@shared/c8yclient";
+import { C8yPactRecord, isPactRecord } from "@shared/c8ypact";
 
 declare global {
   namespace Cypress {
@@ -164,10 +165,8 @@ declare global {
       schema: any;
     }>;
 
-  type C8yAuthentication = IAuthentication & C8yAuthOptions;
-
   interface Window {
-    fetchStub: typeof window.fetch;
+    fetchStub: typeof fetch;
   }
 
   interface Response {
@@ -222,7 +221,7 @@ export const defaultClientOptions: C8yClientOptions = {
 let logOnce = true;
 
 window.fetchStub = window.fetch;
-window.fetch = async function (url, fetchOptions) {
+window.fetch = async function (url: RequestInfo | URL, fetchOptions: any) {
   let responseObj: Partial<Cypress.Response> = {};
 
   if (logOnce === true) {
@@ -432,7 +431,7 @@ const c8yclientFn = (...args: any[]) => {
   const options = _.defaults(argOptions, defaultClientOptions);
 
   // force CookieAuth over BasicAuth if present and not disabled by options
-  const auth: C8yAuthentication =
+  const auth: C8yAuthentication & { userAlias?: string } =
     cookieAuth && options.preferBasicAuth === false && !prevSubjectIsAuth
       ? cookieAuth
       : argAuth;
