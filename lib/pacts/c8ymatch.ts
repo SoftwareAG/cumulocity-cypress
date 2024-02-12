@@ -1,4 +1,11 @@
-import { C8yDefaultPactRecord, isPactError } from "./c8ypact";
+import {
+  C8yDefaultPactRecord,
+  C8yPactInfo,
+  C8yPactRecord,
+  isPactError,
+} from "../../shared/c8ypact";
+import { C8yPactMatcher } from "../../shared/c8ypact/matcher";
+import { C8ySchemaMatcher } from "../../shared/c8ypact/schema";
 import { isCypressError } from "../commands/c8yclient";
 const { throwError } = require("../commands/utils");
 
@@ -31,9 +38,7 @@ declare global {
 }
 
 Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
-  const p = Cypress.config().c8ypact;
-  let matcher = Cypress.c8ypact.matcher;
-
+  let matcher: C8yPactMatcher | C8ySchemaMatcher = Cypress.c8ypact.matcher;
   const isSchemaMatching =
     !("request" in pact) && !("response" in pact) && _.isObjectLike(pact);
   if (isSchemaMatching) {
@@ -68,8 +73,15 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
         { response },
         { pact: pactToMatch }
       );
-
-      matcher.match(responseAsRecord, pactToMatch, consoleProps);
+      const strictMatching = Cypress.c8ypact.getConfigValue(
+        "strictMatching",
+        true
+      );
+      (matcher as C8yPactMatcher).match(responseAsRecord, pactToMatch, {
+        strictMatching,
+        loggerProps: consoleProps,
+        schemaMatcher: Cypress.c8ypact.schemaMatcher,
+      });
     }
   } catch (error: any) {
     if (options.failOnPactValidation) {

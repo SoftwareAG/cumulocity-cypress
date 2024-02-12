@@ -1,3 +1,5 @@
+import { C8yPact } from "../../shared/c8ypact";
+
 export {};
 
 if (!Cypress.c8ypact) {

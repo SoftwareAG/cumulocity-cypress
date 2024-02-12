@@ -1,14 +1,21 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/util";
+import { defaultClientOptions } from "../../../lib/commands/c8yclient";
+import {
+  C8yDefaultPactMatcher,
+  C8yPactMatcher,
+} from "../../../shared/c8ypact/matcher";
+import { C8yDefaultPactPreprocessor } from "../../../shared/c8ypact/preprocessor";
+import { C8yQicktypeSchemaGenerator } from "../../../shared/c8ypact/schema";
 import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
-  isPactError,
-} from "../../../lib/pacts/c8ypact";
-import { defaultClientOptions } from "../../../lib/commands/c8yclient";
-import { C8yDefaultPactMatcher } from "../../../lib/pacts/matcher";
-import { C8yDefaultPactPreprocessor } from "../../../lib/pacts/preprocessor";
-import { C8yQicktypeSchemaGenerator } from "../../../lib/pacts/schema";
+  C8yPact,
+} from "../../../shared/c8ypact";
+import {
+  C8yCypressEnvPreprocessor,
+  createPactRecord,
+} from "../../../lib/pacts/cypresspact";
 
 const { _, sinon } = Cypress;
 
@@ -133,15 +140,15 @@ describe("c8ypact", () => {
     };
 
     it("from() should create C8yDefaultPact from Cypress.Response", function () {
-      const pact = C8yDefaultPact.from(response);
+      const pact = C8yDefaultPact.from(response, { id: "testid" });
       expect(pact).to.not.be.null;
       expect(pact.records).to.have.length(1);
       expect(isPact(pact)).to.be.true;
     });
 
     it("from() should create C8yDefaultPact from serialized string", function () {
-      const pact = C8yDefaultPact.from(response);
-      const pact2 = C8yDefaultPact.from(JSON.stringify(pact));
+      const pact = C8yDefaultPact.from(response, { id: "testid" });
+      const pact2 = C8yDefaultPact.from(JSON.stringify(pact), { id: "testid" });
       expect(pact2).to.not.be.undefined.and.not.be.null;
       expect(pact2.records).to.have.length(1);
       expect(isPact(pact2)).to.be.true;
@@ -196,7 +203,7 @@ describe("c8ypact", () => {
     });
 
     it("nextRecord() should return next record", function () {
-      const pact = C8yDefaultPact.from(response);
+      const pact = C8yDefaultPact.from(response, { id: "testid" });
       pact.records.push(C8yDefaultPactRecord.from(response));
       expect(pact.records).to.have.length(2);
       expect(pact.nextRecord()).to.not.be.null;
@@ -211,7 +218,7 @@ describe("c8ypact", () => {
       const url3 = "/service/oee-bundle/configurationmanager/2/configuration";
 
       // matching of records is based on url and method
-      const pact = C8yDefaultPact.from(response);
+      const pact = C8yDefaultPact.from(response, { id: "testid" });
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records[0].request.url = url(url1);
@@ -239,7 +246,7 @@ describe("c8ypact", () => {
       const url1 =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&dateFrom=2024-01-17T14%3A57%3A32.671Z&dateTo=2024-01-17T16%3A57%3A32.671Z&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
-      const pact = C8yDefaultPact.from(response);
+      const pact = C8yDefaultPact.from(response, { id: "testid" });
       pact.records[0].request.url = url(url1);
       pact.records[0].request.method = "GET";
 
@@ -252,7 +259,7 @@ describe("c8ypact", () => {
     });
 
     it("getRecordsMatchingRequest should not fail for undefined url", function () {
-      const pact = C8yDefaultPact.from(response);
+      const pact = C8yDefaultPact.from(response, { id: "testid" });
       pact.records[0].request.method = "GET";
 
       expect(pact.getRecordsMatchingRequest({ url: undefined })).to.be.null;
@@ -279,7 +286,6 @@ describe("c8ypact", () => {
       };
 
       const pactRecord = C8yDefaultPactRecord.from(response);
-
       expect(pactRecord.response.status).to.equal(200);
       expect(pactRecord.response.statusText).to.equal("OK");
       expect(pactRecord.response.headers).to.deep.equal({
@@ -297,6 +303,25 @@ describe("c8ypact", () => {
       expect(_.has(pactRecord, "auth")).to.be.false;
       expect(_.has(pactRecord, "options")).to.be.false;
       expect(_.has(pactRecord, "createdObject")).to.be.false;
+    });
+
+    it("from() should not have undefined properties", function () {
+      const response: Cypress.Response<any> = {
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "application/json" },
+        body: { name: "t123456789" },
+        requestHeaders: { "content-type": "application/json2" },
+        allRequestResponses: [],
+        isOkStatusCode: false,
+        method: "PUT",
+        duration: 100,
+        url: "http://localhost:4200",
+        $body: undefined,
+      };
+      const pactRecord = C8yDefaultPactRecord.from(response);
+      expect("body" in pactRecord.request).to.be.false;
+      expect("$body" in pactRecord.request).to.be.false;
     });
 
     it("from() should create from cloned source objects", function () {
@@ -342,7 +367,7 @@ describe("c8ypact", () => {
 
       // @ts-ignore
       let response: Cypress.Response<any> = {};
-      let pactRecord = C8yDefaultPactRecord.from(response);
+      let pactRecord = createPactRecord(response);
       expect(pactRecord.auth).to.deep.equal({
         user: "admin",
         userAlias: "alias",
@@ -365,7 +390,7 @@ describe("c8ypact", () => {
       };
       // @ts-ignore
       let response: Cypress.Response<any> = {};
-      let pactRecord = C8yDefaultPactRecord.from(response, client);
+      let pactRecord = createPactRecord(response, client);
       expect(pactRecord.auth).to.deep.equal({
         user: "admin2",
         userAlias: "alias2",
@@ -940,24 +965,26 @@ describe("c8ypact", () => {
         },
       };
 
-      const storedPreprocessor = Cypress.c8ypact.preprocessor;
-      Cypress.c8ypact.preprocessor = new C8yDefaultPactPreprocessor({
+      const storedPreprocessor = _.cloneDeep(Cypress.c8ypact.preprocessor);
+      Cypress.c8ypact.preprocessor = new C8yCypressEnvPreprocessor({
         ignore: ["request.headers", "response.isOkStatusCode"],
       });
 
-      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "testid" });
       Cypress.c8ypact.current.records[0].response.$body = schema;
 
-      const matcher = Cypress.c8ypact.matcher as C8yDefaultPactMatcher;
-      cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const matchSpy = cy.spy(Cypress.c8ypact.schemaMatcher, "match");
 
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "test" })
         .c8yclient((c) => c.inventory.detail(1, { withChildren: false }))
         .then((response) => {
-          const matchSpy = Cypress.c8ypact.schemaMatcher
-            .match as sinon.SinonSpy;
           expect(matchSpy).to.have.been.calledOnce;
-          expect(matchSpy.getCall(0).args).to.deep.eq([response.body, schema]);
+          // called with obj, schema and strictMatching
+          expect(matchSpy.getCall(0).args).to.deep.eq([
+            response.body,
+            schema,
+            true,
+          ]);
         })
         .then(() => {
           Cypress.c8ypact.preprocessor = storedPreprocessor;
@@ -979,7 +1006,7 @@ describe("c8ypact", () => {
         "response.isOkStatusCode",
       ]);
 
-      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "testid" });
       Cypress.c8ypact.current.records[0].response.$body = schema;
 
       Cypress.once("fail", (err) => {
@@ -995,7 +1022,7 @@ describe("c8ypact", () => {
     });
   });
 
-  context("C8yDefaultPactPreprocessor", function () {
+  context("C8yCypressEnvPreprocessor", function () {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
     });
@@ -1021,11 +1048,11 @@ describe("c8ypact", () => {
 
     it("should not add any non-existing path", function () {
       const obj = _.cloneDeep(cypressResponse);
-      const preprocessor = new C8yDefaultPactPreprocessor({
+      const preprocessor = new C8yCypressEnvPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["requestHeaders.MyAuthorization", "body.password2"],
       });
-      expect(preprocessor.getOptions().ignore).to.deep.eq([]);
+      expect(preprocessor.resolveOptions().ignore).to.deep.eq([]);
 
       preprocessor.apply(obj);
       expect(obj.requestHeaders.Authorization).to.eq("asdasdasdasd");
@@ -1046,8 +1073,8 @@ describe("c8ypact", () => {
         "body.creationTime",
       ]);
       const obj = _.cloneDeep(cypressResponse);
-      const preprocessor = new C8yDefaultPactPreprocessor();
-      expect(preprocessor.getOptions()).to.deep.eq({
+      const preprocessor = new C8yCypressEnvPreprocessor();
+      expect(preprocessor.resolveOptions()).to.deep.eq({
         obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
         ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
         obfuscationPattern:
@@ -1073,13 +1100,13 @@ describe("c8ypact", () => {
       Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", "xxxxxxxx");
 
       const obj = _.cloneDeep(cypressResponse);
-      const preprocessor = new C8yDefaultPactPreprocessor({
+      const preprocessor = new C8yCypressEnvPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["body.password"],
         ignore: ["body.status"],
       });
 
-      expect(preprocessor.getOptions()).to.deep.eq({
+      expect(preprocessor.resolveOptions()).to.deep.eq({
         obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
         ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
         obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
@@ -1096,7 +1123,7 @@ describe("c8ypact", () => {
 
     it("should preprocess Cypress.Response", function () {
       const obj = _.cloneDeep(cypressResponse);
-      const preprocessor = new C8yDefaultPactPreprocessor({
+      const preprocessor = new C8yCypressEnvPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["requestHeaders.Authorization", "body.password"],
         ignore: ["requestHeaders.date", "body.creationTime"],
@@ -1111,7 +1138,7 @@ describe("c8ypact", () => {
     it("should preprocess C8yDefaultPactRecord", function () {
       const obj = C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse));
       expect(obj).to.not.be.null;
-      const preprocessor = new C8yDefaultPactPreprocessor({
+      const preprocessor = new C8yCypressEnvPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["request.headers.Authorization", "response.body.password"],
         ignore: ["request.headers.date", "response.body.creationTime"],
@@ -1133,12 +1160,12 @@ describe("c8ypact", () => {
         },
         id: "test",
       };
-      const preprocessor = new C8yDefaultPactPreprocessor({
+      const preprocessor = new C8yCypressEnvPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["info", "id", "records"],
         ignore: ["info", "id", "records"],
       });
-      preprocessor.apply(obj);
+      preprocessor.apply(obj as C8yPact);
       expect(obj.records).to.deep.eq([
         C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
       ]);
@@ -1154,7 +1181,7 @@ describe("c8ypact", () => {
           C8yDefaultPactRecord.from(_.cloneDeep(cypressResponse)),
         ],
       };
-      const preprocessor = new C8yDefaultPactPreprocessor({
+      const preprocessor = new C8yCypressEnvPreprocessor({
         obfuscationPattern: "<abcdefg>",
         obfuscate: ["request.headers.Authorization", "response.body.password"],
         ignore: ["request.headers.date", "response.body.creationTime"],
@@ -1241,7 +1268,9 @@ describe("c8ypact", () => {
           expect(record.response.body.password).to.be.undefined;
 
           expect(pact.info.preprocessor).to.deep.eq(
-            Cypress.c8ypact.preprocessor.getOptions()
+            (
+              Cypress.c8ypact.preprocessor as C8yCypressEnvPreprocessor
+            ).resolveOptions()
           );
         });
       });
@@ -1282,7 +1311,7 @@ describe("c8ypact", () => {
         request: {
           url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
         },
-        toCypressResponse: (obj) => {
+        toCypressResponse: (obj: any) => {
           return true;
         },
       };
@@ -1328,6 +1357,7 @@ describe("c8ypact", () => {
           ),
         ],
         {
+          id: "testid",
           baseUrl: "http://localhost:8080",
         },
         "test"

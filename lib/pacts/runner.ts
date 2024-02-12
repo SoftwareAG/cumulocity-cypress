@@ -1,3 +1,5 @@
+import { C8yPact, C8yPactInfo, C8yPactRecord } from "../../shared/c8ypact";
+
 const { _ } = Cypress;
 
 declare global {

@@ -1,27 +1,34 @@
-const { _ } = Cypress;
+import _ from "lodash";
 import * as datefns from "date-fns";
+import { C8ySchemaMatcher } from "./schema";
 
-declare global {
+const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
+
+/**
+ * Matcher for C8yPactRecord objects. Use C8yPactMatcher to match any two
+ * records. Depending on the matcher implementation an Error will be thrown
+ * or boolean is returned.
+ */
+export interface C8yPactMatcher {
   /**
-   * Matcher for C8yPactRecord objects. Use C8yPactMatcher to match any two
-   * records. Depending on the matcher implementation an Error will be thrown
-   * or boolean is returned.
+   * Matches objectToMatch against objectPact. Returns false if objectToMatch
+   * does not match objectPact or throws an error with details on failing match.
+   *
+   * @param obj1 Object to match.
+   * @param obj2 Pact to match obj1 against.
+   * @param loggerProps Properties to log in Cypress debug log.
    */
-  interface C8yPactMatcher {
-    /**
-     * Matches objectToMatch against objectPact. Returns false if objectToMatch
-     * does not match objectPact or throws an error with details on failing match.
-     *
-     * @param obj1 Object to match.
-     * @param obj2 Pact to match obj1 against.
-     * @param loggerProps Properties to log in Cypress debug log.
-     */
-    match: (
-      objectToMatch: any,
-      objectPact: any,
-      loggerProps?: { [key: string]: any }
-    ) => boolean;
-  }
+  match: (
+    objectToMatch: any,
+    objectPact: any,
+    options?: C8yPactMatcherOptions
+  ) => boolean;
+}
+
+export interface C8yPactMatcherOptions {
+  strictMatching?: boolean;
+  loggerProps?: { [key: string]: any };
+  schemaMatcher?: C8ySchemaMatcher;
 }
 
 /**
@@ -31,9 +38,10 @@ declare global {
  * by equality. Disable Cypress.c8ypact.strictMatching to ignore properties that are
  * missing in matched objects. In case objects do not match an C8yPactError is thrown.
  */
-export class C8yDefaultPactMatcher {
+export class C8yDefaultPactMatcher implements C8yPactMatcher {
   propertyMatchers: { [key: string]: C8yPactMatcher } = {};
-  private parents: string[] = [];
+
+  static schemaMatcher: C8ySchemaMatcher;
 
   constructor(
     propertyMatchers: { [key: string]: C8yPactMatcher } = {
@@ -57,32 +65,34 @@ export class C8yDefaultPactMatcher {
   match(
     obj1: any,
     obj2: any,
-    consoleProps: { [key: string]: any } = {}
+    options?: C8yPactMatcherOptions,
+    parents: string[] = []
   ): boolean {
-    if (obj1 === obj2) {
-      return true;
-    }
+    if (obj1 === obj2) return true;
+
+    const strictMatching = options?.strictMatching ?? true;
+    const schemaMatcher =
+      options?.schemaMatcher || C8yDefaultPactMatcher.schemaMatcher;
 
     const throwPactError = (message: string, key?: string) => {
       const errorMessage = `Pact validation failed! ${message}`;
       const newErr = new Error(errorMessage);
       newErr.name = "C8yPactError";
-      if (consoleProps) {
-        consoleProps.error = errorMessage;
-        consoleProps.key = key;
-        consoleProps.keypath = keyPath(key);
-        consoleProps.objects =
+      if (options?.loggerProps) {
+        options.loggerProps.error = errorMessage;
+        options.loggerProps.key = key;
+        options.loggerProps.keypath = keyPath(key);
+        options.loggerProps.objects =
           key && _.isPlainObject(obj1) && _.isPlainObject(obj2)
             ? [_.pick(obj1, [key]), _.pick(obj2, [key])]
             : [obj1, obj2];
       }
 
-      this.parents = [];
       throw newErr;
     };
 
     const keyPath = (k?: string) => {
-      return `${[...this.parents, ...(k ? [k] : [])].join(" > ")}`;
+      return `${[...parents, ...(k ? [k] : [])].join(" > ")}`;
     };
 
     const isArrayOfPrimitives = (value: any) => {
@@ -106,7 +116,6 @@ export class C8yDefaultPactMatcher {
       );
     }
 
-    const strictMode = Cypress.c8ypact.getConfigValue("strictMatching");
     // get keys of objects without schema keys and schema keys separately
     const objectKeys = Object.keys(obj1).filter((k) => !k.startsWith("$"));
     const schemaKeys = Object.keys(obj2).filter((k) => k.startsWith("$"));
@@ -125,29 +134,38 @@ export class C8yDefaultPactMatcher {
 
     // if strictMatching is disabled, only check properties of the pact for object matching
     // strictMatching for schema matching is considered within the matcher -> schema.additionalProperties
-    const keys = !strictMode ? pactKeys : objectKeys;
+    const keys = !strictMatching ? pactKeys : objectKeys;
     for (const key of keys) {
       // schema is always defined on the pact object - needs special consideration
       const isSchema = key.startsWith("$") || schemaKeys.includes(`$${key}`);
       const value = _.get(
-        strictMode || isSchema ? obj1 : obj2,
+        strictMatching || isSchema ? obj1 : obj2,
         key.startsWith("$") ? key.slice(1) : key
       );
       const pact = _.get(
-        strictMode || isSchema ? obj2 : obj1,
+        strictMatching || isSchema ? obj2 : obj1,
         isSchema && !key.startsWith("$") ? `$${key}` : key
       );
 
-      if (!(strictMode ? pactKeys : objectKeys).includes(key) && !isSchema) {
+      if (
+        !(strictMatching ? pactKeys : objectKeys).includes(key) &&
+        !isSchema
+      ) {
         throwPactError(
           `"${keyPath(key)}" not found in ${
-            strictMode ? "pact" : "response"
+            strictMatching ? "pact" : "response"
           } object.`
         );
       }
-      if (isSchema && Cypress.c8ypact.schemaMatcher != null) {
+      if (isSchema) {
+        if (!schemaMatcher) {
+          throwPactError(
+            `No schema matcher registered to validate "${keyPath(key)}".`,
+            key
+          );
+        }
         try {
-          if (!Cypress.c8ypact.schemaMatcher.match(value, pact)) {
+          if (!schemaMatcher.match(value, pact, strictMatching)) {
             throwPactError(`Schema for "${keyPath(key)}" does not match.`, key);
           }
         } catch (error) {
@@ -157,27 +175,27 @@ export class C8yDefaultPactMatcher {
           );
         }
       } else if (this.propertyMatchers[key] != null) {
-        if (!strictMode && !value) {
+        if (!strictMatching && !value) {
           continue;
         }
-        // @ts-ignore
-        this.propertyMatchers[key].parents = [...this.parents, key];
-        if (!this.propertyMatchers[key].match(value, pact, consoleProps)) {
+        if (
+          // @ts-ignore
+          !this.propertyMatchers[key].match(value, pact, options, [
+            ...parents,
+            key,
+          ])
+        ) {
           throwPactError(`Values for "${keyPath(key)}" do not match.`, key);
         }
       } else if (_.isPlainObject(value) && _.isPlainObject(pact)) {
-        this.parents.push(key);
-        if (
-          // if strictMatching is disabled, value1 and value2 have been swapped
-          // swap back to ensure swapping in next iteration works as expected
-          this.match(
-            strictMode ? value : pact,
-            strictMode ? pact : value,
-            consoleProps
-          )
-        ) {
-          this.parents.pop();
-        }
+        // if strictMatching is disabled, value1 and value2 have been swapped
+        // swap back to ensure swapping in next iteration works as expected
+        this.match(
+          strictMatching ? value : pact,
+          strictMatching ? pact : value,
+          options,
+          [...parents, key]
+        );
       } else if (isArrayOfPrimitives(value) && isArrayOfPrimitives(pact)) {
         const v = [value, pact].sort(
           (a1: any[], a2: any[]) => a2.length - a1.length
@@ -198,7 +216,6 @@ export class C8yDefaultPactMatcher {
       }
     }
 
-    this.parents = [];
     return true;
   }
 

@@ -1,4 +1,4 @@
-const { _ } = Cypress;
+import _ from "lodash";
 
 import Ajv, { AnySchemaObject, SchemaObject } from "ajv";
 import addFormats from "ajv-formats";
@@ -9,27 +9,25 @@ import {
   quicktype,
 } from "quicktype-core";
 
-declare global {
-  /**
-   * Matcher for matching objects against a schema. If the object does not match
-   * the schema an Error will be thrown.
-   */
-  interface C8ySchemaMatcher {
-    match(obj: any, schema: any): boolean;
-  }
+/**
+ * Matcher for matching objects against a schema. If the object does not match
+ * the schema an Error will be thrown.
+ */
+export interface C8ySchemaMatcher {
+  match(obj: any, schema: any, strictMatching?: boolean): boolean;
+}
 
+/**
+ * A C8ySchemaGenerator is used to generate json schemas from json objects.
+ */
+export interface C8ySchemaGenerator {
   /**
-   * A C8ySchemaGenerator is used to generate json schemas from json objects.
+   * Generates a json schema for the given object.
+   *
+   * @param obj The object to generate the schema for.
+   * @param options The options passed to the schema generator.
    */
-  interface C8ySchemaGenerator {
-    /**
-     * Generates a json schema for the given object.
-     *
-     * @param obj The object to generate the schema for.
-     * @param options The options passed to the schema generator.
-     */
-    generate: (obj: any, options?: any) => Promise<any>;
-  }
+  generate: (obj: any, options?: any) => Promise<any>;
 }
 
 /**
@@ -69,12 +67,15 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
     }
   }
 
-  match(obj: any, schema: SchemaObject): boolean {
+  match(
+    obj: any,
+    schema: SchemaObject,
+    strictMatching: boolean = true
+  ): boolean {
     if (!schema) return false;
     const schemaClone = _.cloneDeep(schema);
-    const strict = Cypress.c8ypact.getConfigValue("strictMatching", true);
-    this.updateAdditionalProperties(schemaClone, !strict);
-
+    this.updateAdditionalProperties(schemaClone, !strictMatching);
+    console.log("schemaClone", schemaClone);
     const valid = this.ajv.validate(schemaClone, obj);
     if (!valid) {
       throw new Error(this.ajv.errorsText());

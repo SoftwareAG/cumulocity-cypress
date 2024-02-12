@@ -21,6 +21,7 @@ import {
   IResult,
   IResultList,
 } from "@c8y/client";
+import { C8yPactRecord, isPactRecord } from "../../shared/c8ypact";
 
 declare global {
   namespace Cypress {
@@ -205,14 +206,6 @@ declare global {
     fetchOptions?: IFetchOptions,
     url?: RequestInfo | URL
   ): Cypress.Response<T>;
-
-  /**
-   * Checks if the given object is a Cypress.Response.
-   *
-   * @param obj The object to check.
-   * @returns True if the object is a Cypress.Response, false otherwise.
-   */
-  function isCypressResponse(obj: any): obj is Cypress.Response<any>;
 }
 
 export const defaultClientOptions: C8yClientOptions = {
@@ -784,22 +777,6 @@ function toCypressResponse(
     method: fetchResponse.method || "GET",
     $body: schema,
   };
-}
-
-globalThis.isCypressResponse = isCypressResponse;
-function isCypressResponse(obj: any): obj is Cypress.Response {
-  return (
-    _.isObjectLike(obj) &&
-    "body" in obj &&
-    "status" in obj &&
-    "headers" in obj &&
-    "requestHeaders" in obj &&
-    "duration" in obj &&
-    "url" in obj &&
-    "isOkStatusCode" in obj &&
-    // not a window.Response or Client.FetchResponse
-    !("ok" in obj || "arrayBuffer" in obj)
-  );
 }
 
 /**

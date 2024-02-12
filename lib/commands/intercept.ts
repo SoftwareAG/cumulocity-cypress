@@ -1,4 +1,5 @@
-import { C8yDefaultPact } from "../pacts/c8ypact";
+import { C8yDefaultPact } from "../../shared/c8ypact";
+import { C8yPactUrlMatcher } from "../../shared/c8ypact/urlmatcher";
 import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,
@@ -136,7 +137,8 @@ const wrapFunctionRouteHandler = (fn: any) => {
       if (Cypress.c8ypact.current == null) {
         reqContinue(resFn);
       } else {
-        const response = responseFromPact({}, req);
+        const urlMatcher = Cypress.c8ypact.urlMatcher;
+        const response = responseFromPact(urlMatcher, {}, req);
         req.reply(response);
       }
     };
@@ -199,7 +201,8 @@ const wrapEmptyRoutHandler = () => {
         res.send();
       });
     } else {
-      const response = responseFromPact({}, req);
+      const urlMatcher = Cypress.c8ypact.urlMatcher;
+      const response = responseFromPact(urlMatcher, {}, req);
       req.reply(response);
     }
   };
@@ -241,7 +244,7 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   }
 }
 
-function responseFromPact(obj: any, req: any): any {
+function responseFromPact(matcher: C8yPactUrlMatcher, obj: any, req: any): any {
   if (Cypress.c8ypact.current == null) return obj;
   const p = Cypress.c8ypact.current as C8yDefaultPact;
   const record = p.getRecordsMatchingRequest(req);

@@ -1,21 +1,19 @@
-const { _ } = Cypress;
+import _ from "lodash";
 
-declare global {
-  interface C8yPactUrlMatcher {
-    /**
-     * List of parameters to ignore when matching urls.
-     * Default parameters ignored are dateFrom, dateTo and _.
-     */
-    ignoreParameters: string[];
+export interface C8yPactUrlMatcher {
+  /**
+   * List of parameters to ignore when matching urls.
+   * Default parameters ignored are dateFrom, dateTo and _.
+   */
+  ignoreParameters: string[];
 
-    /**
-     * Matches two urls. Returns true if the urls match, false otherwise.
-     *
-     * @param url1 First url to match.
-     * @param url2 Second url to match.
-     */
-    match: (url1: string | URL, url2: string | URL) => boolean;
-  }
+  /**
+   * Matches two urls. Returns true if the urls match, false otherwise.
+   *
+   * @param url1 First url to match.
+   * @param url2 Second url to match.
+   */
+  match: (url1: string | URL, url2: string | URL) => boolean;
 }
 
 /**
@@ -24,8 +22,10 @@ declare global {
  */
 export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
   ignoreParameters: string[] = [];
-  constructor(ignoreParameters: string[] = []) {
+  baseUrl: string;
+  constructor(ignoreParameters: string[] = [], baseUrl: string = "") {
     this.ignoreParameters = ignoreParameters;
+    this.baseUrl = baseUrl;
   }
 
   match(url1: string | URL, url2: string | URL): boolean {
@@ -38,9 +38,7 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
       parametersToRemove.forEach((name) => {
         urlObj.searchParams.delete(name);
       });
-      return decodeURIComponent(
-        urlObj.toString()?.replace(Cypress.config().baseUrl, "")
-      );
+      return decodeURIComponent(urlObj.toString()?.replace(this.baseUrl, ""));
     };
 
     return _.isEqual(

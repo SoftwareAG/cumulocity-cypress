@@ -1,9 +1,34 @@
-import { C8yDefaultPact, C8yDefaultPactRecord } from "./c8ypact";
-import { C8yDefaultPactMatcher } from "./matcher";
-import { C8yDefaultPactPreprocessor } from "./preprocessor";
+import {
+  C8yDefaultPact,
+  C8yDefaultPactRecord,
+  C8yPact,
+  C8yPactConfigKeys,
+  C8yPactConfigOptions,
+  C8yPactID,
+  C8yPactInfo,
+  C8yPactRecord,
+  isCypressResponse,
+} from "../../shared/c8ypact";
+import {
+  C8yDefaultPactMatcher,
+  C8yPactMatcher,
+} from "../../shared/c8ypact/matcher";
+import {
+  C8yDefaultPactPreprocessor,
+  C8yPactPreprocessor,
+  C8yPactPreprocessorOptions,
+} from "../../shared/c8ypact/preprocessor";
 import { C8yDefaultPactRunner } from "./runner";
-import { C8yAjvSchemaMatcher, C8yQicktypeSchemaGenerator } from "./schema";
-import { C8yDefaultPactUrlMatcher } from "./urlmatcher";
+import {
+  C8yAjvSchemaMatcher,
+  C8yQicktypeSchemaGenerator,
+  C8ySchemaGenerator,
+  C8ySchemaMatcher,
+} from "../../shared/c8ypact/schema";
+import {
+  C8yDefaultPactUrlMatcher,
+  C8yPactUrlMatcher,
+} from "../../shared/c8ypact/urlmatcher";
 
 const { _ } = Cypress;
 
@@ -122,8 +147,40 @@ declare global {
   type C8yPactNextRecord = { record: C8yPactRecord; info?: C8yPactInfo };
 }
 
-if (_.get(Cypress.c8ypact, "initialized") === undefined) {
-  _.set(Cypress.c8ypact, "initialized", true);
+export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
+  apply(
+    obj: Partial<Cypress.Response<any> | C8yPactRecord | C8yPact>,
+    options?: C8yPactPreprocessorOptions
+  ): void {
+    super.apply(obj, this.resolveOptions(options));
+  }
+
+  resolveOptions(
+    options?: Partial<C8yPactPreprocessorOptions>
+  ): C8yPactPreprocessorOptions {
+    return _.defaults(
+      {
+        ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
+        obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
+        obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
+      } as C8yPactPreprocessorOptions,
+      options,
+      this.options,
+      Cypress.c8ypact?.getConfigValue<C8yPactPreprocessorOptions>(
+        "preprocessor"
+      ),
+      {
+        ignore: [],
+        obfuscate: [],
+        obfuscationPattern:
+          C8yDefaultPactPreprocessor.defaultObfuscationPattern,
+      }
+    );
+  }
+}
+
+if (_.get(Cypress, "c8ypact.initialized") === undefined) {
+  _.set(Cypress, "c8ypact.initialized", true);
   const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
 
   Cypress.c8ypact = {
@@ -133,12 +190,15 @@ if (_.get(Cypress.c8ypact, "initialized") === undefined) {
     savePact,
     isEnabled,
     matcher: new C8yDefaultPactMatcher(),
-    urlMatcher: new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]),
+    urlMatcher: new C8yDefaultPactUrlMatcher(
+      ["dateFrom", "dateTo", "_"],
+      Cypress.config().baseUrl
+    ),
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: new C8yQicktypeSchemaGenerator(),
     schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
     debugLog: false,
-    preprocessor: new C8yDefaultPactPreprocessor(),
+    preprocessor: new C8yCypressEnvPreprocessor(),
     config: {
       log: false,
       ignore: globalIgnore === "true" || globalIgnore === true,
@@ -165,7 +225,6 @@ if (_.get(Cypress.c8ypact, "initialized") === undefined) {
       config.producer = _.isString(config.producer)
         ? { name: config.producer }
         : config.producer;
-      config.preprocessor = Cypress.c8ypact.preprocessor.getOptions();
       return config;
     },
     loadCurrent(): Cypress.Chainable<C8yPact | null> {
@@ -200,8 +259,7 @@ function debugLogger(): Cypress.Loggable {
 }
 
 before(() => {
-  const pacter = Cypress.c8ypact;
-  if (!pacter.isRecordingEnabled()) {
+  if (!Cypress.c8ypact.isRecordingEnabled()) {
     cy.task("c8ypact:load", Cypress.config().fixturesFolder, debugLogger());
   }
 });
@@ -256,10 +314,12 @@ function savePact(
 ): Promise<void> {
   if (!isEnabled()) return;
 
-  const pact = C8yDefaultPact.from(response, client);
+  const info = createPactInfo(Cypress.c8ypact.getCurrentTestId(), client);
+  const record = createPactRecord(response, client);
+  const pact = new C8yDefaultPact([record], info, info.id);
 
   if (options.modifiedResponse && isCypressResponse(options.modifiedResponse)) {
-    const modifiedPactRecord = C8yDefaultPactRecord.from(
+    const modifiedPactRecord = createPactRecord(
       options.modifiedResponse,
       client
     );
@@ -317,4 +377,51 @@ function save(pact: any, options: C8yPactSaveOptions) {
   } else {
     cy.task("c8ypact:save", pact, debugLogger());
   }
+}
+
+export function createPactRecord(
+  response: Cypress.Response,
+  client?: C8yClient
+): C8yPactRecord {
+  let auth: C8yAuthOptions;
+  const envUser = Cypress.env("C8Y_LOGGED_IN_USER");
+  const envAlias = Cypress.env("C8Y_LOGGED_IN_USER_ALIAS");
+  const envAuth = {
+    ...(envUser && { user: envUser }),
+    ...(envAlias && { userAlias: envAlias }),
+    ...(envAlias && { type: "CookieAuth" }),
+  };
+
+  if (client?._auth) {
+    // do not pick the password. passwords must not be stored in the pact.
+    auth = _.defaultsDeep(
+      client._auth,
+      _.pick(envAuth, ["user", "userAlias", "type"])
+    );
+    if (client._auth.constructor != null) {
+      auth.type = client._auth.constructor.name;
+    }
+  }
+  if (!auth && (envUser || envAlias)) {
+    auth = envAuth;
+  }
+
+  return C8yDefaultPactRecord.from(response, auth, client);
+}
+
+function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
+  const info: C8yPactInfo = {
+    ...Cypress.c8ypact.getConfigValues(),
+    id,
+    title: Cypress.currentTest?.titlePath || [],
+    tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
+    baseUrl: Cypress.config().baseUrl,
+    version: Cypress.env("C8Y_VERSION") && {
+      system: Cypress.env("C8Y_VERSION"),
+    },
+    preprocessor: (
+      Cypress.c8ypact.preprocessor as C8yCypressEnvPreprocessor
+    )?.resolveOptions(),
+  };
+  return info;
 }

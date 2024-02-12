@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as glob from "glob";
+import { C8yPact } from ".";
 
 /**
  * Using C8yPactFileAdapter you can implement your own adapter to load and save pacts using any format you want.
@@ -111,14 +112,11 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
         currentPath = path.join("/", currentPath);
       }
       try {
-        fs.accessSync(currentPath, fs.constants.F_OK);
-      } catch (err) {
-        if (this.isNodeError(err, TypeError) && err.code === "ENOENT") {
-          // Directory does not exist, create it
+        if (!fs.existsSync(currentPath)) {
           fs.mkdirSync(currentPath);
-        } else {
-          throw err; // Other error, rethrow it
         }
+      } catch (err) {
+        throw err; // Rethrow the error
       }
     });
   }
