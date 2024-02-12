@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { C8yPact, C8yPactRecord } from ".";
+import { C8yPact, C8yPactRecord } from "./c8ypact";
 
 /**
  * Preprocessor for C8yPact objects. Use C8yPactPreprocessor to preprocess any

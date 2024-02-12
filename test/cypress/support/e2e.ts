@@ -14,7 +14,8 @@
 // ***********************************************************
 
 // Import commands.js using ES2015 syntax:
-import "../../../lib/commands";
+import "@lib/commands";
+// cant use path as import is not typescript
 import "../../../lib/commands/request";
-import "../../../lib/commands/c8ypact";
-import "../../../lib/commands/intercept";
+import "@lib/commands/c8ypact";
+import "@lib/commands/intercept";

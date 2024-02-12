@@ -2,10 +2,9 @@ import {
   C8yDefaultPactRecord,
   C8yPactInfo,
   C8yPactRecord,
-  isPactError,
-} from "../../shared/c8ypact";
-import { C8yPactMatcher } from "../../shared/c8ypact/matcher";
-import { C8ySchemaMatcher } from "../../shared/c8ypact/schema";
+  C8yPactMatcher,
+  C8ySchemaMatcher,
+} from "@shared/c8ypact";
 import { isCypressError } from "../commands/c8yclient";
 const { throwError } = require("../commands/utils");
 

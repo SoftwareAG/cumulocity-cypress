@@ -11,7 +11,8 @@
     "skipLibCheck": true,
     "composite": true,
     "paths": {
-      "@shared/*": ["./../shared/*"]
+      "@shared/*": ["./../shared/*"],
+      "@lib/*": ["./../lib/*"]
     },
   },
   "files": [],

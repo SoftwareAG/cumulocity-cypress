@@ -7,25 +7,19 @@ import {
   C8yPactID,
   C8yPactInfo,
   C8yPactRecord,
-  isCypressResponse,
-} from "@shared/c8ypact";
-import {
   C8yDefaultPactPreprocessor,
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
-} from "@shared/c8ypact/preprocessor";
-import { C8yDefaultPactRunner } from "./runner";
-import {
   C8yDefaultPactUrlMatcher,
   C8yPactUrlMatcher,
-} from "@shared/c8ypact/urlmatcher";
-import {
   C8yAjvSchemaMatcher,
   C8yQicktypeSchemaGenerator,
   C8ySchemaGenerator,
   C8ySchemaMatcher,
-} from "@shared/c8ypact/schema";
-import { C8yDefaultPactMatcher, C8yPactMatcher } from "@shared/c8ypact/matcher";
+  C8yDefaultPactMatcher,
+  C8yPactMatcher,
+} from "@shared/c8ypact";
+import { C8yDefaultPactRunner } from "./runner";
 
 const { _ } = Cypress;
 

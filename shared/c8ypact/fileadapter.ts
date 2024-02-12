@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as glob from "glob";
-import { C8yPact } from ".";
+import { C8yPact } from "./c8ypact";
 
 /**
  * Using C8yPactFileAdapter you can implement your own adapter to load and save pacts using any format you want.

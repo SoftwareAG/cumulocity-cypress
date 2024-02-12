@@ -1,21 +1,21 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/util";
-import { defaultClientOptions } from "../../../lib/commands/c8yclient";
-import {
-  C8yDefaultPactMatcher,
-  C8yPactMatcher,
-} from "../../../shared/c8ypact/matcher";
-import { C8yDefaultPactPreprocessor } from "../../../shared/c8ypact/preprocessor";
-import { C8yQicktypeSchemaGenerator } from "../../../shared/c8ypact/schema";
-import {
-  C8yDefaultPact,
-  C8yDefaultPactRecord,
-  C8yPact,
-} from "../../../shared/c8ypact";
+import { defaultClientOptions } from "@lib/commands/c8yclient";
 import {
   C8yCypressEnvPreprocessor,
   createPactRecord,
-} from "../../../lib/pacts/cypresspact";
+} from "@lib/pacts/cypresspact";
+import { C8yAuthentication } from "@shared/c8yclient";
+
+import {
+  C8yDefaultPactMatcher,
+  C8yPactMatcher,
+  C8yDefaultPactPreprocessor,
+  C8yQicktypeSchemaGenerator,
+  C8yDefaultPact,
+  C8yDefaultPactRecord,
+  C8yPact,
+} from "@shared/c8ypact";
 
 const { _, sinon } = Cypress;
 
@@ -379,7 +379,7 @@ describe("c8ypact", () => {
       // setting env variables to ensure client auth overrides env auth
       Cypress.env("C8Y_LOGGED_IN_USER", "admin");
       Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", "alias");
-      const auth: C8yAuthentication = new BasicAuth({
+      const auth: C8yAuthentication & { userAlias?: string } = new BasicAuth({
         user: "admin2",
         password: "mypassword",
       });

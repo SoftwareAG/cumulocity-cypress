@@ -2,8 +2,6 @@ import _ from "lodash";
 import * as datefns from "date-fns";
 import { C8ySchemaMatcher } from "./schema";
 
-const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
-
 /**
  * Matcher for C8yPactRecord objects. Use C8yPactMatcher to match any two
  * records. Depending on the matcher implementation an Error will be thrown

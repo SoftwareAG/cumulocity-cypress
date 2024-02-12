@@ -16,7 +16,7 @@ import {
   isCypressError,
   isIResult,
   isWindowFetchResponse,
-} from "../../../lib/commands/c8yclient";
+} from "@lib/commands/c8yclient";
 
 const { _, sinon } = Cypress;
 
