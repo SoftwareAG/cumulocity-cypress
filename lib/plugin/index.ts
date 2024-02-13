@@ -32,7 +32,7 @@ export type C8yPluginConfig = {
  * @param config Cypress plugin config
  * @param options Cumulocity plugin configuration options
  */
-function configureC8yPlugin(
+export function configureC8yPlugin(
   on: Cypress.PluginEvents,
   config: Cypress.PluginConfigOptions,
   options: C8yPluginConfig = {}
