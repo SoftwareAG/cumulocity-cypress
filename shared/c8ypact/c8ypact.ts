@@ -402,6 +402,13 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   }
 }
 
+/**
+ * Checks if the given object is a C8yPact. This also includes checking
+ * all records to be valid C8yPactRecord instances.
+ *
+ * @param obj The object to check.
+ * @returns True if the object is a C8yPact, false otherwise.
+ */
 export function isPact(obj: any): obj is C8yPact {
   return (
     _.isObjectLike(obj) &&
@@ -414,6 +421,12 @@ export function isPact(obj: any): obj is C8yPact {
   );
 }
 
+/**
+ * Checks if the given object is a C8yPactRecord.
+ *
+ * @param obj The object to check.
+ * @returns True if the object is a C8yPactRecord, false otherwise.
+ */
 export function isPactRecord(obj: any): obj is C8yPactRecord {
   return (
     _.isObjectLike(obj) &&
@@ -425,6 +438,13 @@ export function isPactRecord(obj: any): obj is C8yPactRecord {
   );
 }
 
+/**
+ * Checks if the given object is a C8yAuthOptions and contains at least a user
+ * and a type or userAlias property.
+ *
+ * @param obj The object to check.
+ * @returns True if the object is a C8yAuthOptions, false otherwise.
+ */
 export function isAuthOptions(obj: any): obj is C8yAuthOptions {
   return (
     _.isObjectLike(obj) &&
@@ -454,6 +474,13 @@ export function isCypressResponse(obj: any): obj is Cypress.Response<any> {
   );
 }
 
+/**
+ * Checks if the given object is a C8yPactError. A C8yPactError is an error
+ * with the name "C8yPactError".
+ *
+ * @param error The object to check.
+ * @returns True if the object is a C8yPactError, false otherwise.
+ */
 export function isPactError(error: any): boolean {
   return _.isError(error) && _.get(error, "name") === "C8yPactError";
 }
@@ -462,6 +489,9 @@ function isDefined(value: any): boolean {
   return !_.isUndefined(value);
 }
 
+/**
+ * Converts a Cypress.Response to a C8yPactRequest.
+ */
 export function toPactRequest(
   response: Cypress.Response<any> | Partial<Cypress.Response<any>>
 ): C8yPactRequest | undefined {
@@ -481,6 +511,9 @@ export function toPactRequest(
   return result;
 }
 
+/**
+ * Converts a Cypress.Response to a C8yPactResponse.
+ */
 export function toPactResponse<T>(
   response: Cypress.Response<T> | Partial<Cypress.Response<T>>
 ): C8yPactResponse<T> | undefined {

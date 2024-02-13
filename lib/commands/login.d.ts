@@ -1,4 +1,5 @@
 import { ICredentials } from "@c8y/client";
+import { C8yAuthOptions } from "@shared/c8yclient";
 
 declare global {
   namespace Cypress {
@@ -60,16 +61,6 @@ declare global {
       auth?: C8yAuthArgs;
     }
   }
-
-  interface C8yAuthOptions extends ICredentials {
-    // support cy.request properties
-    sendImmediately?: boolean;
-    bearer?: (() => string) | string;
-    userAlias?: string;
-    type?: string;
-  }
-
-  export type C8yAuthArgs = string | C8yAuthOptions;
 
   export type C8yLoginOptions = {
     useSession?: boolean;

@@ -20,6 +20,7 @@ import {
   C8yPactMatcher,
 } from "@shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
+import { C8yAuthOptions, C8yClient } from "@shared/c8yclient";
 
 const { _ } = Cypress;
 
@@ -400,7 +401,10 @@ export function createPactRecord(
   return C8yDefaultPactRecord.from(response, auth, client);
 }
 
-function createPactInfo(id: string, client: C8yClient = null): C8yPactInfo {
+export function createPactInfo(
+  id: string,
+  client: C8yClient = null
+): C8yPactInfo {
   const info: C8yPactInfo = {
     ...Cypress.c8ypact.getConfigValues(),
     id,

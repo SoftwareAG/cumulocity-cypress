@@ -5,7 +5,7 @@ import {
   C8yCypressEnvPreprocessor,
   createPactRecord,
 } from "@lib/pacts/cypresspact";
-import { C8yAuthentication } from "@shared/c8yclient";
+import { C8yAuthentication, C8yClient } from "@shared/c8yclient";
 
 import {
   C8yDefaultPactMatcher,

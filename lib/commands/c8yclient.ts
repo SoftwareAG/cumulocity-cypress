@@ -15,13 +15,16 @@ import {
   Client,
   CookieAuth,
   FetchClient,
-  IAuthentication,
   IFetchOptions,
   IFetchResponse,
   IResult,
   IResultList,
 } from "@c8y/client";
-import { C8yAuthentication } from "@shared/c8yclient";
+import {
+  C8yAuthentication,
+  C8yClient,
+  C8yClientOptions,
+} from "@shared/c8yclient";
 import { C8yPactRecord, isPactRecord } from "@shared/c8ypact";
 
 declare global {
@@ -148,23 +151,6 @@ declare global {
     | C8yClientServiceArrayFn<R, T>[]
     | C8yClientServiceListFn<R, T>;
 
-  /**
-   * Options used to configure c8yclient command.
-   */
-  type C8yClientOptions = Partial<Cypress.Loggable> &
-    Partial<Cypress.Timeoutable> &
-    Partial<Pick<Cypress.Failable, "failOnStatusCode">> &
-    Partial<{
-      auth: IAuthentication;
-      baseUrl: string;
-      client: Client;
-      preferBasicAuth: boolean;
-      skipClientAuthentication: boolean;
-      failOnPactValidation: boolean;
-      ignorePact: boolean;
-      schema: any;
-    }>;
-
   interface Window {
     fetchStub: typeof fetch;
   }
@@ -174,16 +160,6 @@ declare global {
     method?: string;
     responseObj?: Partial<Cypress.Response>;
     requestBody?: string | any;
-  }
-
-  /**
-   * Wrapper for Client to pass auth and options without extending Client.
-   * Using underscore to avoid name clashes with Client and misunderstandings reading the code.
-   */
-  interface C8yClient {
-    _auth?: C8yAuthentication;
-    _options?: C8yClientOptions;
-    _client: Client;
   }
 
   /**
