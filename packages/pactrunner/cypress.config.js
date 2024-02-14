@@ -2,7 +2,7 @@ const { defineConfig } = require("cypress");
 const {
   configureC8yPlugin,
   C8yPactDefaultFileAdapter,
-} = require("cumulocity-cypress/lib/plugin/");
+} = require("cumulocity-cypress/lib/plugin");
 
 module.exports = defineConfig({
   e2e: {
