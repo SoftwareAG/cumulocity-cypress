@@ -75,7 +75,7 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
     if (!schema) return false;
     const schemaClone = _.cloneDeep(schema);
     this.updateAdditionalProperties(schemaClone, !strictMatching);
-    console.log("schemaClone", schemaClone);
+
     const valid = this.ajv.validate(schemaClone, obj);
     if (!valid) {
       throw new Error(this.ajv.errorsText());

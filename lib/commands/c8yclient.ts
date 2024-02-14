@@ -14,7 +14,6 @@ import {
   Client,
   CookieAuth,
   FetchClient,
-  IFetchOptions,
   IFetchResponse,
   IResult,
   IResultList,
@@ -165,8 +164,8 @@ export const defaultClientOptions: C8yClientOptions = {
 
 let logOnce = true;
 
-window.fetchStub = window.fetch;
-window.fetch = async function (
+_.set(globalThis, "fetchStub", window.fetch);
+globalThis.fetch = async function (
   url: RequestInfo | URL,
   fetchOptions?: RequestInit
 ) {
@@ -199,7 +198,7 @@ window.fetch = async function (
 
         return {
           message: `${
-            fetchOptions.method || "GET"
+            fetchOptions?.method || "GET"
           } ${getStatus()} ${getDisplayUrl(
             consoleProps["Yielded"]?.url || ""
           )}`,
@@ -214,7 +213,7 @@ window.fetch = async function (
   return wrapFetchRequest(url, fetchOptions, {
     consoleProps,
     loggedInUser:
-      Cypress.env("C8Y_LOGGED_IN_USER") ||
+      Cypress.env("C8Y_LOGGED_IN_USER") ??
       Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
   });
 };

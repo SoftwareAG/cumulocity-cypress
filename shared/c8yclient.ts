@@ -9,13 +9,9 @@ import {
   IResult,
   IResultList,
 } from "@c8y/client";
-import { C8yPactRecord, isPactRecord } from "./c8ypact";
+import { C8yPactRecord, isCypressResponse, isPactRecord } from "./c8ypact";
 
 declare global {
-  interface Window {
-    fetchStub: typeof fetch;
-  }
-
   interface Response {
     data?: string | any;
     method?: string;
@@ -71,7 +67,7 @@ export type C8yAuthArgs = string | C8yAuthOptions;
 export function wrapFetchRequest(
   url: RequestInfo | URL,
   fetchOptions?: RequestInit,
-  logOptions?: { consoleProps: any; loggedInUser: string }
+  logOptions?: { consoleProps: any; loggedInUser?: string }
 ): Promise<Response> {
   let responseObj: Partial<Cypress.Response<any>>;
   // client.tenant.current() does add content-type header for some reason. probably mistaken accept header.
@@ -92,7 +88,9 @@ export function wrapFetchRequest(
   }
 
   let startTime: number = Date.now();
-  const fetchPromise: Promise<Response> = window.fetchStub(url, fetchOptions);
+
+  const fetchFn = _.get(globalThis, "fetchStub") || globalThis.fetch;
+  const fetchPromise: Promise<Response> = fetchFn(url, fetchOptions);
 
   const createFetchResponse = async (response: Response) => {
     const duration = Date.now() - startTime;
@@ -125,9 +123,10 @@ export function wrapFetchRequest(
     // and resolve json() and text() promises using the values we read from the stream.
     const res = new window.Response(rawBody, _.cloneDeep(response));
     try {
-      responseObj.requestBody = _.isString(fetchOptions?.body)
-        ? JSON.parse(fetchOptions.body)
-        : fetchOptions?.body;
+      responseObj.requestBody =
+        fetchOptions && _.isString(fetchOptions?.body)
+          ? JSON.parse(fetchOptions.body)
+          : fetchOptions?.body;
     } catch (error) {
       responseObj.requestBody = fetchOptions?.body;
     }
@@ -137,7 +136,7 @@ export function wrapFetchRequest(
     if (logOptions?.consoleProps) {
       _.extend(
         logOptions.consoleProps,
-        consoleProps(responseObj, fetchOptions, logOptions)
+        updateConsoleProps(responseObj, fetchOptions, logOptions)
       );
     }
 
@@ -161,10 +160,10 @@ export function wrapFetchRequest(
     });
 }
 
-function consoleProps(
+function updateConsoleProps(
   responseObj: Partial<Cypress.Response<any>>,
   fetchOptions?: RequestInit,
-  logOptions?: { consoleProps: any; loggedInUser: string },
+  logOptions?: { consoleProps: any; loggedInUser?: string },
   url?: RequestInfo | URL
 ) {
   const props: any = {};
@@ -262,6 +261,49 @@ export function toCypressResponse(
     method: fetchResponse.method || "GET",
     ...(schema && { $body: schema }),
   };
+}
+
+/**
+ * Converts a Cypress.Response or C8yPactRecord to a window.Response. If
+ * the given object is not a Cypress.Response or C8yPactRecord, undefined
+ * is returned.
+ * @param obj The object to check.
+ */
+export function toWindowFetchResponse(
+  obj: Cypress.Response<any> | C8yPactRecord
+): Response | undefined {
+  if (isPactRecord(obj)) {
+    return obj.toWindowFetchResponse();
+  }
+  if (isCypressResponse(obj)) {
+    return new window.Response(obj.body, {
+      status: obj.status,
+      statusText: obj.statusText,
+      headers: toResponseHeaders(obj.headers),
+      ...(obj.url && { url: obj.url }),
+    });
+  }
+  return undefined;
+}
+
+/**
+ * Converts the given headers to a window.Headers object.
+ * @param headers The headers object to convert.
+ */
+export function toResponseHeaders(headers: {
+  [key: string]: string | string[];
+}): Headers {
+  // type HeadersInit = [string, string][] | Record<string, string> | Headers;
+  const arr: [string, string][] = [];
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (Array.isArray(value)) {
+      value.forEach((v) => arr.push([key, v]));
+    } else {
+      arr.push([key, value]);
+    }
+  }
+  return new Headers(arr);
 }
 
 /**

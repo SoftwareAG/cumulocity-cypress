@@ -1,6 +1,11 @@
 import _ from "lodash";
 import { C8yPactPreprocessorOptions } from "./preprocessor";
-import { C8yAuthOptions, C8yClient, C8yClientOptions } from "../c8yclient";
+import {
+  C8yAuthOptions,
+  C8yClient,
+  C8yClientOptions,
+  toResponseHeaders,
+} from "../c8yclient";
 import { C8yDefaultPactUrlMatcher, C8yPactUrlMatcher } from "./urlmatcher";
 
 /**
@@ -165,6 +170,10 @@ export interface C8yPactRecord {
    */
   toCypressResponse(): Cypress.Response<any>;
   /**
+   * Converts the C8yPactRecord to a window.Response object.
+   */
+  toWindowFetchResponse(): Response;
+  /**
    * Returns the date of the response.
    */
   date(): Date | null;
@@ -263,7 +272,10 @@ export class C8yDefaultPact implements C8yPact {
    * Returns the pact record for the given request or null if no record is found.
    * @param req The request of type CyHttpMessages.IncomingHttpRequest
    */
-  getRecordsMatchingRequest(req: any): C8yPactRecord[] | null {
+  getRecordsMatchingRequest(req: {
+    url?: string;
+    method?: string;
+  }): C8yPactRecord[] | null {
     const matcher =
       // @ts-ignore - TODO
       typeof Cypress != "undefined"
@@ -399,6 +411,21 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
       method: this.request.method || this.response.method || "GET",
     });
     return result as Cypress.Response<T>;
+  }
+
+  toWindowFetchResponse(): Response {
+    const body = _.isObjectLike(this.response.body)
+      ? JSON.stringify(this.response.body)
+      : this.response.body;
+    return new window.Response(body, {
+      status: this.response.status,
+      statusText: this.response.statusText,
+      url: this.request.url,
+      ...(this.response.headers && {
+        headers: toResponseHeaders(this.response.headers),
+      }),
+      ...(this.request.url && { url: this.request.url }),
+    });
   }
 }
 
