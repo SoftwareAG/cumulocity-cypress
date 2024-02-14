@@ -11,12 +11,12 @@ import {
   stubResponse,
   stubResponses,
 } from "../support/util";
+import { isArrayOfFunctions, isCypressError } from "@lib/commands/c8yclient";
 import {
-  isArrayOfFunctions,
-  isCypressError,
   isIResult,
   isWindowFetchResponse,
-} from "@lib/commands/c8yclient";
+  toCypressResponse,
+} from "@shared/c8yclient";
 
 const { _, sinon } = Cypress;
 

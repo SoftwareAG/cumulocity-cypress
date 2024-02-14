@@ -2,7 +2,6 @@ const { _ } = Cypress;
 
 const {
   isAuth,
-  getAuthOptionsFromBasicAuthHeader,
   normalizedArgumentsWithAuth,
   restoreClient,
   storeClient,
@@ -24,8 +23,9 @@ import {
   C8yAuthentication,
   C8yClient,
   C8yClientOptions,
+  toCypressResponse,
+  wrapFetchRequest,
 } from "@shared/c8yclient";
-import { C8yPactRecord, isPactRecord } from "@shared/c8ypact";
 
 declare global {
   namespace Cypress {
@@ -150,37 +150,6 @@ declare global {
     | C8yClientServiceFn<R, T>
     | C8yClientServiceArrayFn<R, T>[]
     | C8yClientServiceListFn<R, T>;
-
-  interface Window {
-    fetchStub: typeof fetch;
-  }
-
-  interface Response {
-    data?: string | any;
-    method?: string;
-    responseObj?: Partial<Cypress.Response>;
-    requestBody?: string | any;
-  }
-
-  /**
-   * Covert a given object to a Cypress.Response object.
-   *
-   * @param obj The object to convert.
-   * @param duration Additional duration to add to the response.
-   * @param fetchOptions Additional fetch options to use for conversion. Required for requestHeaders for example.
-   * @param url Additional url to add to the response.
-   */
-  function toCypressResponse<T = any>(
-    obj:
-      | Partial<Response>
-      | IFetchResponse
-      | IResult<any>
-      | IResultList<any>
-      | C8yPactRecord,
-    duration?: number,
-    fetchOptions?: IFetchOptions,
-    url?: RequestInfo | URL
-  ): Cypress.Response<T>;
 }
 
 export const defaultClientOptions: C8yClientOptions = {
@@ -197,50 +166,16 @@ export const defaultClientOptions: C8yClientOptions = {
 let logOnce = true;
 
 window.fetchStub = window.fetch;
-window.fetch = async function (url: RequestInfo | URL, fetchOptions: any) {
-  let responseObj: Partial<Cypress.Response> = {};
-
+window.fetch = async function (
+  url: RequestInfo | URL,
+  fetchOptions?: RequestInit
+) {
+  let consoleProps: any = {};
   if (logOnce === true) {
     Cypress.log({
       name: "c8yclient",
       message: "",
-      consoleProps() {
-        const props: any = {};
-        const cookieAuth =
-          (responseObj.requestHeaders &&
-            responseObj.requestHeaders["X-XSRF-TOKEN"]) ||
-          undefined;
-        const basicAuth =
-          (responseObj.requestHeaders &&
-            responseObj.requestHeaders["Authorization"]) ||
-          undefined;
-
-        // props["Options"] = options;
-        if (cookieAuth) {
-          const loggedInUser = Cypress.env("C8Y_LOGGED_IN_USER");
-          props["CookieAuth"] = `XSRF-TOKEN ${cookieAuth} ${
-            loggedInUser ? "(" + loggedInUser + ")" : ""
-          }`;
-        }
-        if (basicAuth) {
-          const auth = getAuthOptionsFromBasicAuthHeader(basicAuth);
-          if (auth && auth.user) {
-            props["BasicAuth"] = `${basicAuth} (${auth.user})`;
-          }
-        }
-
-        props["Options"] = fetchOptions;
-        props["Request"] = {
-          responseBody: responseObj.body,
-          responseStatus: responseObj.status,
-          requestHeaders: responseObj.requestHeaders,
-          requestBody: fetchOptions.body || "",
-          responseHeaders: responseObj.headers || [],
-          requestURL: responseObj.url || url,
-        };
-        props["Yielded"] = responseObj;
-        return props;
-      },
+      consoleProps: () => consoleProps,
       // @ts-ignore
       renderProps(): {
         message: string;
@@ -248,14 +183,16 @@ window.fetch = async function (url: RequestInfo | URL, fetchOptions: any) {
         status: string | number;
       } {
         function getIndicator() {
-          if (!responseObj) return "pending";
-          if (responseObj.isOkStatusCode) return "successful";
+          if (!consoleProps["Yielded"]) return "pending";
+          if (consoleProps["Yielded"].isOkStatusCode) return "successful";
           return "bad";
         }
 
         function getStatus() {
           return (
-            (responseObj && !_.isEmpty(responseObj) && responseObj.status) ||
+            (consoleProps["Yielded"] &&
+              !_.isEmpty(consoleProps["Yielded"]) &&
+              consoleProps["Yielded"].status) ||
             "---"
           );
         }
@@ -263,7 +200,9 @@ window.fetch = async function (url: RequestInfo | URL, fetchOptions: any) {
         return {
           message: `${
             fetchOptions.method || "GET"
-          } ${getStatus()} ${getDisplayUrl(responseObj.url || "")}`,
+          } ${getStatus()} ${getDisplayUrl(
+            consoleProps["Yielded"]?.url || ""
+          )}`,
           indicator: getIndicator(),
           status: getStatus(),
         };
@@ -272,85 +211,12 @@ window.fetch = async function (url: RequestInfo | URL, fetchOptions: any) {
   } else {
     logOnce = true;
   }
-
-  // client.tenant.current() does add content-type header for some reason. probably mistaken accept header.
-  // as this is not required, remove it to avoid special handling in pact matching against recordings
-  // not created by c8y/client.
-  if (_.endsWith(toUrlString(url), "/tenant/currentTenant")) {
-    // @ts-ignore
-    fetchOptions.headers = _.omit(fetchOptions.headers, ["content-type"]);
-  } else {
-    // add json content type if body is present and content-type is not set
-    const method = fetchOptions?.method || "GET";
-    if (fetchOptions?.body && method !== "GET" && method != "HEAD") {
-      fetchOptions.headers = {
-        "content-type": "application/json",
-        ...fetchOptions.headers,
-      };
-    }
-  }
-
-  let startTime: number = Date.now();
-  const fetchPromise: Promise<Response> = window.fetchStub(url, fetchOptions);
-
-  const createFetchResponse = async (response: Response) => {
-    const duration = Date.now() - startTime;
-    responseObj = await (async () => {
-      return toCypressResponse(response, duration, fetchOptions, url);
-    })();
-
-    let rawBody: string;
-    if (response.data) {
-      responseObj.body = response.data;
-      rawBody = _.isObject(responseObj.body)
-        ? JSON.stringify(responseObj.body)
-        : responseObj.body;
-    } else if (response.body) {
-      try {
-        rawBody = await response.text();
-        responseObj.body = JSON.parse(rawBody);
-      } catch {
-        responseObj.body = rawBody;
-      }
-    }
-
-    // empty body ("") is not allowed, make sure to use undefined instead
-    if (_.isEmpty(rawBody)) {
-      rawBody = undefined;
-    }
-
-    // create a new window.Response for Client. this is required as the body
-    // stream can not be read more than once. as we just read it, recreate the response
-    // and resolve json() and text() promises using the values we read from the stream.
-    const res = new window.Response(rawBody, _.cloneDeep(response));
-    try {
-      responseObj.requestBody = _.isString(fetchOptions.body)
-        ? JSON.parse(fetchOptions.body)
-        : fetchOptions.body;
-    } catch (error) {
-      responseObj.requestBody = fetchOptions.body;
-    }
-    // res.ok = response.ok,
-    responseObj.method = fetchOptions?.method || res?.method || "GET";
-
-    // pass the responseObj as part of the window.Response object. this way we can access
-    // in the Clients response and do not need to reprocess
-    res.responseObj = responseObj;
-    res.json = () => Promise.resolve(responseObj.body);
-    res.text = () => Promise.resolve(rawBody);
-
-    return res;
-  };
-
-  return fetchPromise
-    .then(async (response) => {
-      const res = await createFetchResponse(response);
-      return Promise.resolve(res);
-    })
-    .catch(async (response) => {
-      const res = await createFetchResponse(response);
-      return Promise.reject(res);
-    });
+  return wrapFetchRequest(url, fetchOptions, {
+    consoleProps,
+    loggedInUser:
+      Cypress.env("C8Y_LOGGED_IN_USER") ||
+      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+  });
 };
 
 const c8yclientFn = (...args: any[]) => {
@@ -666,20 +532,6 @@ function makeErrorMessage(obj: any) {
   return message;
 }
 
-function toUrlString(url: RequestInfo | URL): string {
-  if (_.isString(url)) {
-    return url;
-  } else if (url instanceof URL) {
-    return url.toString();
-  } else if (url instanceof Request) {
-    return url.url;
-  } else {
-    throw new Error(
-      `Type for URL not supported. Expected URL, string or Request, but found $'{typeof url}}'.`
-    );
-  }
-}
-
 // from error_utils.ts
 function getDisplayUrl(
   url: string,
@@ -707,53 +559,6 @@ Cypress.Commands.add(
 
 Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
 
-globalThis.toCypressResponse = toCypressResponse;
-function toCypressResponse(
-  obj:
-    | IFetchResponse
-    | IResult<any>
-    | IResultList<any>
-    | C8yPactRecord
-    | Partial<Response>,
-  duration: number = 0,
-  fetchOptions: IFetchOptions = {},
-  url?: RequestInfo | URL,
-  schema?: any
-): Cypress.Response<any> {
-  if (!obj) return undefined;
-
-  if (typeof isPactRecord === "function" && isPactRecord(obj)) {
-    return obj.toCypressResponse();
-  }
-  let fetchResponse: Partial<Response>;
-  if (isIResult(obj)) {
-    fetchResponse = obj.res;
-  } else if (isWindowFetchResponse(obj)) {
-    fetchResponse = obj;
-  } else {
-    fetchResponse = obj as any;
-  }
-  if ("responseObj" in fetchResponse) {
-    return _.get(fetchResponse, "responseObj") as Cypress.Response<any>;
-  }
-  return {
-    status: fetchResponse.status,
-    isOkStatusCode:
-      fetchResponse.ok ||
-      (fetchResponse.status > 199 && fetchResponse.status < 300),
-    statusText: fetchResponse.statusText,
-    headers: Object.fromEntries(fetchResponse.headers || []),
-    requestHeaders: fetchOptions.headers,
-    duration: duration,
-    url: toUrlString(url),
-    allRequestResponses: [],
-    body: fetchResponse.data,
-    requestBody: fetchResponse.requestBody,
-    method: fetchResponse.method || "GET",
-    $body: schema,
-  };
-}
-
 /**
  * Checks if the given object is an array only containing functions.
  * @param obj The object to check.
@@ -763,38 +568,6 @@ export function isArrayOfFunctions<T>(
 ): functions is Array<Function> {
   if (!functions || !_.isArray(functions) || _.isEmpty(functions)) return false;
   return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
-}
-
-/**
- * Checks if the given object is a window.Response.
- * @param obj The object to check.
- */
-export function isWindowFetchResponse(obj: any): obj is Partial<Response> {
-  return (
-    obj != null &&
-    _.isObjectLike(obj) &&
-    "status" in obj &&
-    "statusText" in obj &&
-    "headers" in obj &&
-    "body" in obj &&
-    "url" in obj &&
-    _.isFunction(_.get(obj, "json")) &&
-    _.isFunction(_.get(obj, "arrayBuffer"))
-  );
-}
-
-/**
- * Checks if the given object is an IResult.
- * @param obj The object to check.
- */
-export function isIResult(obj: any): obj is IResult<any> {
-  return (
-    obj != null &&
-    _.isObjectLike(obj) &&
-    "data" in obj &&
-    "res" in obj &&
-    isWindowFetchResponse(obj.res)
-  );
 }
 
 /**
