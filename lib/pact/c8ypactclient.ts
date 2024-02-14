@@ -4,7 +4,10 @@ import {
   IFetchOptions,
   IFetchResponse,
 } from "@c8y/client";
-import { wrapFetchRequest } from "../../shared/c8yclient";
+import {
+  toWindowFetchResponse,
+  wrapFetchRequest,
+} from "../../shared/c8yclient";
 import { C8yDefaultPact } from "../../shared/c8ypact";
 
 const { _ } = Cypress;
@@ -30,9 +33,11 @@ export class C8yPactFetchClient extends FetchClient {
       });
       if (record) {
         const first = _.first(record);
-        const response = first?.toWindowFetchResponse();
-        if (response) {
-          return Promise.resolve(response);
+        if (first) {
+          const response = toWindowFetchResponse(first);
+          if (response) {
+            return Promise.resolve(response);
+          }
         }
       }
     }

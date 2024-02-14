@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { isURL } from ".";
 
 export interface C8yPactUrlMatcher {
   /**
@@ -46,8 +47,4 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
       normalizeUrl(url2, this.ignoreParameters)
     );
   }
-}
-
-function isURL(obj: any): obj is URL {
-  return obj instanceof URL;
 }

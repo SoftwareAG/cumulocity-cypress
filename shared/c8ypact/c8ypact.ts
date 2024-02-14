@@ -170,10 +170,6 @@ export interface C8yPactRecord {
    */
   toCypressResponse(): Cypress.Response<any>;
   /**
-   * Converts the C8yPactRecord to a window.Response object.
-   */
-  toWindowFetchResponse(): Response;
-  /**
    * Returns the date of the response.
    */
   date(): Date | null;
@@ -420,21 +416,6 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     });
     return result as Cypress.Response<T>;
   }
-
-  toWindowFetchResponse(): Response {
-    const body = _.isObjectLike(this.response.body)
-      ? JSON.stringify(this.response.body)
-      : this.response.body;
-    return new window.Response(body, {
-      status: this.response.status,
-      statusText: this.response.statusText,
-      url: this.request.url,
-      ...(this.response.headers && {
-        headers: toResponseHeaders(this.response.headers),
-      }),
-      ...(this.request.url && { url: this.request.url }),
-    });
-  }
 }
 
 /**
@@ -568,4 +549,13 @@ export function toPactResponse<T>(
   ) as C8yPactResponse<T>;
   if (_.isEmpty(result)) return undefined;
   return result;
+}
+
+export function isURL(obj: any): obj is URL {
+  return obj instanceof URL;
+}
+
+export function relativeURL(url: URL | string): string {
+  const u = isURL(url) ? url : new URL(url);
+  return u.pathname + u.search;
 }

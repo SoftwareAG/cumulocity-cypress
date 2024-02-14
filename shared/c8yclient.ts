@@ -286,7 +286,18 @@ export function toWindowFetchResponse(
   obj: Cypress.Response<any> | C8yPactRecord
 ): Response | undefined {
   if (isPactRecord(obj)) {
-    return obj.toWindowFetchResponse();
+    const body = _.isObjectLike(obj.response.body)
+      ? JSON.stringify(obj.response.body)
+      : obj.response.body;
+    return new window.Response(obj.response.body, {
+      status: obj.response.status,
+      statusText: obj.response.statusText,
+      url: obj.request.url,
+      ...(obj.response.headers && {
+        headers: toResponseHeaders(obj.response.headers),
+      }),
+      ...(obj.request.url && { url: obj.request.url }),
+    });
   }
   if (isCypressResponse(obj)) {
     return new window.Response(obj.body, {
