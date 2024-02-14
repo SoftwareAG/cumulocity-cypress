@@ -1,3 +1,4 @@
+import { C8yClientOptions } from "@shared/c8yclient";
 import { C8yPact, C8yPactInfo, C8yPactRecord } from "@shared/c8ypact";
 
 const { _ } = Cypress;

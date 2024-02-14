@@ -4,7 +4,7 @@ import { defaultClientOptions } from "@lib/commands/c8yclient";
 import {
   C8yCypressEnvPreprocessor,
   createPactRecord,
-} from "@lib/pacts/cypresspact";
+} from "@lib/pact/cypresspact";
 import { C8yAuthentication, C8yClient } from "@shared/c8yclient";
 
 import {

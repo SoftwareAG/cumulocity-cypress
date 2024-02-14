@@ -3,7 +3,7 @@ import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,
   STATIC_RESPONSE_WITH_OPTIONS_KEYS,
-} from "../pacts/constants";
+} from "../pact/constants";
 
 const { _ } = Cypress;
 

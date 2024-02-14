@@ -1,5 +1,5 @@
-import "../pacts/cypresspact";
-import "../pacts/c8ymatch";
+import "../pact/cypresspact";
+import "../pact/c8ymatch";
 
 import * as P from "@shared/c8ypact";
 import * as C from "@shared/c8yclient";

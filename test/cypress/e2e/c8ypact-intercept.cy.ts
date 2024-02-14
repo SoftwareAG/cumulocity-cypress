@@ -3,7 +3,7 @@ import { url } from "../support/util";
 
 const { $, _, sinon } = Cypress;
 
-describe("c8ypactintercept", () => {
+describe("c8ypact intercept", () => {
   // use inventory mock from app/inventory/manageObjects.json
   function fetchInventory() {
     return $.get(url(`/inventory/managedObjects?fragmentType=abcd`));

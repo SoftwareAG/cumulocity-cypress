@@ -1,4 +1,4 @@
-import { C8yCypressEnvPreprocessor } from "@lib/pacts/cypresspact";
+import { C8yCypressEnvPreprocessor } from "@lib/pact/cypresspact";
 import {
   C8yDefaultPactRecord,
   C8yPactRecord,
