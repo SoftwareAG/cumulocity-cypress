@@ -10,10 +10,6 @@
     "module": "Node16",
     "skipLibCheck": true,
     "composite": true,
-    "paths": {
-      "@shared/*": ["./../shared/*"],
-      "@lib/*": ["./../lib/*"]
-    },
   },
   "files": [],
   "include": [

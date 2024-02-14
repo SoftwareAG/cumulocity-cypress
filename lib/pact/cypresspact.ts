@@ -18,9 +18,9 @@ import {
   C8ySchemaMatcher,
   C8yDefaultPactMatcher,
   C8yPactMatcher,
-} from "@shared/c8ypact";
+} from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
-import { C8yAuthOptions, C8yClient } from "@shared/c8yclient";
+import { C8yAuthOptions, C8yClient } from "../../shared/c8yclient";
 
 const { _ } = Cypress;
 

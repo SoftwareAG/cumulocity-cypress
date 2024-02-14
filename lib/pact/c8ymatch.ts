@@ -4,9 +4,9 @@ import {
   C8yPactRecord,
   C8yPactMatcher,
   C8ySchemaMatcher,
-} from "@shared/c8ypact";
+} from "../../shared/c8ypact";
 import { isCypressError } from "../commands/c8yclient";
-import { C8yClientOptions } from "@shared/c8yclient";
+import { C8yClientOptions } from "../../shared/c8yclient";
 const { throwError } = require("../commands/utils");
 
 const { _ } = Cypress;

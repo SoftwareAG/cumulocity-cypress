@@ -12,10 +12,7 @@
     "strict": true,
     "module": "Node16",
     "skipLibCheck": true,
-    "composite": true,
-    "paths": {
-      "@shared/*": ["./../shared/*"]
-    }
+    "composite": true
   },
   "references": [{ "path": "./../shared" }]
 }

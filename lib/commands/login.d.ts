@@ -1,5 +1,5 @@
 import { ICredentials } from "@c8y/client";
-import { C8yAuthOptions } from "@shared/c8yclient";
+import { C8yAuthOptions } from "../../shared/c8yclient";
 
 declare global {
   namespace Cypress {

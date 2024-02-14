@@ -1,4 +1,4 @@
-import { C8yDefaultPact, C8yPactUrlMatcher } from "@shared/c8ypact";
+import { C8yDefaultPact, C8yPactUrlMatcher } from "../../shared/c8ypact";
 import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,

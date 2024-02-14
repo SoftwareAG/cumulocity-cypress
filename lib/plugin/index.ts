@@ -3,8 +3,8 @@ import * as path from "path";
 import {
   C8yPactFileAdapter,
   C8yPactDefaultFileAdapter,
-} from "@shared/c8ypact/fileadapter";
-import { C8yPact } from "@shared/c8ypact";
+} from "../../shared/c8ypact/fileadapter";
+import { C8yPact } from "../../shared/c8ypact";
 
 export { C8yPactFileAdapter };
 

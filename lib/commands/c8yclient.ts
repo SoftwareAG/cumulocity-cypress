@@ -24,7 +24,7 @@ import {
   C8yClientOptions,
   toCypressResponse,
   wrapFetchRequest,
-} from "@shared/c8yclient";
+} from "../../shared/c8yclient";
 
 declare global {
   namespace Cypress {

@@ -4,8 +4,8 @@ import {
   IFetchOptions,
   IFetchResponse,
 } from "@c8y/client";
-import { wrapFetchRequest } from "@shared/c8yclient";
-import { C8yDefaultPact } from "@shared/c8ypact";
+import { wrapFetchRequest } from "../../shared/c8yclient";
+import { C8yDefaultPact } from "../../shared/c8ypact";
 
 const { _ } = Cypress;
 
