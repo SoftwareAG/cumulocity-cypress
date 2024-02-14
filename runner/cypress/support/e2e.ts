@@ -1,4 +1,5 @@
 import "cumulocity-cypress/lib/commands";
+import "cumulocity-cypress/lib/commands/c8ypact";
 import "cumulocity-cypress/lib/commands/request";
 
 before(() => {

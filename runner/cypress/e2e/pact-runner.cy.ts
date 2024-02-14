@@ -1,4 +1,4 @@
-import { C8yDefaultPact } from "cumulocity-cypress/lib/pacts/c8ypact";
+import { C8yDefaultPact } from "cumulocity-cypress/shared/c8ypact";
 
 const { _ } = Cypress;
 
@@ -12,6 +12,7 @@ if (!pacts || !_.isArray(pacts) || _.isEmpty(pacts)) {
 }
 
 const pactObjects = pacts.map((item) => {
+  // @ts-ignore
   return C8yDefaultPact.from(item);
 });
 
