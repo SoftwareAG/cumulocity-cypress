@@ -148,7 +148,7 @@ describe("c8ypact", () => {
 
     it("from() should create C8yDefaultPact from serialized string", function () {
       const pact = C8yDefaultPact.from(response, { id: "testid" });
-      const pact2 = C8yDefaultPact.from(JSON.stringify(pact), { id: "testid" });
+      const pact2 = C8yDefaultPact.from(JSON.stringify(pact));
       expect(pact2).to.not.be.undefined.and.not.be.null;
       expect(pact2.records).to.have.length(1);
       expect(isPact(pact2)).to.be.true;
