@@ -14,6 +14,15 @@ import {
  * the schema an Error will be thrown.
  */
 export interface C8ySchemaMatcher {
+  /**
+   * Matches the given object against the given schema. Throws an error when
+   * schema does not match. Strict matching controls whether additional properties
+   * are allowed in the object.
+   *
+   * @param obj Object to match.
+   * @param schema Schema to match obj against.
+   * @param strictMatching If true, additional properties are not allowed.
+   */
   match(obj: any, schema: any, strictMatching?: boolean): boolean;
 }
 

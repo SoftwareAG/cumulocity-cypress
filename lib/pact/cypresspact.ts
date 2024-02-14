@@ -139,6 +139,16 @@ declare global {
   type C8yPactNextRecord = { record: C8yPactRecord; info?: C8yPactInfo };
 }
 
+/**
+ * The C8yCypressEnvPreprocessor is a preprocessor implementation that uses
+ * Cypress environment variables to configure C8yPactPreprocessorOptions.
+ *
+ * Options are deep merged in the following order:
+ * - Cypress environment variables
+ * - C8yPactPreprocessorOptions passed to the apply method
+ * - C8yPactPreprocessorOptions passed to the constructor
+ * - Cypress.c8ypact.config value for preprocessor
+ */
 export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
   apply(
     obj: Partial<Cypress.Response<any> | C8yPactRecord | C8yPact>,
@@ -150,7 +160,7 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
   resolveOptions(
     options?: Partial<C8yPactPreprocessorOptions>
   ): C8yPactPreprocessorOptions {
-    return _.defaults(
+    return _.defaultsDeep(
       {
         ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
         obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),

@@ -203,6 +203,11 @@ function updateConsoleProps(
   return props;
 }
 
+/**
+ * Converts the given URL to a string.
+ * @param url The URL or RequestInfo to convert.
+ * @returns The URL as a string.
+ */
 export function toUrlString(url: RequestInfo | URL): string {
   if (_.isString(url)) {
     return url;
@@ -217,6 +222,14 @@ export function toUrlString(url: RequestInfo | URL): string {
   }
 }
 
+/**
+ * Converts the given object to a Cypress.Response.
+ * @param obj The object to convert.
+ * @param duration The duration of the request.
+ * @param fetchOptions The fetch options used for the request.
+ * @param url The URL of the request.
+ * @param schema The schema of the response.
+ */
 export function toCypressResponse(
   obj:
     | IFetchResponse

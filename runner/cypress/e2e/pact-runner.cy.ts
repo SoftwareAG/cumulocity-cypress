@@ -12,7 +12,6 @@ if (!pacts || !_.isArray(pacts) || _.isEmpty(pacts)) {
 }
 
 const pactObjects = pacts.map((item) => {
-  // @ts-ignore
   return C8yDefaultPact.from(item);
 });
 

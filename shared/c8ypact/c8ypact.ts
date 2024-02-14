@@ -207,17 +207,26 @@ export class C8yDefaultPact implements C8yPact {
    * or an object containing the pact records and info object. Throws an error if
    * the input can not be converted to a C8yPact.
    * @param obj The Cypress.Response, string or object to create a pact from.
+   * @param info The C8yPactInfo object containing additional information for the pact.
    * @param client The optional C8yClient for options and auth information.
    */
   static from(
-    obj: C8yPact | string | Cypress.Response<any>,
-    info: C8yPactInfo,
-    client?: C8yClient
+    ...args:
+      | [obj: Cypress.Response<any>, info: C8yPactInfo, client?: C8yClient]
+      | [obj: string | C8yPact]
   ): C8yDefaultPact {
+    const obj = args[0];
     if (!obj) {
       throw new Error("Can not create pact from null or undefined.");
     }
     if (isCypressResponse(obj)) {
+      const info = args && args.length > 1 ? args[1] : undefined;
+      if (!info) {
+        throw new Error(
+          `Can not create pact from response without C8yPactInfo.`
+        );
+      }
+      const client = args[2];
       const r = _.cloneDeep(obj);
       const pactRecord = new C8yDefaultPactRecord(
         toPactRequest(r) || {},
@@ -270,7 +279,8 @@ export class C8yDefaultPact implements C8yPact {
 
   /**
    * Returns the pact record for the given request or null if no record is found.
-   * @param req The request of type CyHttpMessages.IncomingHttpRequest
+   * Currently only url and method are used for matching.
+   * @param req The request to use for matching.
    */
   getRecordsMatchingRequest(req: {
     url?: string;
@@ -313,9 +323,7 @@ export class C8yDefaultPact implements C8yPact {
 
 /**
  * Default implementation of C8yPactRecord. Use C8yDefaultPactRecord.from to create
- * a C8yPactRecord from a Cypress.Response object or an C8yPactRecord object. Note,
- * objects implementing the C8yPactRecord interface may not provide all required
- * functions and properties.
+ * a C8yPactRecord from a Cypress.Response object or an C8yPactRecord object.
  */
 export class C8yDefaultPactRecord implements C8yPactRecord {
   request: C8yPactRequest;
