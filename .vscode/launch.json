@@ -3,7 +3,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Attach to Chrome",
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Pact Provider",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "program": "${workspaceFolder}/packages/pactprovider/src/httpprovider.ts",
+      "outFiles": ["${workspaceFolder}/packages/pactprovider/**/*.js"],
+      "sourceMaps": true,
+      "envFile": "${workspaceFolder}/packages/pactprovider/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Cypress Chrome",
       "port": 9222,
       "request": "attach",
       "type": "chrome",
