@@ -1,4 +1,9 @@
-import { IUser, IApplication, ICurrentTenant, IDeviceCredentials } from '@c8y/client';
+import {
+  IUser,
+  IApplication,
+  ICurrentTenant,
+  IDeviceCredentials,
+} from "@c8y/client";
 
 declare global {
   namespace Cypress {
@@ -64,7 +69,11 @@ declare global {
       deleteUser(
         ...args:
           | [username: string | IUser, c8yoptions?: C8yClientOptions]
-          | [authOptions: C8yAuthOptions, username: string | IUser, c8yoptions?: C8yClientOptions]
+          | [
+              authOptions: C8yAuthOptions,
+              username: string | IUser,
+              c8yoptions?: C8yClientOptions
+            ]
       ): Chainable<Cypress.Response<null>>;
 
       /**
@@ -85,7 +94,11 @@ declare global {
       clearUserRoles(
         ...args:
           | [username: string | IUser, c8yoptions?: C8yClientOptions]
-          | [authOptions: C8yAuthOptions, username: string | IUser, c8yoptions?: C8yClientOptions]
+          | [
+              authOptions: C8yAuthOptions,
+              username: string | IUser,
+              c8yoptions?: C8yClientOptions
+            ]
       ): Chainable<C8yAuthOptions>;
 
       /**
@@ -106,7 +119,11 @@ declare global {
        */
       assignUserRoles(
         ...args:
-          | [username: string | IUser, roles: string[], c8yoptions?: C8yClientOptions]
+          | [
+              username: string | IUser,
+              roles: string[],
+              c8yoptions?: C8yClientOptions
+            ]
           | [
               authOptions: C8yAuthOptions,
               username: string | IUser,
@@ -175,7 +192,11 @@ declare global {
       bootstrapDeviceCredentials(
         ...args:
           | [id: string | IUser, c8yoptions?: C8yClientOptions]
-          | [authOptions: C8yAuthOptions, id: string, c8yoptions?: C8yClientOptions]
+          | [
+              authOptions: C8yAuthOptions,
+              id: string,
+              c8yoptions?: C8yClientOptions
+            ]
       ): Chainable<IDeviceCredentials>;
     }
   }
