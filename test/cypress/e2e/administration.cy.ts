@@ -247,7 +247,25 @@ describe("administration", () => {
     const roles = [role1.name, role2.name];
 
     it("should assign roles to a user", () => {
+      const authUser = {
+        user: "admin",
+        password: "mypassword",
+        tenant: "t12345678",
+      };
+      const testUser = { userName: "test", displayName: "wewe" };
+
       stubResponses([
+        new window.Response(
+          JSON.stringify({
+            self: `https://${Cypress.config().baseUrl}/user/${
+              authUser.tenant
+            }/users/${testUser.userName}`,
+          }),
+          {
+            status: 200,
+            statusText: "OK",
+          }
+        ),
         new window.Response(JSON.stringify(role1), {
           status: 200,
           statusText: "OK",
@@ -280,17 +298,15 @@ describe("administration", () => {
         ),
       ]);
 
-      const authUser = {
-        user: "admin",
-        password: "mypassword",
-        tenant: "t12345678",
-      };
-      const testUser = { userName: "test", displayName: "wewe" };
-
       cy.getAuth(authUser)
         .assignUserRoles(testUser, ["role1", "role2"])
         .then(() => {
           expectC8yClientRequest([
+            {
+              url: `${Cypress.config().baseUrl}/user/${authUser.tenant}/users/${testUser.userName}`,
+              auth: authUser,
+              headers: { UseXBasic: true, accept: "application/json" },
+            },
             {
               url: `${Cypress.config().baseUrl}/user/${
                 authUser.tenant
@@ -350,7 +366,26 @@ describe("administration", () => {
     it("should assign user roles and use client options", () => {
       cy.clearAllSessionStorage();
 
+      const baseUrl = "https://abc.def.com";
+      const authUser = {
+        user: "admin",
+        password: "mypassword",
+        tenant: "t987654",
+      };
+      const testUser = { userName: "test", displayName: "wewe" };
+
       stubResponses([
+        new window.Response(
+          JSON.stringify({
+            self: `https://${baseUrl}/user/${
+              authUser.tenant
+            }/users/${testUser.userName}`,
+          }),
+          {
+            status: 200,
+            statusText: "OK",
+          }
+        ),
         new window.Response(JSON.stringify(role1), {
           status: 200,
           statusText: "OK",
@@ -383,18 +418,15 @@ describe("administration", () => {
         ),
       ]);
 
-      const authUser = {
-        user: "admin",
-        password: "mypassword",
-        tenant: "t12345678",
-      };
-      const testUser = { userName: "test", displayName: "wewe" };
-      const baseUrl = "https://abc.def.com";
-
       cy.getAuth(authUser)
         .assignUserRoles(testUser, ["role1", "role2"], { baseUrl })
         .then(() => {
           expectC8yClientRequest([
+            {
+              url: `${baseUrl}/user/${authUser.tenant}/users/${testUser.userName}`,
+              auth: authUser,
+              headers: { UseXBasic: true, accept: "application/json" },
+            },
             {
               url: `${baseUrl}/user/${authUser.tenant}/groupByName/${role1.name}`,
               auth: authUser,
