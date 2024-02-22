@@ -303,7 +303,9 @@ describe("administration", () => {
         .then(() => {
           expectC8yClientRequest([
             {
-              url: `${Cypress.config().baseUrl}/user/${authUser.tenant}/users/${testUser.userName}`,
+              url: `${Cypress.config().baseUrl}/user/${authUser.tenant}/users/${
+                testUser.userName
+              }`,
               auth: authUser,
               headers: { UseXBasic: true, accept: "application/json" },
             },
@@ -377,9 +379,7 @@ describe("administration", () => {
       stubResponses([
         new window.Response(
           JSON.stringify({
-            self: `https://${baseUrl}/user/${
-              authUser.tenant
-            }/users/${testUser.userName}`,
+            self: `https://${baseUrl}/user/${authUser.tenant}/users/${testUser.userName}`,
           }),
           {
             status: 200,
