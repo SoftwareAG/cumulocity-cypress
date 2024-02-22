@@ -53,6 +53,7 @@ Date related commands
 Administration related commands
 - `getCurrentTenant` and `getTenantId`
 - `createUser` and `deleteUser`
+- `assignUserRoles` and `clearUserRoles`
 - `getSystemVersion`
 
 [Integration and API testing](./doc/API%20and%20Integration%20Testing.md) related commands
