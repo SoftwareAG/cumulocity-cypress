@@ -4,11 +4,11 @@
   "description": "Cypress commands for Cumulocity IoT",
   "main": "lib/commands/index.js",
   "scripts": {
-    "start-server": "http-server app/ --port 8080 --silent --mimetypes custom_mime_types.types",
-    "test": "TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 test:run",
-    "test:run": "TZ=Europe/Berlin cypress run --browser chrome --config video=false",
-    "test:open": "TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 debug",
-    "debug": "CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open",
+    "start-server": "http-server app/ --port 8080 --silent --mimetypes custom_mime_types.types --ext json",
+    "test": "cross-env TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 test:run",
+    "test:run": "cross-env TZ=Europe/Berlin cypress run --browser chrome --config video=false",
+    "test:open": "cross-env TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 debug",
+    "debug": "cross-env CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open",
     "clean": "rimraf dist/",
     "copy-files": "copyfiles lib/**/*.*js lib/**/*.d.ts README.md package.json dist/",
     "build": "npm run clean && npm run copy-files && tsc && cd dist/ && npm run clean-package-json",
@@ -34,16 +34,20 @@
     "semver": "^7.5.2"
   },
   "devDependencies": {
+    "@angular/common": "^14.1.2",
     "@c8y/client": "^1017.0.374",
     "@types/chai": "^4.3.4",
+    "@types/node": "^20.10.6",
     "copyfiles": "^2.4.1",
-    "cypress": "^13.3.2",
+    "cross-env": "^7.0.3",
+    "cypress": "^13.6.6",
     "http-server": "^14.1.1",
     "rimraf": "^5.0.1",
     "start-server-and-test": "^2.0.0",
     "typescript": "^5.0.2"
   },
   "peerDependencies": {
+    "@angular/common": ">=14.0.0",
     "@c8y/client": ">=1015.0.0",
     "cypress": ">=12.0.0"
   }
