@@ -54,10 +54,13 @@ type StubbedResponseType<T> =
  *
  * @param {StubbedResponseType<T>[]} responses response or array of response objects
  */
-export function stubResponses<T>(responses: StubbedResponseType<T>[]): void {
+export function stubResponses<T>(
+  responses: StubbedResponseType<T>[],
+  delay: number = 0
+): void {
   let all = _.isArray(responses) ? responses : [responses];
   all.forEach((response, index) => {
-    stubResponse<T>(response, index);
+    stubResponse<T>(response, index, delay);
   });
 }
 
@@ -78,17 +81,35 @@ export function stubResponses<T>(responses: StubbedResponseType<T>[]): void {
  */
 export function stubResponse<T>(
   response: StubbedResponseType<T>,
-  callIndex: number = 0
+  callIndex: number = 0,
+  delay: number = 0
 ): void {
+  const success = () => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve(response);
+      }, delay);
+    });
+  };
+
+  const failure = () => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        reject(response);
+      }, delay);
+    });
+  };
+
   Cypress.backend
     // @ts-ignore
     .withArgs("http:request", Cypress.sinon.match.any)
     .onCall(callIndex)
-    .resolves(response);
+    .callsFake(success);
+
   if (!response.status || response.status < 400) {
-    window.fetchStub.onCall(callIndex).resolves(response);
+    window.fetchStub.onCall(callIndex).callsFake(success);
   } else {
-    window.fetchStub.onCall(callIndex).rejects(response);
+    window.fetchStub.onCall(callIndex).callsFake(failure);
   }
 }
 
