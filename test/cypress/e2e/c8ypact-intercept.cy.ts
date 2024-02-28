@@ -312,7 +312,7 @@ describe("c8ypactintercept", () => {
 
     it("should intercept with RouteHandler from fixture", () => {
       cy.intercept("/inventory/managedObjects*", {
-        fixture: "c8ypact-managedObject-02.json",
+        fixture: "c8ypact-managedobject-02.json",
       })
         .as("inventory")
         .then(() => {
@@ -443,7 +443,7 @@ describe("c8ypactintercept", () => {
 
     it("should intercept but not record with RouteHandler from fixture", () => {
       cy.intercept("/inventory/managedObjects*", {
-        fixture: "c8ypact-managedObject-02.json",
+        fixture: "c8ypact-managedobject-02.json",
       })
         .as("inventory")
         .then(fetchInventory)

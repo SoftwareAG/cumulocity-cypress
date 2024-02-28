@@ -228,17 +228,14 @@ class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     parts.forEach((part, i) => {
       let currentPath = path.join(...parts.slice(0, i + 1));
       if (absolutePath) {
-        currentPath = path.join("/", currentPath);
+        currentPath = path.join(path.sep, currentPath);
       }
       try {
-        fs.accessSync(currentPath, fs.constants.F_OK);
-      } catch (err) {
-        if (this.isNodeError(err, TypeError) && err.code === "ENOENT") {
-          // Directory does not exist, create it
+        if (!fs.existsSync(currentPath)) {
           fs.mkdirSync(currentPath);
-        } else {
-          throw err; // Other error, rethrow it
         }
+      } catch (err) {
+        throw err; // Rethrow the error
       }
     });
   }
