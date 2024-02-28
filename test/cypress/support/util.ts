@@ -147,8 +147,6 @@ export function stubCookies<T>(response: StubbedResponseType<T>): void {
     }, result);
   });
 
-  console.log("cookies", cookies);
-
   (Cypress.automation as sinon.SinonStub)
     .withArgs(
       "get:cookie",
