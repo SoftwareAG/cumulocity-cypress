@@ -289,7 +289,7 @@ export function toWindowFetchResponse(
     const body = _.isObjectLike(obj.response.body)
       ? JSON.stringify(obj.response.body)
       : obj.response.body;
-    return new window.Response(obj.response.body, {
+    return new window.Response(body, {
       status: obj.response.status,
       statusText: obj.response.statusText,
       url: obj.request.url,
