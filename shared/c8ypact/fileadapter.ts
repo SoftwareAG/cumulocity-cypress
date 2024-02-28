@@ -46,6 +46,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   loadPacts(): { [key: string]: C8yPact } {
     const jsonFiles = this.loadPactObjects();
     return jsonFiles.reduce((acc, obj) => {
+      if (!obj?.info?.id) return acc;
       acc[obj.info.id] = obj;
       return acc;
     }, {});
