@@ -151,15 +151,18 @@ declare global {
     | C8yClientServiceListFn<R, T>;
 }
 
-export const defaultClientOptions: C8yClientOptions = {
-  log: true,
-  timeout: Cypress.config().requestTimeout,
-  failOnStatusCode: true,
-  preferBasicAuth: false,
-  skipClientAuthentication: false,
-  ignorePact: false,
-  failOnPactValidation: true,
-  schema: undefined,
+export const defaultClientOptions = () => {
+  return {
+    log: true,
+    timeout:
+      Cypress.env("C8Y_C8YCLIENT_TIMEOUT") || Cypress.config().responseTimeout,
+    failOnStatusCode: true,
+    preferBasicAuth: false,
+    skipClientAuthentication: false,
+    ignorePact: false,
+    failOnPactValidation: true,
+    schema: undefined,
+  } as C8yClientOptions;
 };
 
 let logOnce = true;
@@ -269,8 +272,7 @@ const c8yclientFn = (...args: any[]) => {
   }
 
   let [argAuth, clientFn, argOptions] = $args;
-  const options = _.defaults(argOptions, defaultClientOptions);
-
+  const options = _.defaults(argOptions, defaultClientOptions());
   // force CookieAuth over BasicAuth if present and not disabled by options
   const auth: C8yAuthentication & { userAlias?: string } =
     cookieAuth && options.preferBasicAuth === false && !prevSubjectIsAuth
@@ -306,9 +308,12 @@ const c8yclientFn = (...args: any[]) => {
 
   if (!c8yclient._client && !tenant && !options.skipClientAuthentication) {
     logOnce = options.log;
-    authenticateClient(auth, options, baseUrl).then((c) => {
-      return runClient(c, clientFn, prevSubject, baseUrl);
-    });
+    authenticateClient(auth, options, baseUrl).then(
+      { timeout: options.timeout },
+      (c) => {
+        return runClient(c, clientFn, prevSubject, baseUrl);
+      }
+    );
   } else {
     if (!c8yclient._client) {
       c8yclient._client = new Client(auth, baseUrl);
@@ -350,7 +355,7 @@ function authenticateClient(
   options: C8yClientOptions,
   baseUrl: string
 ): Cypress.Chainable<C8yClient> {
-  return cy.then(async () => {
+  return cy.then({ timeout: options.timeout }, async () => {
     const clientCore = new FetchClient(auth, baseUrl);
     const res = await clientCore.fetch("/tenant/currentTenant");
     if (res.status !== 200) {
@@ -371,7 +376,7 @@ function run(
   baseUrl: string
 ) {
   const clientFn = isArrayOfFunctions(fns) ? fns.shift() : fns;
-  return cy.then(async () => {
+  return cy.then({ timeout: options.timeout }, async () => {
     const configIgnore =
       (Cypress.config().c8ypact && Cypress.config().c8ypact.ignore) || false;
     const optionsIgnore =

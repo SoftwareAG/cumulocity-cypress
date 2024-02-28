@@ -662,7 +662,7 @@ describe("c8ypact", () => {
             type: "BasicAuth",
           });
           expect(spy.getCall(0).args[1]._options).to.deep.eq({
-            ...defaultClientOptions,
+            ...defaultClientOptions(),
             failOnStatusCode: false,
             preferBasicAuth: true,
           });

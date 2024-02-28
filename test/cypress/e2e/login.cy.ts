@@ -5,35 +5,43 @@ import {
   initRequestStub,
   url as _url,
 } from "../support/util";
-const { _ } = Cypress;
+
+const { _, $ } = Cypress;
 
 describe("login", () => {
-  context("without cy.session", () => {
-    let url: string;
+  let url: string;
 
-    beforeEach(() => {
-      Cypress.session.clearAllSavedSessions();
-      initRequestStub();
+  beforeEach(() => {
+    Cypress.session.clearAllSavedSessions();
+    initRequestStub();
 
-      Cypress.env("C8Y_TENANT", "t702341987");
-      url = _url(`/tenant/oauth?tenant_id=t702341987`);
+    Cypress.env("C8Y_TENANT", "t702341987");
+    url = _url(`/tenant/oauth?tenant_id=t702341987`);
 
-      stubResponse({
-        isOkStatusCode: true,
-        status: 200,
-        // seems not to work
-        headers: {
-          "Set-Cookie":
-            "authorization=eyJhbGciOiJ; Path=/; Domain=localhost; HttpOnly",
-        },
-        body: undefined,
-      });
+    const headers = new Headers();
+    headers.append(
+      "set-cookie",
+      "authorization=eyJhbGciOiJ; path=/; domain=localhost; HttpOnly"
+    );
+    headers.append(
+      "set-cookie",
+      "XSRF-TOKEN=pQWAHZQfhLRcDVqVsCjV; Path=/; Domain=localhost; Secure"
+    );
+    stubResponse({
+      isOkStatusCode: true,
+      status: 200,
+      headers,
+      body: undefined,
     });
+  });
 
+  context("without cy.session", () => {
     it("login with user and password", () => {
       let validationCalled = false;
       cy.login("user", "password", {
         useSession: false,
+        disableGainsight: false,
+        hideCookieBanner: false,
         validationFn: cy.stub(() => {
           validationCalled = true;
         }),
@@ -45,7 +53,7 @@ describe("login", () => {
         expect(validationCalled).to.be.true;
         expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("user");
 
-        const options = expectHttpRequest({
+        expectHttpRequest({
           url,
           method: "POST",
           body: {
@@ -56,9 +64,6 @@ describe("login", () => {
           },
           form: true,
         });
-        // cy.log(JSON.stringify(options));
-        // const sessionData = await Cypress.session.getCurrentSessionData();
-        // cy.log(JSON.stringify(sessionData));
       });
     });
 
@@ -97,6 +102,8 @@ describe("login", () => {
       let validationCalled = false;
       cy.login("user", "password", {
         useSession: false,
+        hideCookieBanner: false,
+        disableGainsight: false,
         validationFn: cy.stub(() => {
           validationCalled = true;
         }),
@@ -114,6 +121,8 @@ describe("login", () => {
       cy.getAuth("x", "y")
         .login({
           useSession: false,
+          hideCookieBanner: false,
+          disableGainsight: false,
           validationFn: cy.stub(() => {
             validationCalled = true;
           }),
@@ -137,37 +146,76 @@ describe("login", () => {
   });
 
   context("use cy.session", () => {
-    let url: string;
-
-    beforeEach(() => {
-      Cypress.session.clearAllSavedSessions();
-      initRequestStub();
-
-      Cypress.env("C8Y_TENANT", "t702341987");
-      url = _url(`/tenant/oauth?tenant_id=t702341987`);
-
-      stubResponse({
-        isOkStatusCode: true,
-        status: 200,
-        // seems not to work
-        headers: {
-          "Set-Cookie":
-            "authorization=eyJhbGciOiJ; Path=/; Domain=localhost; HttpOnly",
-        },
-        body: undefined,
-      });
-    });
-
-    it.skip("login with user and password", () => {
+    it("login set cookies in session", () => {
       cy.login({
         user: "pvtuser",
         password: "pvtpassword",
         tenant: "t702341987",
       }).then((auth) => {
+        Cypress.session.getCurrentSessionData().then((sessionData) => {
+          expect(sessionData.cookies).to.have.length(2);
+          expect(sessionData.cookies[0].name).to.eq("authorization");
+          expect(sessionData.cookies[0].value).to.eq("eyJhbGciOiJ");
+          expect(sessionData.cookies[1].name).to.eq("XSRF-TOKEN");
+          expect(sessionData.cookies[1].value).to.eq("pQWAHZQfhLRcDVqVsCjV");
+        });
+
+        cy.getCookies().then((cookies) => {
+          expect(cookies).to.have.length(2);
+          expect(cookies[0].name).to.eq("authorization");
+          expect(cookies[0].value).to.eq("eyJhbGciOiJ");
+          expect(cookies[1].name).to.eq("XSRF-TOKEN");
+          expect(cookies[1].value).to.eq("pQWAHZQfhLRcDVqVsCjV");
+        });
+
         expect(auth).to.not.be.undefined;
-        expect(auth.user).to.eq("user");
-        expect(auth.password).to.eq("password");
+        expect(auth.user).to.eq("pvtuser");
+        expect(auth.password).to.eq("pvtpassword");
         expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("pvtuser");
+      });
+    });
+
+    it("hideCookieBanner", () => {
+      cy.login(
+        {
+          user: "pvtuser",
+          password: "pvtpassword",
+          tenant: "t702341987",
+        },
+        {
+          hideCookieBanner: true,
+        }
+      ).then(() => {
+        cy.window().then((win) => {
+          const cookie = JSON.parse(
+            win.localStorage.getItem("acceptCookieNotice")
+          );
+          expect(cookie).to.deep.eq({ required: true, functional: true });
+        });
+      });
+    });
+
+    it("gainsight is disabled", (done) => {
+      cy.login(
+        {
+          user: "pvtuser",
+          password: "pvtpassword",
+          tenant: "t702341987",
+        },
+        {
+          disableGainsight: true,
+        }
+      ).then(() => {
+        Cypress.once("fail", (err) => {
+          expect(err.message).to.eq(
+            "Intercepted Gainsight API key call, but Gainsight should have been disabled. Failing..."
+          );
+          done();
+        });
+
+        cy.then(() => {
+          $.get(_url(`/tenant/system/options/gainsight/api.key`));
+        });
       });
     });
   });

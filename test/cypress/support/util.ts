@@ -31,6 +31,7 @@ export function url(
 export function initRequestStub(): void {
   cy.stub(Cypress, "backend").callThrough();
   cy.stub(window, "fetchStub");
+  cy.stub(Cypress, "automation").callThrough();
 }
 
 type StubbedResponseType<T> =
@@ -42,7 +43,7 @@ type StubbedResponseType<T> =
  * in the order requests are expected.
  *
  * @example
- * stubResponse<IUserGroup>([{
+ * stubResponses<IUserGroup>([{
  *   isOkStatusCode: true,
  *   status: 201,
  *   body: {
@@ -50,14 +51,17 @@ type StubbedResponseType<T> =
  *   },
  * },
  * ...
- * );
+ * ]);
  *
  * @param {StubbedResponseType<T>[]} responses response or array of response objects
  */
-export function stubResponses<T>(responses: StubbedResponseType<T>[]): void {
+export function stubResponses<T>(
+  responses: StubbedResponseType<T>[],
+  delay: number = 0
+): void {
   let all = _.isArray(responses) ? responses : [responses];
   all.forEach((response, index) => {
-    stubResponse<T>(response, index);
+    stubResponse<T>(response, index, delay);
   });
 }
 
@@ -65,31 +69,121 @@ export function stubResponses<T>(responses: StubbedResponseType<T>[]): void {
  * Stub response for a `cy.request()`. If more than one request needs to be
  * stubbed, pass the `callIndex` with the position in the expected sequence.
  *
+ * Set-Cookie headers are automatically stubbed and can be accessed using
+ * `cy.getCookie()` and `cy.getCookies()` after the request.
+ *
  * @example
  * stubResponse<IUserGroup>({
  *   isOkStatusCode: true,
  *   status: 201,
+ *   headers: new Headers({
+ *    "set-cookie":
+ *      "authorization=eyJhbGciOiJ; path=/; domain=localhost; HttpOnly",
+ *   }),
  *   body: {
  *     name: "business",
  *   },
  * }, 3);
  *
- * @param {StubbedResponseType<T>} response the response objects
+ * @param {StubbedResponseType<T>} response the response object
  */
 export function stubResponse<T>(
   response: StubbedResponseType<T>,
-  callIndex: number = 0
+  callIndex: number = 0,
+  delay: number = 0
 ): void {
-  Cypress.backend
-    // @ts-ignore
+  const success = () => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve(response);
+      }, delay);
+    });
+  };
+
+  const failure = () => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        reject(response);
+      }, delay);
+    });
+  };
+
+  (Cypress.backend as sinon.SinonStub)
     .withArgs("http:request", Cypress.sinon.match.any)
     .onCall(callIndex)
-    .resolves(response);
+    .callsFake(success);
+
   if (!response.status || response.status < 400) {
-    window.fetchStub.onCall(callIndex).resolves(response);
+    window.fetchStub.onCall(callIndex).callsFake(success);
   } else {
-    window.fetchStub.onCall(callIndex).rejects(response);
+    window.fetchStub.onCall(callIndex).callsFake(failure);
   }
+
+  stubCookies(response);
+}
+
+/**
+ * Stub cookies as created by `cy.request()`. Cookies are read from the
+ * `Set-Cookie` header and can be accessed using `cy.getCookie()` and `cy.getCookies()`
+ * after the request.
+ *
+ * @example
+ * stubResponse({
+ *  status: 200,
+ *  headers: new Headers({
+ *    "set-cookie":
+ *      "authorization=eyJhbGciOiJ; path=/; domain=localhost; HttpOnly",
+ *  }),
+ *  body: undefined,
+ * });
+ *
+ * @param {StubbedResponseType<T>} response the response objects
+ */
+export function stubCookies<T>(response: StubbedResponseType<T>): void {
+  if (!response.headers?.getSetCookie) return;
+
+  let setCookie = response.headers.getSetCookie;
+  let cookies = [];
+  if (_.isFunction(setCookie)) {
+    cookies = (response.headers.getSetCookie as () => string[])();
+  } else if (_.isString(setCookie)) {
+    cookies = [setCookie];
+  } else if (_.isArray(setCookie)) {
+    cookies = setCookie;
+  }
+
+  cookies = cookies.map((c: string) => {
+    const components = c.split(";");
+    if (_.isEmpty(components)) return;
+
+    const [name, value] = components[0].split("=");
+    const result = { name, value };
+    if (components.length === 1) return result;
+
+    return components.reduce((acc, cookie) => {
+      let [name, value = ""] = cookie.split("=").map((c) => c.trim());
+      acc[name] = value;
+      return acc;
+    }, result);
+  });
+
+  (Cypress.automation as sinon.SinonStub)
+    .withArgs(
+      "get:cookie",
+      sinon.match((value) => {
+        return (
+          _.isObjectLike(value) &&
+          "name" in value &&
+          // not checking for domain, path, secure, httpOnly, hostOnly, expiry, sameSite
+          cookies.filter((c) => _.isEqual(c.name, value.name)).length > 0
+        );
+      })
+    )
+    .resolves((c) => cookies.filter((c) => _.isEqual(c.name, c)));
+
+  (Cypress.automation as sinon.SinonStub)
+    .withArgs("get:cookies")
+    .resolves(cookies);
 }
 
 /**
