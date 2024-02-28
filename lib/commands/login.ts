@@ -29,7 +29,17 @@ declare global {
        * @param {string} password - the password to login to Cumulocity
        * @param {C8yLoginOptions} options - login options to use for login to Cumulocity
        */
-      login(...args: LoginAuthArgs): Chainable<C8yAuthOptions>;
+      login(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
+      login(user: string, options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
+      login(
+        user: string,
+        password: string,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
+      login(
+        auth: C8yAuthOptions,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
 
       /**
        * Get `C8yAuthOptions` from arguments or environment variables.
@@ -37,7 +47,20 @@ declare global {
        * @example
        * cy.getAuth("admin", "password").login();
        */
-      getAuth(...args: LoginAuthArgs): Chainable<C8yAuthOptions>;
+      getAuth(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
+      getAuth(
+        user: string,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
+      getAuth(
+        user: string,
+        password: string,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
+      getAuth(
+        auth: C8yAuthOptions,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
 
       /**
        * Use `C8yAuthOptions` for all commands of this library requiring authentication
@@ -48,7 +71,20 @@ declare global {
        * cy.login();
        * cy.createUser(...);
        */
-      useAuth(...args: LoginAuthArgs): Chainable<C8yAuthOptions>;
+      useAuth(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
+      useAuth(
+        user: string,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
+      useAuth(
+        user: string,
+        password: string,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
+      useAuth(
+        auth: C8yAuthOptions,
+        options?: C8yLoginOptions
+      ): Chainable<C8yAuthOptions>;
     }
 
     interface SuiteConfigOverrides {
@@ -80,13 +116,13 @@ declare global {
     hideCookieBanner?: boolean;
     validationFn?: () => boolean;
   };
-
-  type LoginAuthArgs =
-    | [options?: C8yLoginOptions]
-    | [user: string, options?: C8yLoginOptions]
-    | [user: string, password: string, options?: C8yLoginOptions]
-    | [authOptions: C8yAuthOptions, options?: C8yLoginOptions];
 }
+
+type LoginAuthArgs =
+  | [options?: C8yLoginOptions]
+  | [user: string, options?: C8yLoginOptions]
+  | [user: string, password: string, options?: C8yLoginOptions]
+  | [authOptions: C8yAuthOptions, options?: C8yLoginOptions];
 
 export const defaultLoginOptions = () => {
   return {
@@ -101,92 +137,92 @@ export const defaultLoginOptions = () => {
   } as C8yLoginOptions;
 };
 
-Cypress.Commands.add("login", { prevSubject: "optional" }, function (...args) {
-  const auth: C8yAuthOptions = getAuthOptions(...args);
-  expect(auth).to.not.be.undefined;
+Cypress.Commands.add(
+  "login",
+  // @ts-ignore
+  { prevSubject: "optional" },
+  function (...args: LoginAuthArgs) {
+    const auth: C8yAuthOptions = getAuthOptions(...args);
+    expect(auth).to.not.be.undefined;
 
-  const consoleProps: any = {};
-  Cypress.log({
-    name: "login",
-    message: auth,
-    consoleProps: () => consoleProps,
-  });
-  (Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false })).then(
-    (auth: C8yAuthOptions) => {
-      let options: C8yLoginOptions = args.pop();
-      if (!options || !_.isObjectLike(options)) {
-        options = {};
-      }
-
-      if (_.isObjectLike(options)) {
-        if (isAuth(options)) {
+    const consoleProps: any = {};
+    Cypress.log({
+      name: "login",
+      message: auth,
+      consoleProps: () => consoleProps,
+    });
+    (Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false })).then(
+      (auth: C8yAuthOptions) => {
+        let options: C8yLoginOptions = {};
+        let lastArg: any = args.pop();
+        if (isAuth(lastArg) || !_.isObjectLike(lastArg)) {
           options = defaultLoginOptions();
         } else {
-          options = _.defaults(options, defaultLoginOptions());
+          options = _.defaults(lastArg, defaultLoginOptions());
         }
-      }
 
-      consoleProps.auth = auth;
-      consoleProps.options = options;
+        consoleProps.auth = auth;
+        consoleProps.options = options;
 
-      const loginRequest = (tenant: string) => {
-        cy.request({
-          method: "POST",
-          url: `/tenant/oauth?tenant_id=${tenant}`,
-          body: {
-            grant_type: "PASSWORD",
-            username: auth.user,
-            password: auth.password,
-            tfa_code: undefined,
-          },
-          form: true,
-        }).then((resp) => {
-          expect(resp).to.have.property("headers");
-          if (options.disableGainsight === true) {
-            cy.disableGainsight();
-          }
-          if (options.hideCookieBanner === true) {
-            cy.hideCookieBanner();
-          }
-        });
-      };
-
-      const tenant: string = auth.tenant || Cypress.env("C8Y_TENANT");
-      consoleProps.tenant = tenant;
-
-      if (options.useSession === true) {
-        cy.session(
-          auth.user,
-          () => {
-            loginRequest(tenant);
-          },
-          {
-            validate() {
-              options.validationFn();
-              Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
-              Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+        const loginRequest = (tenant: string) => {
+          cy.request({
+            method: "POST",
+            url: `/tenant/oauth?tenant_id=${tenant}`,
+            body: {
+              grant_type: "PASSWORD",
+              username: auth.user,
+              password: auth.password,
+              tfa_code: undefined,
             },
-            cacheAcrossSpecs: true,
-          }
-        );
-      } else {
-        loginRequest(tenant);
-        options.validationFn();
-        Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
-        Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
-      }
+            form: true,
+          }).then((resp) => {
+            expect(resp).to.have.property("headers");
+            if (options.disableGainsight === true) {
+              cy.disableGainsight();
+            }
+            if (options.hideCookieBanner === true) {
+              cy.hideCookieBanner();
+            }
+          });
+        };
 
-      resetClient();
-    }
-  );
-  cy.wrap(auth, { log: false });
-});
+        const tenant: string = auth.tenant || Cypress.env("C8Y_TENANT");
+        consoleProps.tenant = tenant;
+
+        if (options.useSession === true) {
+          cy.session(
+            auth.user,
+            () => {
+              loginRequest(tenant);
+            },
+            {
+              validate() {
+                options.validationFn();
+                Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
+                Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+              },
+              cacheAcrossSpecs: true,
+            }
+          );
+        } else {
+          loginRequest(tenant);
+          options.validationFn();
+          Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
+          Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+        }
+
+        resetClient();
+      }
+    );
+    cy.wrap(auth, { log: false });
+  }
+);
 
 Cypress.Commands.add(
   "getAuth",
   // @ts-ignore
   { prevSubject: "optional" },
-  function (...args) {
+  function (...args: LoginAuthArgs) {
     const auth: C8yAuthOptions = getAuthOptions(...args);
     const consoleProps = {
       auth,
@@ -212,7 +248,7 @@ Cypress.Commands.add(
   "useAuth",
   // @ts-ignore
   { prevSubject: "optional" },
-  function (...args) {
+  function (...args: LoginAuthArgs) {
     const auth: C8yAuthOptions = getAuthOptions(...args);
     const consoleProps = {
       auth,
