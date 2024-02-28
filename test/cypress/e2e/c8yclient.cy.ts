@@ -12,6 +12,7 @@ import {
   stubResponses,
 } from "../support/util";
 import {
+  defaultClientOptions,
   isArrayOfFunctions,
   isCypressError,
   isIResult,
@@ -32,6 +33,7 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_PLUGIN_LOADED", undefined);
+    Cypress.env("C8Y_C8YCLIENT_TIMEOUT", undefined);
 
     initRequestStub();
     stubResponses([
@@ -799,6 +801,72 @@ describe("c8yclient", () => {
           expect(response.isOkStatusCode).to.eq(true);
           expect(response.duration).to.not.be.undefined;
           expectC8yClientRequest(requestOptions);
+        });
+    });
+  });
+
+  context("timeout", () => {
+    const user = { user: "admin", password: "mypwd", tenant: "t1234" };
+
+    it("should use cypress responseTimeout as default timeout", () => {
+      expect(defaultClientOptions().timeout).to.eq(
+        Cypress.config().responseTimeout
+      );
+    });
+
+    it("should fail with timeout", (done) => {
+      Cypress.env("C8Y_C8YCLIENT_TIMEOUT", 1000);
+      expect(defaultClientOptions().timeout).to.eq(1000);
+
+      stubResponse(
+        new window.Response(JSON.stringify({ name: "t123456789" }), {
+          status: 200,
+          statusText: "OK",
+          headers: {},
+        }),
+        0,
+        4000
+      );
+
+      const start = Date.now();
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("timed out after waiting");
+        expect(Date.now() - start)
+          .to.be.lessThan(2000)
+          .and.greaterThan(990);
+        done();
+      });
+
+      cy.getAuth(user).c8yclient<ICurrentTenant>((c) => {
+        return c.tenant.current();
+      });
+    });
+
+    it("should not fail with timeout", () => {
+      Cypress.env("C8Y_C8YCLIENT_TIMEOUT", 3000);
+      expect(defaultClientOptions().timeout).to.eq(3000);
+
+      stubResponse(
+        new window.Response(JSON.stringify({ name: "t123456789" }), {
+          status: 200,
+          statusText: "OK",
+          headers: {},
+        }),
+        0,
+        2000
+      );
+
+      const start = Date.now();
+      cy.getAuth(user)
+        .c8yclient<ICurrentTenant>((c) => {
+          return c.tenant.current();
+        })
+        .then((response) => {
+          expect(response.status).to.eq(200);
+          expect(Date.now() - start)
+            .to.be.lessThan(3000)
+            .and.greaterThan(2000);
         });
     });
   });
