@@ -64,12 +64,17 @@ export interface C8yAuthOptions extends ICredentials {
 
 export type C8yAuthArgs = string | C8yAuthOptions;
 
-export function wrapFetchRequest(
+interface LogOptions {
+  consoleProps: any;
+  loggedInUser?: string;
+  logger?: { end: () => void };
+}
+
+export async function wrapFetchRequest(
   url: RequestInfo | URL,
   fetchOptions?: RequestInit,
-  logOptions?: { consoleProps: any; loggedInUser?: string }
+  logOptions?: LogOptions
 ): Promise<Response> {
-  let responseObj: Partial<Cypress.Response<any>>;
   // client.tenant.current() does add content-type header for some reason. probably mistaken accept header.
   // as this is not required, remove it to avoid special handling in pact matching against recordings
   // not created by c8y/client.
@@ -87,83 +92,106 @@ export function wrapFetchRequest(
     }
   }
 
-  let startTime: number = Date.now();
-
+  const startTime = Date.now();
   const fetchFn = _.get(globalThis, "fetchStub") || globalThis.fetch;
   const fetchPromise: Promise<Response> = fetchFn(url, fetchOptions);
+  const duration = Date.now() - startTime;
 
-  const createFetchResponse = async (response: Response) => {
-    const duration = Date.now() - startTime;
-    responseObj = await (async () => {
-      return toCypressResponse(response, duration, fetchOptions, url);
-    })();
-
-    let rawBody: string | undefined = undefined;
-    if (response.data) {
-      responseObj.body = response.data;
-      rawBody = _.isObject(responseObj.body)
-        ? JSON.stringify(responseObj.body)
-        : responseObj.body;
-    } else if (response.body) {
-      try {
-        rawBody = await response.text();
-        responseObj.body = JSON.parse(rawBody);
-      } catch {
-        responseObj.body = rawBody;
-      }
-    }
-
-    // empty body ("") is not allowed, make sure to use undefined instead
-    if (_.isEmpty(rawBody)) {
-      rawBody = undefined;
-    }
-
-    // create a new window.Response for Client. this is required as the body
-    // stream can not be read more than once. as we just read it, recreate the response
-    // and resolve json() and text() promises using the values we read from the stream.
-    const res = new window.Response(rawBody, _.cloneDeep(response));
-    try {
-      responseObj.requestBody =
-        fetchOptions && _.isString(fetchOptions?.body)
-          ? JSON.parse(fetchOptions.body)
-          : fetchOptions?.body;
-    } catch (error) {
-      responseObj.requestBody = fetchOptions?.body;
-    }
-    // res.ok = response.ok,
-    responseObj.method = fetchOptions?.method || res?.method || "GET";
-
-    if (logOptions?.consoleProps) {
-      _.extend(
-        logOptions.consoleProps,
-        updateConsoleProps(responseObj, fetchOptions, logOptions)
-      );
-    }
-
-    // pass the responseObj as part of the window.Response object. this way we can access
-    // in the Clients response and do not need to reprocess
-    res.responseObj = responseObj;
-    res.json = () => Promise.resolve(responseObj.body);
-    res.text = () => Promise.resolve(rawBody || "");
-
-    return res;
+  const options = {
+    url,
+    fetchOptions,
+    logOptions,
+    duration,
   };
 
   return fetchPromise
     .then(async (response) => {
-      const res = await createFetchResponse(response);
+      const res = await wrapFetchResponse(response, options);
+      if (_.isFunction(logOptions?.logger?.end)) logOptions?.logger?.end();
       return Promise.resolve(res);
     })
     .catch(async (response) => {
-      const res = await createFetchResponse(response);
+      const res = await wrapFetchResponse(response, options);
+      if (_.isFunction(logOptions?.logger?.end)) logOptions?.logger?.end();
       return Promise.reject(res);
     });
+}
+
+export async function wrapFetchResponse(
+  response: Response,
+  options: {
+    url?: RequestInfo | URL;
+    fetchOptions?: RequestInit;
+    duration?: number;
+    logOptions?: LogOptions;
+  } = {}
+) {
+  // create a new window.Response for Client. this is required as the body
+  // stream can not be read more than once. as we just read it, recreate the response
+  // and resolve json() and text() promises using the values we read from the stream.
+  const res = response.clone();
+
+  const responseObj = await (async () => {
+    return toCypressResponse(
+      response,
+      options.duration,
+      options.fetchOptions,
+      options.url
+    );
+  })();
+  let rawBody: string | undefined = undefined;
+  if (response.data) {
+    responseObj.body = response.data;
+    rawBody = _.isObject(responseObj.body)
+      ? JSON.stringify(responseObj.body)
+      : responseObj.body;
+  } else if (response.body) {
+    try {
+      rawBody = await response.text();
+      responseObj.body = JSON.parse(rawBody);
+    } catch {
+      responseObj.body = rawBody;
+    }
+  }
+
+  // empty body ("") is not allowed, make sure to use undefined instead
+  if (_.isEmpty(rawBody)) {
+    rawBody = undefined;
+  }
+
+  const fetchOptions = options?.fetchOptions ?? {};
+  const logOptions = options?.logOptions;
+  try {
+    responseObj.requestBody =
+      fetchOptions && _.isString(fetchOptions?.body)
+        ? JSON.parse(fetchOptions.body)
+        : fetchOptions?.body;
+  } catch (error) {
+    responseObj.requestBody = fetchOptions?.body;
+  }
+  // res.ok = response.ok,
+  responseObj.method = fetchOptions?.method || res?.method || "GET";
+
+  if (logOptions?.consoleProps) {
+    _.extend(
+      logOptions.consoleProps,
+      updateConsoleProps(responseObj, fetchOptions, logOptions)
+    );
+  }
+
+  // pass the responseObj as part of the window.Response object. this way we can access
+  // in the Clients response and do not need to reprocess
+  res.responseObj = responseObj;
+  res.json = () => Promise.resolve(responseObj.body);
+  res.text = () => Promise.resolve(rawBody || "");
+
+  return res;
 }
 
 function updateConsoleProps(
   responseObj: Partial<Cypress.Response<any>>,
   fetchOptions?: RequestInit,
-  logOptions?: { consoleProps: any; loggedInUser?: string },
+  logOptions?: LogOptions,
   url?: RequestInfo | URL
 ) {
   const props: any = {};

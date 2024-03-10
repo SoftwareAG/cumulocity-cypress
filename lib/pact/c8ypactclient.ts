@@ -6,7 +6,7 @@ import {
 } from "@c8y/client";
 import {
   toWindowFetchResponse,
-  wrapFetchRequest,
+  wrapFetchResponse,
 } from "../../shared/c8yclient";
 import { C8yDefaultPact } from "../../shared/c8ypact";
 
@@ -42,15 +42,34 @@ export class C8yPactFetchClient extends FetchClient {
       }
     }
 
-    let result = await wrapFetchRequest(url, fetchOptions);
-    if (Cypress.c8ypact.isRecordingEnabled() && result.responseObj) {
-      await Cypress.c8ypact.savePact(
-        // @ts-ignore
-        result.responseObj,
-        {},
-        { noqueue: true }
-      );
+    const savePact = async (response: IFetchResponse) => {
+      if (Cypress.c8ypact.isRecordingEnabled()) {
+        let responseObj = response.responseObj;
+        if (!response.responseObj) {
+          const r = await wrapFetchResponse(response, {
+            url,
+            fetchOptions: this.getFetchOptions(fetchOptions),
+          });
+          responseObj = r.responseObj;
+        } else {
+          delete response.responseObj;
+        }
+        await Cypress.c8ypact.savePact(
+          // @ts-ignore
+          responseObj,
+          {},
+          { noqueue: true }
+        );
+      }
+    };
+
+    try {
+      const response = await super.fetch(url, fetchOptions);
+      await savePact(response);
+      return Promise.resolve(response);
+    } catch (failure) {
+      await savePact(failure as IFetchResponse);
+      return Promise.reject(failure);
     }
-    return Promise.resolve(result);
   }
 }

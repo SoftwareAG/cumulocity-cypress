@@ -173,9 +173,12 @@ globalThis.fetch = async function (
   fetchOptions?: RequestInit
 ) {
   let consoleProps: any = {};
+
+  let logger: Cypress.Log;
   if (logOnce === true) {
-    Cypress.log({
+    logger = Cypress.log({
       name: "c8yclient",
+      autoEnd: false,
       message: "",
       consoleProps: () => consoleProps,
       // @ts-ignore
@@ -203,7 +206,7 @@ globalThis.fetch = async function (
           message: `${
             fetchOptions?.method || "GET"
           } ${getStatus()} ${getDisplayUrl(
-            consoleProps["Yielded"]?.url || ""
+            url || consoleProps["Yielded"]?.url || ""
           )}`,
           indicator: getIndicator(),
           status: getStatus(),
@@ -215,6 +218,7 @@ globalThis.fetch = async function (
   }
   return wrapFetchRequest(url, fetchOptions, {
     consoleProps,
+    logger,
     loggedInUser:
       Cypress.env("C8Y_LOGGED_IN_USER") ??
       Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
