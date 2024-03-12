@@ -2,6 +2,7 @@ import { C8yDefaultPact } from "../../../shared/c8ypact";
 import { C8yPactFetchClient } from "../../../lib/pact/c8ypactclient";
 import { BasicAuth, IFetchResponse } from "@c8y/client";
 import { initRequestStub, stubResponse, url } from "cypress/support/util";
+import { encodeBase64 } from "../../../shared/c8yclient";
 
 const { _ } = Cypress;
 
@@ -23,9 +24,7 @@ describe("c8ypact fetchclient", () => {
 
   const creds = { user: "test", password: "test" };
   const auth = new BasicAuth(creds);
-  const basicAuth = `Basic ${Buffer.from(
-    creds.user + ":" + creds.password
-  ).toString("base64")}`;
+  const basicAuth = `Basic ${encodeBase64(creds.user + ":" + creds.password)}`;
 
   context("fetch using fetchStub", () => {
     it("should fetch url and pass authentication", () => {

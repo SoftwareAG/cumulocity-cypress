@@ -126,11 +126,6 @@ export async function wrapFetchResponse(
     logOptions?: LogOptions;
   } = {}
 ) {
-  // create a new window.Response for Client. this is required as the body
-  // stream can not be read more than once. as we just read it, recreate the response
-  // and resolve json() and text() promises using the values we read from the stream.
-  const res = response.clone();
-
   const responseObj = await (async () => {
     return toCypressResponse(
       response,
@@ -170,7 +165,7 @@ export async function wrapFetchResponse(
     responseObj.requestBody = fetchOptions?.body;
   }
   // res.ok = response.ok,
-  responseObj.method = fetchOptions?.method || res?.method || "GET";
+  responseObj.method = fetchOptions?.method || response.method || "GET";
 
   if (logOptions?.consoleProps) {
     _.extend(
@@ -179,13 +174,26 @@ export async function wrapFetchResponse(
     );
   }
 
+  // create a new window.Response for Client. this is required as the body
+  // stream can not be read more than once. as we just read it, recreate the response
+  // and resolve json() and text() promises using the values we read from the stream.
+  const result = new Response(rawBody, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+
   // pass the responseObj as part of the window.Response object. this way we can access
   // in the Clients response and do not need to reprocess
-  res.responseObj = responseObj;
-  res.json = () => Promise.resolve(responseObj.body);
-  res.text = () => Promise.resolve(rawBody || "");
+  result.responseObj = responseObj;
+  result.requestBody = responseObj.requestBody;
+  result.method = responseObj.method;
+  result.data = responseObj.body;
 
-  return res;
+  // result.json = () => Promise.resolve(responseObj.body);
+  // result.text = () => Promise.resolve(rawBody || "");
+
+  return result;
 }
 
 function updateConsoleProps(
@@ -402,9 +410,7 @@ export function getAuthOptionsFromBasicAuthHeader(
   }
 
   const base64Credentials = authHeader.slice("Basic ".length);
-  const credentials = Buffer.from(base64Credentials, "base64").toString(
-    "utf-8"
-  );
+  const credentials = decodeBase64(base64Credentials);
 
   const components = credentials.split(":");
   if (!components || components.length < 2) {
@@ -412,4 +418,30 @@ export function getAuthOptionsFromBasicAuthHeader(
   }
 
   return { user: components[0], password: components.slice(1).join(":") };
+}
+
+export function encodeBase64(str: string): string {
+  if (!str) return "";
+
+  let encoded: string;
+  if (typeof Buffer !== "undefined") {
+    encoded = Buffer.from(str).toString("base64");
+  } else {
+    encoded = btoa(str);
+  }
+
+  return encoded;
+}
+
+export function decodeBase64(base64: string): string {
+  if (!base64) return "";
+
+  let decoded: string;
+  if (typeof Buffer !== "undefined") {
+    decoded = Buffer.from(base64, "base64").toString("utf-8");
+  } else {
+    decoded = atob(base64);
+  }
+
+  return decoded;
 }

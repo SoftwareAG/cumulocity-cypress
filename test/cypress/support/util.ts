@@ -1,3 +1,5 @@
+import { encodeBase64 } from "../../../shared/c8yclient";
+
 const { _, sinon } = Cypress;
 
 declare global {
@@ -263,9 +265,9 @@ export function expectC8yClientRequest(
     if (options.auth && !result.headers.Authorization) {
       const tenant = options.auth.tenant ? options.auth.tenant + "/" : "";
       const user = `${tenant}${options.auth.user}`;
-      result.headers.Authorization = `Basic ${Buffer.from(
+      result.headers.Authorization = `Basic ${encodeBase64(
         user + ":" + options.auth.password
-      ).toString("base64")}`;
+      )}`;
     }
     _.defaultsDeep(result, defaultOptions);
 
