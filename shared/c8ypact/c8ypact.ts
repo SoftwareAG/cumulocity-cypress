@@ -1,12 +1,11 @@
 import _ from "lodash";
-import { C8yPactPreprocessorOptions } from "./preprocessor";
 import {
-  C8yAuthOptions,
-  C8yClient,
-  C8yClientOptions,
-  toResponseHeaders,
-} from "../c8yclient";
+  C8yPactPreprocessor,
+  C8yPactPreprocessorOptions,
+} from "./preprocessor";
+import { C8yAuthOptions, C8yClient, C8yClientOptions } from "../c8yclient";
 import { C8yDefaultPactUrlMatcher, C8yPactUrlMatcher } from "./urlmatcher";
+import { C8ySchemaGenerator } from ".";
 
 /**
  * ID representing a pact object. Should be unique.
@@ -59,6 +58,16 @@ export interface C8yPactConfigOptions {
   preprocessor?: C8yPactPreprocessorOptions;
 }
 export type C8yPactConfigKeys = keyof C8yPactConfigOptions;
+
+export interface C8yPactEnv {
+  tenant?: string;
+  loggedInUser?: string;
+  loggedInUserAlias?: string;
+  testTitlePath?: string[];
+  systemVersion?: string;
+  pluginVersion?: string;
+  pluginFolder?: string;
+}
 
 /**
  * Pact object. Contains all information about a recorded pact, including
@@ -281,8 +290,10 @@ export class C8yDefaultPact implements C8yPact {
   getRecordsMatchingRequest(req: {
     url?: string;
     method?: string;
+    urlMatcher?: C8yPactUrlMatcher;
   }): C8yPactRecord[] | null {
     const matcher =
+      req.urlMatcher ??
       // @ts-ignore - TODO
       typeof Cypress != "undefined"
         ? // @ts-ignore - TODO
@@ -549,6 +560,105 @@ export function toPactResponse<T>(
   ) as C8yPactResponse<T>;
   if (_.isEmpty(result)) return undefined;
   return result;
+}
+
+export type C8yPactSaveKeys = "id" | "info" | "records";
+
+export async function toPactSerializableObject(
+  response: Partial<Cypress.Response<any>>,
+  info: C8yPactInfo,
+  options: {
+    preprocessor?: C8yPactPreprocessor;
+    client?: C8yClient;
+    modifiedResponse?: Cypress.Response<any>;
+    schemaGenerator?: C8ySchemaGenerator;
+    loggedInUser?: string;
+    loggedInUserAlias?: string;
+    authType?: string;
+  } = {}
+): Promise<Pick<C8yPact, C8yPactSaveKeys>> {
+  const recordOptions = {
+    loggedInUser: options?.loggedInUser,
+    loggedInUserAlias: options?.loggedInUserAlias,
+    authType: options?.authType,
+  };
+  const record = createPactRecord(response, options?.client, recordOptions);
+  const pact = new C8yDefaultPact([record], info, info.id);
+
+  if (
+    options?.modifiedResponse &&
+    isCypressResponse(options?.modifiedResponse)
+  ) {
+    const modifiedPactRecord = createPactRecord(
+      options.modifiedResponse,
+      options?.client,
+      recordOptions
+    );
+    pact.records[pact.records.length - 1].modifiedResponse =
+      modifiedPactRecord.response;
+  }
+
+  options?.preprocessor?.apply(pact);
+
+  const keysToSave: C8yPactSaveKeys[] = ["id", "info", "records"];
+  try {
+    await Promise.all(
+      pact.records
+        .filter((record_1: C8yPactRecord) => !record_1.response.$body)
+        .map((record_2) =>
+          options?.schemaGenerator
+            ?.generate(record_2.response.body, { name: "body" })
+            .then((schema) => {
+              record_2.response.$body = schema;
+              return record_2;
+            })
+        )
+    );
+    return { ..._.pick(pact, keysToSave) };
+  } catch (error) {
+    console.error(error);
+    return { ..._.pick(pact, keysToSave) };
+  }
+}
+
+export function createPactRecord(
+  response: Partial<Cypress.Response<any>>,
+  client?: C8yClient,
+  options: {
+    loggedInUser?: string;
+    loggedInUserAlias?: string;
+    authType?: string;
+  } = {}
+): C8yPactRecord {
+  let auth: C8yAuthOptions | undefined = undefined;
+  const envUser = options.loggedInUser;
+  const envAlias = options.loggedInUserAlias;
+  const envType = options.authType;
+  const envAuth = {
+    ...(envUser && { user: envUser }),
+    ...(envAlias && { userAlias: envAlias }),
+    ...(envAlias && { type: envType ?? "CookieAuth" }),
+  };
+
+  if (client?._auth) {
+    // do not pick the password. passwords must not be stored in the pact.
+    auth = _.defaultsDeep(
+      client._auth,
+      _.pick(envAuth, ["user", "userAlias", "type"])
+    );
+    if (client._auth.constructor != null) {
+      if (!auth) {
+        auth = { type: client._auth.constructor.name };
+      } else {
+        auth.type = client._auth.constructor.name;
+      }
+    }
+  }
+  if (!auth && (envUser || envAlias)) {
+    auth = envAuth;
+  }
+
+  return C8yDefaultPactRecord.from(response, auth, client);
 }
 
 export function isURL(obj: any): obj is URL {

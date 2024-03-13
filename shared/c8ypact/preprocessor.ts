@@ -9,6 +9,10 @@ import { C8yPact, C8yPactRecord } from "./c8ypact";
  */
 export interface C8yPactPreprocessor {
   /**
+   * Configuration options used by the preprocessor.
+   */
+  readonly options?: C8yPactPreprocessorOptions;
+  /**
    * Applies the preprocessor to the given object.
    *
    * @param obj Object to preprocess.

@@ -1,10 +1,7 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/util";
 import { defaultClientOptions } from "../../../lib/commands/c8yclient";
-import {
-  C8yCypressEnvPreprocessor,
-  createPactRecord,
-} from "../../../lib/pact/cypresspact";
+import { C8yCypressEnvPreprocessor } from "../../../lib/pact/cypresspact";
 import { C8yAuthentication, C8yClient } from "../../../shared/c8yclient";
 
 import {
@@ -15,6 +12,7 @@ import {
   C8yDefaultPact,
   C8yDefaultPactRecord,
   C8yPact,
+  createPactRecord,
 } from "../../../shared/c8ypact";
 
 const { _, sinon } = Cypress;

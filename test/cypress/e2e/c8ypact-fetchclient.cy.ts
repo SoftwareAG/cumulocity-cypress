@@ -28,7 +28,11 @@ describe("c8ypact fetchclient", () => {
 
   context("fetch using fetchStub", () => {
     it("should fetch url and pass authentication", () => {
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       const spy = cy.spy(window, "fetchStub");
       client
         .fetch("/inventory/managedObjects?fragmentType=abcd")
@@ -54,7 +58,11 @@ describe("c8ypact fetchclient", () => {
     });
 
     it("should fetch relative url without leading /", () => {
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       const spy = cy.spy(window, "fetchStub");
       client.fetch("inventory/managedObjects?fragmentType=abcd").then(() => {
         expect(spy).to.be.calledOnce;
@@ -77,7 +85,11 @@ describe("c8ypact fetchclient", () => {
         })
       );
 
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       client.fetch("/inventory/notfound").catch(async (response) => {
         expect(response.status).to.eq(404);
         expect(response.statusText).to.eq("Not Found");
@@ -88,7 +100,11 @@ describe("c8ypact fetchclient", () => {
 
     it("should log url, status", () => {
       const spy = cy.spy(Cypress, "log").log(false);
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       client.fetch("/inventory/managedObjects?fragmentType=abcd").then(() => {
         // last log is the one from fetchStub, get the last c8yclient log
         const args: any = _.findLast(
@@ -117,7 +133,11 @@ describe("c8ypact fetchclient", () => {
     });
 
     it.skip("should fetch if fetchStub is disabled", () => {
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       const fs = _.get(window, "fetchStub");
       const fetch = window.fetch;
       _.set(window, "fetch", fs);
@@ -138,13 +158,18 @@ describe("c8ypact fetchclient", () => {
     });
 
     it("should record if enabled", () => {
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
         () => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
+            expect(r.response).to.not.be.undefined;
             expect(r.response.body).to.have.property("managedObjects");
           });
         }
@@ -160,7 +185,11 @@ describe("c8ypact fetchclient", () => {
         })
       );
 
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       cy.wrap(
         client.fetch("/inventory/notfound").catch((failure) => {
           return failure;
@@ -203,7 +232,11 @@ describe("c8ypact fetchclient", () => {
       Cypress.env("C8Y_PACT_MODE", "mocking");
       Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "123" });
 
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
         // @ts-ignore
         async (response: IFetchResponse) => {
@@ -233,7 +266,11 @@ describe("c8ypact fetchclient", () => {
       Cypress.env("C8Y_PACT_MODE", "mocking");
       Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "123" });
 
-      const client = new C8yPactFetchClient(auth, Cypress.config().baseUrl);
+      const client = new C8yPactFetchClient(
+        auth,
+        Cypress.config().baseUrl,
+        Cypress.c8ypact
+      );
       cy.wrap(client.fetch("/inventory/notfound")).then(
         // @ts-ignore
         async (response: IFetchResponse) => {

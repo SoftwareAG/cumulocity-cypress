@@ -18,6 +18,9 @@ import {
   C8ySchemaMatcher,
   C8yDefaultPactMatcher,
   C8yPactMatcher,
+  toPactSerializableObject,
+  C8yPactEnv,
+  C8yPactSaveKeys,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions, C8yClient } from "../../shared/c8yclient";
@@ -91,7 +94,10 @@ declare global {
      * Save the given response as a pact record in the pact for the current test case.
      */
     savePact: (
-      response: Cypress.Response<any>,
+      response:
+        | Cypress.Response<any>
+        | C8yPact
+        | Pick<C8yPact, C8yPactSaveKeys>,
       client?: C8yClient,
       options?: C8yPactSaveOptions
     ) => Promise<void>;
@@ -131,6 +137,10 @@ declare global {
      * there is no stored pact object for the current test, null is returned.
      */
     loadCurrent(): Cypress.Chainable<C8yPact | null>;
+    /**
+     * Resolves all environment variables as a C8yPactEnv object.
+     */
+    env(): C8yPactEnv;
   }
 
   /**
@@ -253,6 +263,22 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
           );
         });
     },
+    env: () => {
+      return {
+        tenant: Cypress.env("C8Y_TENANT"),
+        systemVersion: Cypress.env("C8Y_VERSION"),
+        loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),
+        loggedInUserAlias: Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+        pluginFolder: Cypress.env("C8Y_PACT_FOLDER"),
+        pluginLoaded: Cypress.env("C8Y_PLUGIN_LOADED") === "true",
+        testTitlePath: Cypress.currentTest?.titlePath || [],
+        preporcessorOptions: {
+          ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
+          obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
+          obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
+        },
+      };
+    },
   };
 }
 
@@ -309,53 +335,47 @@ function getCurrentTestId(): C8yPactID {
   return (pact && pact.id) || key.replace(/ /g, "_");
 }
 
-function savePact(
-  response: Cypress.Response<any>,
+async function savePact(
+  response: Cypress.Response<any> | C8yPact | Pick<C8yPact, C8yPactSaveKeys>,
   client?: C8yClient,
   options: C8yPactSaveOptions = { noqueue: false }
 ): Promise<void> {
   if (!isEnabled()) return;
 
-  const info = createPactInfo(Cypress.c8ypact.getCurrentTestId(), client);
-  const record = createPactRecord(response, client);
-  const pact = new C8yDefaultPact([record], info, info.id);
+  try {
+    let pact: Pick<C8yPact, C8yPactSaveKeys>;
+    if ("records" in response && "info" in response) {
+      pact = response;
+    } else {
+      const info: C8yPactInfo = {
+        ...Cypress.c8ypact.getConfigValues(),
+        id: Cypress.c8ypact.getCurrentTestId(),
+        title: Cypress.currentTest?.titlePath || [],
+        tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
+        baseUrl: Cypress.config().baseUrl,
+        version: Cypress.env("C8Y_VERSION") && {
+          system: Cypress.env("C8Y_VERSION"),
+        },
+        preprocessor: (
+          Cypress.c8ypact.preprocessor as C8yCypressEnvPreprocessor
+        )?.options,
+      };
+      pact = await toPactSerializableObject(response, info, {
+        loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),
+        loggedInUserAlias: Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+        client,
+        modifiedResponse: options.modifiedResponse,
+        preprocessor: Cypress.c8ypact.preprocessor,
+        schemaGenerator: Cypress.c8ypact.schemaGenerator,
+      });
+    }
 
-  if (options.modifiedResponse && isCypressResponse(options.modifiedResponse)) {
-    const modifiedPactRecord = createPactRecord(
-      options.modifiedResponse,
-      client
-    );
-    pact.records[pact.records.length - 1].modifiedResponse =
-      modifiedPactRecord.response;
-  }
-
-  Cypress.c8ypact.preprocessor?.apply(pact);
-
-  const keysToSave = ["id", "info", "records"];
-  return Promise.all(
-    pact.records
-      .filter((record: C8yPactRecord) => !record.response.$body)
-      .map((record) =>
-        Cypress.c8ypact.schemaGenerator
-          ?.generate(record.response.body, { name: "body" })
-          .then((schema) => {
-            record.response.$body = schema;
-            return record;
-          })
-      )
-  )
-    .then(() => {
-      const data = { ..._.pick(pact, keysToSave) };
-      save(data, options);
-    })
-    .catch((error) => {
-      console.error(error);
-      const data = { ..._.pick(pact, keysToSave) };
-      save(data, options);
-    });
+    if (!pact) return;
+    save(pact, options);
+  } catch {}
 }
 
-function save(pact: any, options: C8yPactSaveOptions) {
+export function save(pact: any, options: C8yPactSaveOptions) {
   const taskName = "c8ypact:save";
   if (options?.noqueue === true) {
     // @ts-ignore
@@ -379,54 +399,4 @@ function save(pact: any, options: C8yPactSaveOptions) {
   } else {
     cy.task("c8ypact:save", pact, debugLogger());
   }
-}
-
-export function createPactRecord(
-  response: Cypress.Response,
-  client?: C8yClient
-): C8yPactRecord {
-  let auth: C8yAuthOptions;
-  const envUser = Cypress.env("C8Y_LOGGED_IN_USER");
-  const envAlias = Cypress.env("C8Y_LOGGED_IN_USER_ALIAS");
-  const envAuth = {
-    ...(envUser && { user: envUser }),
-    ...(envAlias && { userAlias: envAlias }),
-    ...(envAlias && { type: "CookieAuth" }),
-  };
-
-  if (client?._auth) {
-    // do not pick the password. passwords must not be stored in the pact.
-    auth = _.defaultsDeep(
-      client._auth,
-      _.pick(envAuth, ["user", "userAlias", "type"])
-    );
-    if (client._auth.constructor != null) {
-      auth.type = client._auth.constructor.name;
-    }
-  }
-  if (!auth && (envUser || envAlias)) {
-    auth = envAuth;
-  }
-
-  return C8yDefaultPactRecord.from(response, auth, client);
-}
-
-export function createPactInfo(
-  id: string,
-  client: C8yClient = null
-): C8yPactInfo {
-  const info: C8yPactInfo = {
-    ...Cypress.c8ypact.getConfigValues(),
-    id,
-    title: Cypress.currentTest?.titlePath || [],
-    tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
-    baseUrl: Cypress.config().baseUrl,
-    version: Cypress.env("C8Y_VERSION") && {
-      system: Cypress.env("C8Y_VERSION"),
-    },
-    preprocessor: (
-      Cypress.c8ypact.preprocessor as C8yCypressEnvPreprocessor
-    )?.resolveOptions(),
-  };
-  return info;
 }

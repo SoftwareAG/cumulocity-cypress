@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as glob from "glob";
-import { C8yPact } from "./c8ypact";
+import { C8yPact, C8yPactSaveKeys } from "./c8ypact";
 
 /**
  * Using C8yPactFileAdapter you can implement your own adapter to load and save pacts using any format you want.
@@ -15,6 +15,10 @@ export interface C8yPactFileAdapter {
    * Loads all pact objects. The key must be the pact id used in C8yPact.id.
    */
   loadPacts: () => { [key: string]: C8yPact };
+  /**
+   * Loads a pact object by id from file.
+   */
+  loadPact: (id: string) => C8yPact | null;
   /**
    * Saves a pact object.
    */
@@ -52,7 +56,19 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     }, {});
   }
 
-  savePact(pact: C8yPact): void {
+  loadPact(id: string): C8yPact | null {
+    if (!this.folder || !fs.existsSync(this.folder)) {
+      return null;
+    }
+    const file = path.join(this.folder, `${id}.json`);
+    if (fs.existsSync(file)) {
+      const pact = fs.readFileSync(file, "utf-8");
+      return JSON.parse(pact);
+    }
+    return null;
+  }
+
+  savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {
     this.createFolderRecursive(this.folder, true);
     const file = path.join(this.folder, `${pact.id}.json`);
     fs.writeFileSync(
