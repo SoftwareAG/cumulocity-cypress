@@ -20,5 +20,6 @@ if (!Cypress.c8ypact) {
     getConfigValue: (key: string, defaultValue?: any) => undefined,
     getConfigValues: () => undefined,
     loadCurrent: () => cy.wrap<C8yPact | null>(null, { log: false }),
+    env: () => ({}),
   };
 }
