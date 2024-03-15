@@ -577,12 +577,3 @@ export function isArrayOfFunctions<T>(
   if (!functions || !_.isArray(functions) || _.isEmpty(functions)) return false;
   return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
 }
-
-/**
- * Checks if the given object is a CypressError.
- * @param error The object to check.
- * @returns True if the object is a CypressError, false otherwise.
- */
-export function isCypressError(error: any): boolean {
-  return _.isError(error) && _.get(error, "name") === "CypressError";
-}

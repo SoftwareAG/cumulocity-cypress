@@ -445,3 +445,12 @@ export function decodeBase64(base64: string): string {
 
   return decoded;
 }
+
+/**
+ * Checks if the given object is a CypressError.
+ * @param error The object to check.
+ * @returns True if the object is a CypressError, false otherwise.
+ */
+export function isCypressError(error: any): boolean {
+  return _.isError(error) && _.get(error, "name") === "CypressError";
+}
