@@ -520,10 +520,17 @@ describe("c8ypact intercept", () => {
         .as("inventory")
         .then(postInventory)
         .then((data) => {
-          expect(data).to.deep.eq(response.body);
+          expect(data).to.deep.eq({ ...response.body, ...{ test: "test2" } });
         })
         .wait("@inventory")
-        .then(expectSavePactNotCalled);
+        .then((interception) => {
+          expectSavePactNotCalled();
+          cy.wrap(interception);
+          expect(interception.response.body).to.deep.eq({
+            ...response.body,
+            ...{ test: "test2" },
+          });
+        });
     });
 
     it("should not return pact response for interceptions with RouteHandler reply function", () => {

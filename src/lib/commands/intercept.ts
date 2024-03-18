@@ -138,6 +138,10 @@ const wrapFunctionRouteHandler = (fn: any) => {
       } else {
         const urlMatcher = Cypress.c8ypact.urlMatcher;
         const response = responseFromPact(urlMatcher, {}, req);
+        if (resFn) {
+          response.send = () => {};
+          resFn(response);
+        }
         req.reply(response);
       }
     };
