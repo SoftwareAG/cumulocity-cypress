@@ -126,14 +126,14 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     parts.forEach((part, i) => {
       let currentPath = path.join(...parts.slice(0, i + 1));
       if (absolutePath) {
-        currentPath = path.join("/", currentPath);
+        currentPath = path.join(path.sep, currentPath);
       }
       try {
         if (!fs.existsSync(currentPath)) {
           fs.mkdirSync(currentPath);
         }
       } catch (err) {
-        throw err; // Rethrow the error
+        throw err;
       }
     });
   }
