@@ -1,8 +1,9 @@
+import { C8yDefaultPact } from "../../../src/shared/c8ypact";
 import { url } from "../support/util";
-import { C8yDefaultPact } from "../../../lib/pacts/c8ypact";
+
 const { $, _, sinon } = Cypress;
 
-describe("c8ypactintercept", () => {
+describe("c8ypact intercept", () => {
   // use inventory mock from app/inventory/manageObjects.json
   function fetchInventory() {
     return $.get(url(`/inventory/managedObjects?fragmentType=abcd`));
@@ -31,7 +32,7 @@ describe("c8ypactintercept", () => {
   afterEach(() => {
     // delete recorded pacts after each test
     cy.task("c8ypact:remove", Cypress.c8ypact.getCurrentTestId()).then(() => {
-      C8yDefaultPact.loadCurrent().then((pact) => {
+      Cypress.c8ypact.loadCurrent().then((pact) => {
         expect(pact).to.be.null;
       });
     });
@@ -99,7 +100,7 @@ describe("c8ypactintercept", () => {
           expect(args[2].modifiedResponse.headers).to.deep.eq({});
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -132,7 +133,7 @@ describe("c8ypactintercept", () => {
           );
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -164,7 +165,7 @@ describe("c8ypactintercept", () => {
           expect(args[2].modifiedResponse.body).to.eq(testBody);
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -192,7 +193,7 @@ describe("c8ypactintercept", () => {
           expect(args[0].body).to.have.property("managedObjects");
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -225,7 +226,7 @@ describe("c8ypactintercept", () => {
           );
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -260,7 +261,7 @@ describe("c8ypactintercept", () => {
           );
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -297,7 +298,7 @@ describe("c8ypactintercept", () => {
           });
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -332,7 +333,7 @@ describe("c8ypactintercept", () => {
           expect(args[2].modifiedResponse.body).to.have.property("fixtureTest");
         })
         .then(() => {
-          C8yDefaultPact.loadCurrent().then((pact) => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
             expect(pact.records).to.have.length(1);
             const r = pact.records[0];
             expect(r.request).to.not.be.undefined;
@@ -480,7 +481,8 @@ describe("c8ypactintercept", () => {
     };
 
     it("should ignore pact for static RouteHandlers", () => {
-      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      // @ts-ignore
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", "test")
         .as("inventory")
         .then(fetchInventory)
@@ -492,7 +494,8 @@ describe("c8ypactintercept", () => {
     });
 
     it("should return pact response for interceptions without RouteHandler", () => {
-      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      // @ts-ignore
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")
         .then(postInventory)
@@ -504,7 +507,9 @@ describe("c8ypactintercept", () => {
     });
 
     it("should return pact response for interceptions with RouteHandler continue function", () => {
-      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      // @ts-ignore
+
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", (req) => {
         req.continue((res) => {
           res.body.test = "test2";
@@ -522,7 +527,8 @@ describe("c8ypactintercept", () => {
     });
 
     it("should not return pact response for interceptions with RouteHandler reply function", () => {
-      Cypress.c8ypact.current = C8yDefaultPact.from(response);
+      // @ts-ignore
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", (req) => {
         req.reply({
           body: "test",
