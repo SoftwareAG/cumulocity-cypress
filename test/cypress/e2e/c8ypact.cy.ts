@@ -76,12 +76,13 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.config).to.be.a("object");
       expect(Cypress.c8ypact.config.strictMatching).to.not.be.undefined;
       expect(Cypress.c8ypact.config.failOnMissingPacts).to.not.be.undefined;
-      expect(Cypress.c8ypact.config.preprocessor).to.not.be.undefined;
       expect(Cypress.c8ypact.config.ignore).to.be.false;
 
       expect(Cypress.c8ypact.getCurrentTestId).to.be.a("function");
       expect(Cypress.c8ypact.isRecordingEnabled).to.be.a("function");
       expect(Cypress.c8ypact.savePact).to.be.a("function");
+      expect(Cypress.c8ypact.getConfigValue).to.be.a("function");
+      expect(Cypress.c8ypact.getConfigValues).to.be.a("function");
       expect(Cypress.c8ypact.preprocessor).to.be.a("object");
       expect(Cypress.c8ypact.pactRunner).to.be.a("object");
       expect(Cypress.c8ypact.matcher).to.be.a("object");
@@ -1247,7 +1248,7 @@ describe("c8ypact", () => {
       });
     });
 
-    it.only("should not add preprocessed properties and store options in info", function () {
+    it("should not add preprocessed properties and store options in info", function () {
       cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
       Cypress.env("C8Y_TENANT", "t1234");
 
