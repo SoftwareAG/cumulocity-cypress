@@ -1,5 +1,5 @@
-import { C8yDefaultPactRunner } from "../../../lib/pact/runner";
-import { C8yDefaultPactRecord } from "../../../shared/c8ypact";
+import { C8yDefaultPactRunner } from "../../../src/lib/pact/runner";
+import { C8yDefaultPactRecord } from "../../../src/shared/c8ypact";
 
 const { _ } = Cypress;
 

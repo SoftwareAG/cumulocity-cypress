@@ -1,4 +1,4 @@
-import { normalizedArgumentsWithAuth, throwError } from "./utils";
+import { normalizedArgumentsWithAuth, throwError } from "../utils";
 
 const { _ } = Cypress;
 

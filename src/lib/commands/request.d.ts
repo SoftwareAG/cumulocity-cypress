@@ -6,7 +6,7 @@ declare global {
       /**
        * Retry a request for a given number of max retries and delay. When test function
        * `testFn` returns `true` stop retrying and continue.
-       * 
+       *
        * Use `retries` to pass number of retries and `retryDelay` to pass delay in milliseconds.
        *
        * @example

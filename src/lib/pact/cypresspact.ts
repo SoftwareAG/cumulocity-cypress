@@ -23,7 +23,7 @@ import {
   C8yPactSaveKeys,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
-import { C8yAuthOptions, C8yClient } from "../../shared/c8yclient";
+import { C8yClient } from "../../shared/c8yclient";
 const semver = require("semver");
 
 const { _ } = Cypress;
@@ -171,6 +171,17 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
   resolveOptions(
     options?: Partial<C8yPactPreprocessorOptions>
   ): C8yPactPreprocessorOptions {
+    let preprocessorConfigValue: C8yPactPreprocessorOptions = {};
+    if (
+      Cypress.c8ypact &&
+      typeof Cypress.c8ypact.getConfigValue === "function"
+    ) {
+      preprocessorConfigValue =
+        Cypress.c8ypact.getConfigValue<C8yPactPreprocessorOptions>(
+          "preprocessor"
+        ) ?? {};
+    }
+
     return _.defaultsDeep(
       {
         ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
@@ -179,9 +190,7 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
       } as C8yPactPreprocessorOptions,
       options,
       this.options,
-      Cypress.c8ypact?.getConfigValue<C8yPactPreprocessorOptions>(
-        "preprocessor"
-      ),
+      preprocessorConfigValue,
       {
         ignore: [],
         obfuscate: [],
@@ -211,15 +220,14 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     schemaGenerator: new C8yQicktypeSchemaGenerator(),
     schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
     debugLog: false,
-    preprocessor: new C8yCypressEnvPreprocessor(),
+    preprocessor: new C8yCypressEnvPreprocessor({
+      obfuscate: ["request.headers.Authorization", "response.body.password"],
+    }),
     config: {
       log: false,
       ignore: globalIgnore === "true" || globalIgnore === true,
       failOnMissingPacts: true,
       strictMatching: true,
-      preprocessor: {
-        obfuscate: ["request.headers.Authorization", "response.body.password"],
-      },
     },
     getConfigValue: (key: C8yPactConfigKeys, defaultValue?: any) => {
       const value =
@@ -359,7 +367,7 @@ async function savePact(
         },
         preprocessor: (
           Cypress.c8ypact.preprocessor as C8yCypressEnvPreprocessor
-        )?.options,
+        )?.resolveOptions(),
       };
       pact = await toPactSerializableObject(response, info, {
         loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),

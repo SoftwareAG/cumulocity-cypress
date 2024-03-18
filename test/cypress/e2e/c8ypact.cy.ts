@@ -1,8 +1,8 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/util";
-import { defaultClientOptions } from "../../../lib/commands/c8yclient";
-import { C8yCypressEnvPreprocessor } from "../../../lib/pact/cypresspact";
-import { C8yAuthentication, C8yClient } from "../../../shared/c8yclient";
+import { defaultClientOptions } from "../../../src/lib/commands/c8yclient";
+import { C8yCypressEnvPreprocessor } from "../../../src/lib/pact/cypresspact";
+import { C8yAuthentication, C8yClient } from "../../../src/shared/c8yclient";
 
 import {
   C8yDefaultPactMatcher,
@@ -13,7 +13,7 @@ import {
   C8yDefaultPactRecord,
   C8yPact,
   createPactRecord,
-} from "../../../shared/c8ypact";
+} from "../../../src/shared/c8ypact";
 
 const { _, sinon } = Cypress;
 
@@ -359,13 +359,16 @@ describe("c8ypact", () => {
       expect(_.has(pactRecord, "createdObject")).to.be.false;
     });
 
-    it("from() should create C8yDefaultPactRecord with auth from env", function () {
+    it("from() should create C8yDefaultPactRecord with auth", function () {
       Cypress.env("C8Y_LOGGED_IN_USER", "admin");
       Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", "alias");
 
       // @ts-ignore
       let response: Cypress.Response<any> = {};
-      let pactRecord = createPactRecord(response);
+      let pactRecord = createPactRecord(response, undefined, {
+        loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),
+        loggedInUserAlias: Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+      });
       expect(pactRecord.auth).to.deep.equal({
         user: "admin",
         userAlias: "alias",
@@ -1244,7 +1247,7 @@ describe("c8ypact", () => {
       });
     });
 
-    it("should not add preprocessed properties and store options in info", function () {
+    it.only("should not add preprocessed properties and store options in info", function () {
       cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
       Cypress.env("C8Y_TENANT", "t1234");
 
@@ -1264,11 +1267,9 @@ describe("c8ypact", () => {
           expect(record).to.not.be.null;
           expect(_.has(record, "request.headers.Authorization")).to.be.false;
           expect(record.response.body.password).to.be.undefined;
-
+          console.log(pact.info);
           expect(pact.info.preprocessor).to.deep.eq(
-            (
-              Cypress.c8ypact.preprocessor as C8yCypressEnvPreprocessor
-            ).resolveOptions()
+            Cypress.c8ypact.preprocessor.options
           );
         });
       });

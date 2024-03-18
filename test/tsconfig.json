@@ -16,5 +16,5 @@
     "**/*.ts",
     "../node_modules/cypress"
   ],
-  "references": [{ "path": "./../shared" }, { "path": "./../lib" }]
+  "references": [{ "path": "./../src/shared" }, { "path": "./../src/lib" }]
 }

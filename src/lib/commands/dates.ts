@@ -11,7 +11,7 @@ import {
   registerLocale,
 } from "../locale/locale";
 
-const { throwError } = require("./utils");
+const { throwError } = require("./../utils");
 import * as datefns from "date-fns";
 const { _ } = Cypress;
 

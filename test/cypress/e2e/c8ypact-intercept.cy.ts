@@ -1,4 +1,4 @@
-import { C8yDefaultPact } from "../../../shared/c8ypact";
+import { C8yDefaultPact } from "../../../src/shared/c8ypact";
 import { url } from "../support/util";
 
 const { $, _, sinon } = Cypress;

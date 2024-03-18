@@ -7,7 +7,7 @@ const {
   storeClient,
   tenantFromBasicAuth,
   throwError,
-} = require("./utils");
+} = require("./../utils");
 
 import {
   BasicAuth,

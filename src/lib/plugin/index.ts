@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as fs from "fs";
 
 import {
   C8yPactFileAdapter,
@@ -124,8 +125,13 @@ export function configureC8yPlugin(
 }
 
 function getVersion() {
-  let version = require("../../package.json").version;
-  return version;
+  try {
+    const packageJsonPath = path.resolve(__dirname, "../../../package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    return packageJson.version;
+  } catch {
+    return "unknown";
+  }
 }
 
 module.exports = { configureC8yPlugin, C8yPactDefaultFileAdapter };

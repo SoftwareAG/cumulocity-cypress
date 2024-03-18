@@ -60,7 +60,7 @@ export class C8yDefaultPactPreprocessor implements C8yPactPreprocessor {
   options?: C8yPactPreprocessorOptions;
 
   constructor(options?: C8yPactPreprocessorOptions) {
-    this.options = options;
+    this.options = this.resolveOptions(options);
   }
 
   apply(

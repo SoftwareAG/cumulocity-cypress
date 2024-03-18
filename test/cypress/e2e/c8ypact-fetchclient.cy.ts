@@ -1,8 +1,8 @@
-import { C8yDefaultPact } from "../../../shared/c8ypact";
-import { C8yPactFetchClient } from "../../../lib/pact/c8ypactclient";
+import { C8yDefaultPact } from "../../../src/shared/c8ypact";
+import { C8yPactFetchClient } from "../../../src/lib/pact/c8ypactclient";
 import { BasicAuth, IFetchResponse } from "@c8y/client";
 import { initRequestStub, stubResponse, url } from "cypress/support/util";
-import { encodeBase64 } from "../../../shared/c8yclient";
+import { encodeBase64 } from "../../../src/shared/c8yclient";
 
 const { _ } = Cypress;
 

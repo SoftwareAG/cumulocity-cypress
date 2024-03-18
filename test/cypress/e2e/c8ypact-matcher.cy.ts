@@ -1,11 +1,11 @@
-import { C8yCypressEnvPreprocessor } from "../../../lib/pact/cypresspact";
+import { C8yCypressEnvPreprocessor } from "../../../src/lib/pact/cypresspact";
 import {
   C8yDefaultPactRecord,
   C8yPactRecord,
   C8yDefaultPactMatcher,
   C8yISODateStringMatcher,
   C8yPactMatcherOptions,
-} from "../../../shared/c8ypact";
+} from "../../../src/shared/c8ypact";
 
 const { _, sinon } = Cypress;
 

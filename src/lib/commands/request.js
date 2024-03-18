@@ -1,4 +1,4 @@
-import { getAuthOptionsFromEnv, normalizedArgumentsWithAuth } from "./utils";
+import { getAuthOptionsFromEnv, normalizedArgumentsWithAuth } from "../utils";
 const { _ } = Cypress;
 
 const methods = [

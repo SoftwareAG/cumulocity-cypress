@@ -1,4 +1,4 @@
-import { encodeBase64 } from "../../../shared/c8yclient";
+import { encodeBase64 } from "../../../src/shared/c8yclient";
 
 const { _, sinon } = Cypress;
 
