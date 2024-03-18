@@ -14,10 +14,13 @@ import {
 import {
   defaultClientOptions,
   isArrayOfFunctions,
-  isCypressError,
+} from "../../../src/lib/commands/c8yclient";
+import {
   isIResult,
   isWindowFetchResponse,
-} from "../../../lib/commands/c8yclient";
+  toCypressResponse,
+  isCypressError,
+} from "../../../src/shared/c8yclient";
 
 const { _, sinon } = Cypress;
 

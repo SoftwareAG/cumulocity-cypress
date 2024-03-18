@@ -2,17 +2,17 @@
   "name": "cumulocity-cypress",
   "version": "0.2.4",
   "description": "Cypress commands for Cumulocity IoT",
-  "main": "lib/commands/index.js",
+  "main": "src/lib/commands/index.js",
   "scripts": {
-    "start-server": "http-server test/cypress/app/ --port 8080 --silent --mimetypes test/custom_mime_types.types --ext json",
+    "start-server": "http-server test/cypress/app/ --silent --port 8080 --mimetypes test/custom_mime_types.types --ext json",
     "test": "cross-env TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 test:run",
-    "test:run": "cross-env TZ=Europe/Berlin cypress run  --project test --browser chrome --config video=false",
+    "test:run": "cross-env TZ=Europe/Berlin cypress run --project test --browser chrome --config video=false",
     "test:open": "cross-env TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 debug",
     "debug": "cross-env CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open --project test",
-    "clean": "rimraf dist/ && rimraf runner/dist/ && rimraf runner/.yalc && rimraf runner/yalc.lock",
-    "copy-files": "copyfiles lib/**/*.*js lib/**/*.d.ts README.md package.json dist/",
-    "build": "npm run clean && npm run copy-files && tsc && cd dist/ && npm run clean-package-json",
-    "runner:yalc": "npm run clean && npm run build && cd dist/ && yalc publish && cd ../runner && yalc add cumulocity-cypress",
+    "clean": "rimraf dist/ && rimraf packages/pactrunner/dist/ && rimraf packages/pactrunner/.yalc && rimraf packages/pactrunner/yalc.lock",
+    "copy-files": "copyfiles --up 1 src/lib/**/*.*js src/lib/*.*js src/lib/**/*.d.ts dist/ && copyfiles README.md package.json dist/",
+    "build": "npm run clean && npm run copy-files && tsc -b -v src/lib/ && cd dist/ && npm run clean-package-json",
+    "runner:yalc": "npm run clean && npm run build && cd dist/ && yalc publish && cd ../packages/pactrunner && yalc add cumulocity-cypress",
     "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },
   "repository": {
@@ -42,6 +42,7 @@
     "@c8y/client": "^1017.0.374",
     "@types/chai": "^4.3.4",
     "@types/glob": "^8.1.0",
+    "@types/lodash": "^4.14.202",
     "@types/node": "^20.10.6",
     "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
@@ -55,6 +56,7 @@
   "peerDependencies": {
     "@angular/common": ">=14.0.0",
     "@c8y/client": ">=1015.0.0",
-    "cypress": ">=12.0.0"
+    "cypress": ">=12.0.0",
+    "lodash": ">=4.0.0"
   }
 }

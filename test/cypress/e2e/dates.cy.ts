@@ -19,7 +19,7 @@ describe("dates", () => {
     });
 
     it("should allow registering additional locales", () => {
-      const localeEn = require("./../../../lib/locale/en");
+      const localeEn = require("./../../../src/lib/locale/en");
       registerLocale(localeEn, "en", undefined, "en-US");
 
       cy.setLanguage("en");

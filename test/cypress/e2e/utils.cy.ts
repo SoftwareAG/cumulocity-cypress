@@ -1,4 +1,7 @@
-import { normalizedArguments, getAuthOptions } from "../../../lib/commands/utils";
+const {
+  normalizedArguments,
+  getAuthOptions,
+} = require("../../../src/lib/utils");
 
 describe("utils", () => {
   beforeEach(() => {
