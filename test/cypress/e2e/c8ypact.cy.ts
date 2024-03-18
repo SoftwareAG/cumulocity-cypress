@@ -1247,7 +1247,7 @@ describe("c8ypact", () => {
       });
     });
 
-    it.only("should not add preprocessed properties and store options in info", function () {
+    it("should not add preprocessed properties and store options in info", function () {
       cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
       Cypress.env("C8Y_TENANT", "t1234");
 
