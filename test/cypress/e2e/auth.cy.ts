@@ -1,5 +1,5 @@
 import { IDeviceCredentials } from "@c8y/client";
-import { stubResponse, initRequestStub, url as _url } from "../support/util";
+import { url as _url } from "../support/util";
 
 const { _, $ } = Cypress;
 
@@ -55,13 +55,25 @@ describe("auth", () => {
         });
     });
 
-    it("should not overwrite tenant", () => {
+    it("should not overwrite tenant from env", () => {
       cy.wrap({ user: "admin", password: "password", tenant: "t7654321" })
         .getAuth()
         .then((result) => {
           expect(result.user).to.eq("admin");
           expect(result.password).to.eq("password");
           expect(result.tenant).to.eq("t7654321");
+        });
+    });
+
+    it("should use userAlias from options if available", () => {
+      cy.wrap({ userAlias: "myauthuser", type: "CookieAuth" })
+        .getAuth()
+        .then((result) => {
+          expect(result.user).to.eq("myauthuser");
+          expect(result.password).to.eq("myadminpassword");
+          expect(result.tenant).to.eq("t1234567");
+          expect(result.userAlias).to.eq("myauthuser");
+          expect(result.type).to.eq("CookieAuth");
         });
     });
 
@@ -100,7 +112,7 @@ describe("auth", () => {
     });
 
     it(
-      "gets auth from test options",
+      "gets auth from test annotation",
       { auth: { user: "myadmin", password: "mypassword" } },
       () => {
         cy.getAuth().then((result) => {
@@ -112,7 +124,7 @@ describe("auth", () => {
     );
 
     it(
-      "gets auth from test options with password from environment",
+      "gets auth from test annotation with password from environment",
       { auth: "myauthuser" },
       () => {
         cy.getAuth().then((result) => {
@@ -123,6 +135,21 @@ describe("auth", () => {
         });
       }
     );
+
+    it(
+      "gets auth from test annotation with userAlias and type",
+      { auth: { userAlias: "myauthuser", type: "CookieAuth" } },
+      () => {
+        cy.getAuth().then((result) => {
+          expect(result.user).to.eq("myauthuser");
+          expect(result.password).to.eq("myadminpassword");
+          expect(result.tenant).to.eq("t1234567");
+          expect(result.userAlias).to.eq("myauthuser");
+          expect(result.type).to.eq("CookieAuth");
+        });
+      }
+    );
+
     it("should get auth options from IDeviceCredentials with username key", () => {
       const dc: IDeviceCredentials = {
         username: "myusername",
