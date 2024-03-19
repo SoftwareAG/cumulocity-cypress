@@ -1,3 +1,5 @@
+import { ICredentials } from "@c8y/client";
+
 const { _ } = Cypress;
 const { getAuthOptions, resetClient } = require("./../utils");
 
@@ -10,20 +12,10 @@ declare global {
        * @example
        * cy.getAuth("admin", "password").login();
        */
-      getAuth(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
-      getAuth(
-        user: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      getAuth(
-        user: string,
-        password: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      getAuth(
-        auth: C8yAuthOptions,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
+      getAuth(): Chainable<C8yAuthOptions>;
+      getAuth(user: string): Chainable<C8yAuthOptions>;
+      getAuth(user: string, password: string): Chainable<C8yAuthOptions>;
+      getAuth(auth: C8yAuthOptions): Chainable<C8yAuthOptions>;
 
       /**
        * Use `C8yAuthOptions` for all commands of this library requiring authentication
@@ -34,20 +26,10 @@ declare global {
        * cy.login();
        * cy.createUser(...);
        */
-      useAuth(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
-      useAuth(
-        user: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      useAuth(
-        user: string,
-        password: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      useAuth(
-        auth: C8yAuthOptions,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
+      useAuth(): Chainable<C8yAuthOptions>;
+      useAuth(user: string): Chainable<C8yAuthOptions>;
+      useAuth(user: string, password: string): Chainable<C8yAuthOptions>;
+      useAuth(auth: C8yAuthOptions): Chainable<C8yAuthOptions>;
     }
 
     interface SuiteConfigOverrides {
@@ -61,6 +43,14 @@ declare global {
     interface RuntimeConfigOptions {
       auth?: C8yAuthConfig;
     }
+  }
+
+  interface C8yAuthOptions extends ICredentials {
+    // support cy.request properties
+    sendImmediately?: boolean;
+    bearer?: (() => string) | string;
+    userAlias?: string;
+    type?: string;
   }
 
   type C8yAuthConfig = string | C8yAuthOptions;

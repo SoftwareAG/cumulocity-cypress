@@ -1,6 +1,5 @@
 const { _ } = Cypress;
 const semver = require("semver");
-import { ICredentials } from "@c8y/client";
 const { getAuthOptions, isAuth, resetClient } = require("./../utils");
 
 declare global {
@@ -41,13 +40,6 @@ declare global {
         options?: C8yLoginOptions
       ): Chainable<C8yAuthOptions>;
     }
-  }
-  interface C8yAuthOptions extends ICredentials {
-    // support cy.request properties
-    sendImmediately?: boolean;
-    bearer?: (() => string) | string;
-    userAlias?: string;
-    type?: string;
   }
 
   type C8yLoginOptions = {
