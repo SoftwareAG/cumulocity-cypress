@@ -191,6 +191,14 @@ function authWithTenant(options) {
   return options;
 }
 
+export function getBaseUrlFromEnv() {
+  return (
+    Cypress.env(`C8Y_BASEURL`) ||
+    Cypress.env(`baseUrl`) ||
+    (Cypress.testingType != "component" ? Cypress.config().baseUrl : undefined)
+  );
+}
+
 export function storeClient(client) {
   cy.state("ccs.client", client);
 }
