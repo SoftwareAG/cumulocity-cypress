@@ -40,66 +40,8 @@ declare global {
         auth: C8yAuthOptions,
         options?: C8yLoginOptions
       ): Chainable<C8yAuthOptions>;
-
-      /**
-       * Get `C8yAuthOptions` from arguments or environment variables.
-       *
-       * @example
-       * cy.getAuth("admin", "password").login();
-       */
-      getAuth(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
-      getAuth(
-        user: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      getAuth(
-        user: string,
-        password: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      getAuth(
-        auth: C8yAuthOptions,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-
-      /**
-       * Use `C8yAuthOptions` for all commands of this library requiring authentication
-       * within the current test context (it).
-       *
-       * @example
-       * cy.useAuth("admin", "password");
-       * cy.login();
-       * cy.createUser(...);
-       */
-      useAuth(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
-      useAuth(
-        user: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      useAuth(
-        user: string,
-        password: string,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      useAuth(
-        auth: C8yAuthOptions,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-    }
-
-    interface SuiteConfigOverrides {
-      auth?: C8yAuthArgs;
-    }
-
-    interface TestConfigOverrides {
-      auth?: C8yAuthArgs;
-    }
-
-    interface RuntimeConfigOptions {
-      auth?: C8yAuthArgs;
     }
   }
-
   interface C8yAuthOptions extends ICredentials {
     // support cy.request properties
     sendImmediately?: boolean;
@@ -108,21 +50,19 @@ declare global {
     type?: string;
   }
 
-  export type C8yAuthArgs = string | C8yAuthOptions;
-
-  export type C8yLoginOptions = {
+  type C8yLoginOptions = {
     useSession?: boolean;
     disableGainsight?: boolean;
     hideCookieBanner?: boolean;
     validationFn?: () => boolean;
   };
-}
 
-type LoginAuthArgs =
-  | [options?: C8yLoginOptions]
-  | [user: string, options?: C8yLoginOptions]
-  | [user: string, password: string, options?: C8yLoginOptions]
-  | [authOptions: C8yAuthOptions, options?: C8yLoginOptions];
+  type C8yLoginAuthArgs =
+    | [options?: C8yLoginOptions]
+    | [user: string, options?: C8yLoginOptions]
+    | [user: string, password: string, options?: C8yLoginOptions]
+    | [authOptions: C8yAuthOptions, options?: C8yLoginOptions];
+}
 
 export const defaultLoginOptions = () => {
   return {
@@ -141,7 +81,7 @@ Cypress.Commands.add(
   "login",
   // @ts-ignore
   { prevSubject: "optional" },
-  function (...args: LoginAuthArgs) {
+  function (...args: C8yLoginAuthArgs) {
     const auth: C8yAuthOptions = getAuthOptions(...args);
     expect(auth).to.not.be.undefined;
 
@@ -215,61 +155,5 @@ Cypress.Commands.add(
       }
     );
     cy.wrap(auth, { log: false });
-  }
-);
-
-Cypress.Commands.add(
-  "getAuth",
-  // @ts-ignore
-  { prevSubject: "optional" },
-  function (...args: LoginAuthArgs) {
-    const auth: C8yAuthOptions = getAuthOptions(...args);
-    const consoleProps = {
-      auth,
-      arguments: args,
-    };
-    Cypress.log({
-      name: "getAuth",
-      message: `${auth ? auth.user : ""}`,
-      consoleProps: () => consoleProps,
-    });
-
-    if (!auth) {
-      throw new Error(
-        `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
-      );
-    }
-
-    return Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false });
-  }
-);
-
-Cypress.Commands.add(
-  "useAuth",
-  // @ts-ignore
-  { prevSubject: "optional" },
-  function (...args: LoginAuthArgs) {
-    const auth: C8yAuthOptions = getAuthOptions(...args);
-    const consoleProps = {
-      auth,
-      arguments: args,
-    };
-    Cypress.log({
-      name: "useAuth",
-      message: `${auth ? auth.user : ""}`,
-      consoleProps: () => consoleProps,
-    });
-    if (auth) {
-      // @ts-ignore
-      const win: Cypress.AUTWindow = cy.state("window");
-      win.localStorage.setItem("__auth", JSON.stringify(auth));
-    } else {
-      throw new Error(
-        `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
-      );
-    }
-    resetClient();
-
-    return Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false });
   }
 );
