@@ -24,6 +24,8 @@ import {
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yClient } from "../../shared/c8yclient";
+
+const { getBaseUrlFromEnv } = require("./../utils");
 const semver = require("semver");
 
 const { _ } = Cypress;
@@ -214,7 +216,7 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     matcher: new C8yDefaultPactMatcher(),
     urlMatcher: new C8yDefaultPactUrlMatcher(
       ["dateFrom", "dateTo", "_"],
-      Cypress.config().baseUrl
+      getBaseUrlFromEnv()
     ),
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: new C8yQicktypeSchemaGenerator(),
@@ -361,7 +363,7 @@ async function savePact(
         id: Cypress.c8ypact.getCurrentTestId(),
         title: Cypress.currentTest?.titlePath || [],
         tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
-        baseUrl: Cypress.config().baseUrl,
+        baseUrl: getBaseUrlFromEnv(),
         version: Cypress.env("C8Y_VERSION") && {
           system: Cypress.env("C8Y_VERSION"),
         },

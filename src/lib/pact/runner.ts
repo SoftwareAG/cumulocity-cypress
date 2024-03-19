@@ -1,6 +1,6 @@
 import { C8yClientOptions } from "../../shared/c8yclient";
 import { C8yPact, C8yPactInfo, C8yPactRecord } from "../../shared/c8ypact";
-
+const { getBaseUrlFromEnv } = require("./../utils");
 const { _ } = Cypress;
 
 declare global {
@@ -222,8 +222,9 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     if (info?.baseUrl && url.includes(info.baseUrl)) {
       url = url.replace(info.baseUrl, "");
     }
-    if (url.includes(Cypress.config().baseUrl)) {
-      url = url.replace(Cypress.config().baseUrl, "");
+    const baseUrl = getBaseUrlFromEnv();
+    if (url.includes(baseUrl)) {
+      url = url.replace(baseUrl, "");
     }
     url = this.updateIds(url);
     return url;
@@ -245,16 +246,16 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     };
 
     const infoUrl = tenantUrl(info.baseUrl, info.tenant);
-    const url = tenantUrl(Cypress.config().baseUrl, Cypress.env("C8Y_TENANT"));
+    const url = tenantUrl(getBaseUrlFromEnv(), Cypress.env("C8Y_TENANT"));
 
     if (infoUrl && url) {
       const regexp = new RegExp(`${infoUrl.href}`, "g");
       result = result.replace(regexp, url.href);
     }
 
-    if (Cypress.config().baseUrl && info.baseUrl) {
+    if (getBaseUrlFromEnv() && info.baseUrl) {
       const regexp = new RegExp(`${info.baseUrl}`, "g");
-      result = result.replace(regexp, Cypress.config().baseUrl);
+      result = result.replace(regexp, getBaseUrlFromEnv());
     }
     if (info.tenant && Cypress.env("C8Y_TENANT")) {
       const regexp = new RegExp(`${info.tenant}`, "g");

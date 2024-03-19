@@ -1,6 +1,7 @@
 const { _ } = Cypress;
 
 const {
+  getBaseUrlFromEnv,
   isAuth,
   normalizedArgumentsWithAuth,
   restoreClient,
@@ -282,7 +283,7 @@ const c8yclientFn = (...args: any[]) => {
     cookieAuth && options.preferBasicAuth === false && !prevSubjectIsAuth
       ? cookieAuth
       : argAuth;
-  const baseUrl = options.baseUrl || Cypress.config().baseUrl;
+  const baseUrl = options.baseUrl || getBaseUrlFromEnv();
   const tenant =
     (basicAuth && tenantFromBasicAuth(basicAuth)) ||
     (authOptions && authOptions.tenant) ||
@@ -543,7 +544,7 @@ function makeErrorMessage(obj: any) {
 // from error_utils.ts
 function getDisplayUrl(
   url: string,
-  baseUrl: string = Cypress.config().baseUrl
+  baseUrl: string = getBaseUrlFromEnv()
 ): string {
   return url.replace(baseUrl, "");
 }

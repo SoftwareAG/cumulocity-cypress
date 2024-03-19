@@ -1,5 +1,5 @@
 import { encodeBase64 } from "../../../src/shared/c8yclient";
-
+const { getBaseUrlFromEnv } = require("../../../src/lib/utils");
 const { _, sinon } = Cypress;
 
 declare global {
@@ -18,7 +18,7 @@ declare global {
  */
 export function url(
   path: string,
-  baseUrl: string = Cypress.config().baseUrl
+  baseUrl: string = getBaseUrlFromEnv()
 ): string {
   if (baseUrl && !baseUrl.toLowerCase().startsWith("http")) {
     baseUrl = `https://${baseUrl}`;
