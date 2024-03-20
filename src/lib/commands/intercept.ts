@@ -4,6 +4,7 @@ import {
   STATIC_RESPONSE_KEYS,
   STATIC_RESPONSE_WITH_OPTIONS_KEYS,
 } from "../pact/constants";
+const { getBaseUrlFromEnv } = require("../utils");
 
 const { _ } = Cypress;
 
@@ -23,11 +24,28 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
     return originalFn(...args);
   }
 
+  const isAbsoluteURL = (url: string) => {
+    return /^https?:\/\//i.test(url);
+  };
+
   const method =
     _.isString(args[0]) && HTTP_METHODS.includes(args[0].toUpperCase())
       ? args[0]
       : undefined;
-  const matcher = method ? args[1] : args[0];
+
+  let matcher = method ? args[1] : args[0];
+  // component testing does not know about a baseUrl so relative paths will be matched
+  // with url of cypress runner
+  if (Cypress.testingType === "component") {
+    const baseUrl = getBaseUrlFromEnv();
+    if (_.isString(matcher) && !isAbsoluteURL(matcher) && baseUrl) {
+      matcher = {
+        hostname: baseUrl.replace(/^https?:\/\//i, ""),
+        path: matcher,
+      };
+    }
+  }
+
   let response = method ? args[2] : args[1];
 
   let updatedArgs: any[] = [];
