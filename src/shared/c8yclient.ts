@@ -46,7 +46,7 @@ export type C8yAuthentication = IAuthentication;
 export interface C8yClient {
   _auth?: C8yAuthentication;
   _options?: C8yClientOptions;
-  _client: Client;
+  _client?: Client;
 }
 
 /**

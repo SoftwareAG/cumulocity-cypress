@@ -57,6 +57,8 @@ declare global {
   interface C8yPactSaveOptions {
     noqueue: boolean;
     modifiedResponse?: Cypress.Response<any>;
+    loggedInUser?: string;
+    loggedInUserAlias?: string;
   }
 
   /**
@@ -372,10 +374,12 @@ async function savePact(
         )?.resolveOptions(),
       };
       pact = await toPactSerializableObject(response, info, {
-        loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),
-        loggedInUserAlias: Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+        loggedInUser:
+          options?.loggedInUser ?? Cypress.env("C8Y_LOGGED_IN_USER"),
+        loggedInUserAlias:
+          options?.loggedInUserAlias ?? Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
         client,
-        modifiedResponse: options.modifiedResponse,
+        modifiedResponse: options?.modifiedResponse,
         preprocessor: Cypress.c8ypact.preprocessor,
         schemaGenerator: Cypress.c8ypact.schemaGenerator,
       });

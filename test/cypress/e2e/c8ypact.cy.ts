@@ -1268,7 +1268,6 @@ describe("c8ypact", () => {
           expect(record).to.not.be.null;
           expect(_.has(record, "request.headers.Authorization")).to.be.false;
           expect(record.response.body.password).to.be.undefined;
-          console.log(pact.info);
           expect(pact.info.preprocessor).to.deep.eq(
             Cypress.c8ypact.preprocessor.options
           );
