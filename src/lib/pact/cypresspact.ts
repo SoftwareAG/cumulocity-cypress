@@ -398,24 +398,21 @@ export function save(pact: any, options: C8yPactSaveOptions) {
       Cypress.testingType === "component" &&
       semver.gte(Cypress.version, "12.15.0")
     ) {
-      return (
-        new Promise((resolve) => setTimeout(resolve, 5))
-          .then(() =>
-            // @ts-ignore
-            Cypress.backend("run:privileged", {
-              commandName: "task",
-              userArgs: [taskName, pact],
-              options: {
-                task: taskName,
-                arg: pact,
-              },
-            })
-          )
-          // For some reason cypress throws empty error although the task indeed works.
-          .catch(() => {
-            /* noop */
+      return new Promise((resolve) => setTimeout(resolve, 5))
+        .then(() =>
+          // @ts-ignore
+          Cypress.backend("run:privileged", {
+            commandName: "task",
+            userArgs: [taskName, pact],
+            options: {
+              task: taskName,
+              arg: pact,
+            },
           })
-      );
+        )
+        .catch(() => {
+          /* noop */
+        });
     }
     // @ts-ignore
     const { args, promise } = Cypress.emitMap("command:invocation", {
@@ -435,7 +432,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
         })
       )
       .catch((err) => {
-        console.error("Error saving pact", err);
+        /* noop */
       });
   } else {
     cy.task("c8ypact:save", pact, debugLogger());
