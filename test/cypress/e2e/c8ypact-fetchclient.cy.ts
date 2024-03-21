@@ -171,5 +171,18 @@ describe("c8ypact fetchclient", () => {
         }
       );
     });
+
+    it("should return resource not found if there is no recorded response for request", (done) => {
+      Cypress.env("C8Y_PACT_MODE", "mocking");
+
+      Cypress.once("fail", (err) => {
+        expect(err.name).to.eq("C8yPactError");
+        expect(err.message).to.contain("Mocking failed in C8yPactFetchClient.");
+        done();
+      });
+
+      const client = new C8yPactFetchClient({ cypresspact: Cypress.c8ypact });
+      cy.wrap(client.fetch("/inventory/notfound"));
+    });
   });
 });

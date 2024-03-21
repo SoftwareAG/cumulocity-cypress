@@ -385,7 +385,9 @@ describe("c8ypact intercept", () => {
         .then(expectSavePactNotCalled);
     });
 
-    it("should intercept but not record without a RouteHandler", () => {
+    it("should intercept but not record without a RouteHandler and strictMock disabled", () => {
+      const lastMockValue = Cypress.c8ypact.config.strictMocking;
+      Cypress.c8ypact.config.strictMocking = false;
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")
         .then(fetchInventory)
@@ -394,7 +396,10 @@ describe("c8ypact intercept", () => {
           expect(data).to.have.property("managedObjects");
         })
         .wait("@inventory")
-        .then(expectSavePactNotCalled);
+        .then(expectSavePactNotCalled)
+        .then(() => {
+          Cypress.c8ypact.config.strictMocking = lastMockValue;
+        });
     });
 
     it("should intercept but not record with a RouteHandler function", () => {
@@ -508,7 +513,6 @@ describe("c8ypact intercept", () => {
 
     it("should return pact response for interceptions with RouteHandler continue function", () => {
       // @ts-ignore
-
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", (req) => {
         req.continue((res) => {
@@ -531,6 +535,16 @@ describe("c8ypact intercept", () => {
             ...{ test: "test2" },
           });
         });
+    });
+
+    it("should throw error if recording not found and strictMocking is enabled", (done) => {
+      Cypress.c8ypact.current = undefined;
+      Cypress.once("fail", (err) => {
+        expect(err.name).to.eq("C8yPactError");
+        expect(err.message).to.contain("Mocking failed in intercept.");
+        done();
+      });
+      cy.intercept("*").as("inventory").then(fetchInventory);
     });
 
     it("should not return pact response for interceptions with RouteHandler reply function", () => {

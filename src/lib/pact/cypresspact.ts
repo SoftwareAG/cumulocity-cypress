@@ -232,6 +232,7 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
       ignore: globalIgnore === "true" || globalIgnore === true,
       failOnMissingPacts: true,
       strictMatching: true,
+      strictMocking: true,
     },
     getConfigValue: (key: C8yPactConfigKeys, defaultValue?: any) => {
       const value =

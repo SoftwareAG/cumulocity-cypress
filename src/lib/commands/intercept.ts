@@ -217,6 +217,7 @@ const wrapStaticResponse = (obj: any) => {
 const wrapEmptyRoutHandler = () => {
   return function (req: any) {
     if (Cypress.c8ypact.current == null) {
+      failForStrictMocking();
       req.continue((res: any) => {
         emitInterceptionEvent(req, _.cloneDeep(res));
         res.send();
@@ -266,9 +267,9 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
 }
 
 function responseFromPact(matcher: C8yPactUrlMatcher, obj: any, req: any): any {
-  if (Cypress.c8ypact.current == null) return obj;
-  const p = Cypress.c8ypact.current as C8yDefaultPact;
-  const record = p.getRecordsMatchingRequest(req);
+  debugger;
+  const p = Cypress.c8ypact?.current as C8yDefaultPact;
+  const record = p?.getRecordsMatchingRequest(req);
   if (record) {
     const first = _.first(record);
     const r = first.modifiedResponse || first.response;
@@ -285,8 +286,24 @@ function responseFromPact(matcher: C8yPactUrlMatcher, obj: any, req: any): any {
     } else if (_.isString(obj) || _.isArrayLike(obj)) {
       obj = response;
     }
+  } else {
+    failForStrictMocking();
   }
   return obj;
+}
+
+function failForStrictMocking() {
+  if (Cypress.c8ypact.isRecordingEnabled()) return;
+
+  const strictMocking =
+    Cypress.c8ypact?.getConfigValue("strictMocking", true) === true;
+  if (strictMocking) {
+    const error = new Error(
+      "Mocking failed in intercept. No recording found for request. Do re-recording or disable Cypress.c8ypact.strictMocking."
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
 }
 
 function hasStaticResponseKeys(obj: any) {

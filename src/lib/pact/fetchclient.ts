@@ -56,34 +56,46 @@ export class C8yPactFetchClient extends FetchClient {
       Cypress.env("C8Y_LOGGED_IN_USER", this.authOptions.user);
     };
 
+    const isRecordingEnabled = this.cypresspact?.isRecordingEnabled() === true;
     const currentPact = this.cypresspact?.current as C8yDefaultPact;
-    if (currentPact && this.cypresspact?.isRecordingEnabled() !== true) {
-      const fullUrl: string = this.getUrl(url, fetchOptions);
-      const record = currentPact.getRecordsMatchingRequest({
-        url: fullUrl,
-        method: fetchOptions?.method,
-      });
-      if (record) {
-        const first = _.first(record);
-        if (first) {
-          const response = toWindowFetchResponse(first);
-          if (response) {
-            return Promise.resolve(response);
+
+    if (!isRecordingEnabled) {
+      if (currentPact) {
+        const fullUrl: string = this.getUrl(url, fetchOptions);
+        const record = currentPact.getRecordsMatchingRequest({
+          url: fullUrl,
+          method: fetchOptions?.method,
+        });
+        if (record) {
+          const first = _.first(record);
+          if (first) {
+            const response = toWindowFetchResponse(first);
+            if (response) {
+              return Promise.resolve(response);
+            }
           }
         }
+      }
+
+      if (this.cypresspact?.getConfigValue("strictMocking") === true) {
+        const error = new Error(
+          "Mocking failed in C8yPactFetchClient. No recording found for request. Do re-recording or disable Cypress.c8ypact.strictMocking."
+        );
+        error.name = "C8yPactError";
+        throw error;
       }
     }
 
     try {
       const response = await super.fetch(url, fetchOptions);
-      if (this.cypresspact == null) {
+      if (this.cypresspact == null || !isRecordingEnabled) {
         return Promise.resolve(response);
       }
 
       const result = await this.savePact(response, url, fetchOptions);
       return Promise.resolve(result);
     } catch (failure) {
-      if (this.cypresspact == null) {
+      if (this.cypresspact == null || !isRecordingEnabled) {
         setUserEnv();
         return Promise.reject(failure);
       }
