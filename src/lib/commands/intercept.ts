@@ -267,7 +267,6 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
 }
 
 function responseFromPact(matcher: C8yPactUrlMatcher, obj: any, req: any): any {
-  debugger;
   const p = Cypress.c8ypact?.current as C8yDefaultPact;
   const record = p?.getRecordsMatchingRequest(req);
   if (record) {
