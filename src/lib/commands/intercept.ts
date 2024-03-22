@@ -268,7 +268,7 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
 
 function responseFromPact(matcher: C8yPactUrlMatcher, obj: any, req: any): any {
   const p = Cypress.c8ypact?.current as C8yDefaultPact;
-  const record = p?.getRecordsMatchingRequest(req);
+  const record = p?.getRecordsMatchingRequest(req, matcher);
   if (record) {
     const first = _.first(record);
     const r = first.modifiedResponse || first.response;

@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { isURL } from ".";
+import { isURL } from "./url";
 
 export interface C8yPactUrlMatcher {
   /**
@@ -35,13 +35,14 @@ export class C8yDefaultPactUrlMatcher implements C8yPactUrlMatcher {
       url: string | URL,
       parametersToRemove: string[] = []
     ) => {
-      const urlObj = isURL(url) ? url : new URL(decodeURIComponent(url));
+      const urlObj = isURL(url)
+        ? url
+        : new URL(decodeURIComponent(url), this.baseUrl);
       parametersToRemove.forEach((name) => {
         urlObj.searchParams.delete(name);
       });
       return decodeURIComponent(urlObj.toString()?.replace(this.baseUrl, ""));
     };
-
     return _.isEqual(
       normalizeUrl(url1, this.ignoreParameters),
       normalizeUrl(url2, this.ignoreParameters)

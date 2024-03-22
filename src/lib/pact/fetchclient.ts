@@ -60,10 +60,10 @@ export class C8yPactFetchClient extends FetchClient {
     const currentPact = this.cypresspact?.current as C8yDefaultPact;
 
     if (!isRecordingEnabled) {
+      const fullUrl: string = this.getUrl(url, fetchOptions);
       if (currentPact) {
-        const fullUrl: string = this.getUrl(url, fetchOptions);
         const record = currentPact.getRecordsMatchingRequest({
-          url: fullUrl,
+          url: fullUrl?.replace(this.baseUrl, ""),
           method: fetchOptions?.method,
         });
         if (record) {
@@ -79,7 +79,7 @@ export class C8yPactFetchClient extends FetchClient {
 
       if (this.cypresspact?.getConfigValue("strictMocking") === true) {
         const error = new Error(
-          "Mocking failed in C8yPactFetchClient. No recording found for request. Do re-recording or disable Cypress.c8ypact.strictMocking."
+          `Mocking failed in C8yPactFetchClient. No recording found for request "${fullUrl}". Do re-recording or disable Cypress.c8ypact.strictMocking.`
         );
         error.name = "C8yPactError";
         throw error;

@@ -49,10 +49,7 @@ describe("c8ypact fetchclient", () => {
           expect(r.request).to.have.property("method", "GET");
           expect(r.request).to.have.property(
             "url",
-            new URL(
-              "/inventory/managedObjects?fragmentType=abcd",
-              Cypress.config("baseUrl")
-            ).toString()
+            "/inventory/managedObjects?fragmentType=abcd"
           );
           expect(r.response).to.not.be.undefined;
           expect(r.response).to.have.property("status", 200);
@@ -92,10 +89,7 @@ describe("c8ypact fetchclient", () => {
 
           const r = pact.records[0];
           expect(r.request).to.not.be.undefined;
-          expect(r.request).to.have.property(
-            "url",
-            new URL("/inventory/notfound", Cypress.config("baseUrl")).toString()
-          );
+          expect(r.request).to.have.property("url", "/inventory/notfound");
           expect(r.request).to.have.property("method", "GET");
           expect(r.request).to.have.property("headers");
           expect(r.request.headers).to.have.property("Authorization");
@@ -110,6 +104,10 @@ describe("c8ypact fetchclient", () => {
   });
 
   context("mocking", { auth }, () => {
+    beforeEach(() => {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
     it("should return recorded response", () => {
       const response: Cypress.Response<any> = {
         status: 201,
@@ -125,8 +123,10 @@ describe("c8ypact fetchclient", () => {
         url: url("/inventory/managedObjects?fragmentType=abcd"),
       };
 
-      Cypress.env("C8Y_PACT_MODE", "mocking");
-      Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "123" });
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {
+        id: "123",
+        baseUrl: Cypress.config("baseUrl"),
+      });
 
       const client = new C8yPactFetchClient({ cypresspact: Cypress.c8ypact });
       cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
@@ -155,8 +155,10 @@ describe("c8ypact fetchclient", () => {
         url: url("/inventory/notfound"),
       };
 
-      Cypress.env("C8Y_PACT_MODE", "mocking");
-      Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "123" });
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {
+        id: "123",
+        baseUrl: Cypress.config("baseUrl"),
+      });
 
       const client = new C8yPactFetchClient({ cypresspact: Cypress.c8ypact });
       cy.wrap(client.fetch("/inventory/notfound")).then(
@@ -172,9 +174,7 @@ describe("c8ypact fetchclient", () => {
       );
     });
 
-    it("should return resource not found if there is no recorded response for request", (done) => {
-      Cypress.env("C8Y_PACT_MODE", "mocking");
-
+    it("should throw error if there is no recorded response is found for request", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.name).to.eq("C8yPactError");
         expect(err.message).to.contain("Mocking failed in C8yPactFetchClient.");
@@ -183,6 +183,40 @@ describe("c8ypact fetchclient", () => {
 
       const client = new C8yPactFetchClient({ cypresspact: Cypress.c8ypact });
       cy.wrap(client.fetch("/inventory/notfound"));
+    });
+
+    it("should return recorded response with different baseUrl", () => {
+      const response: Cypress.Response<any> = {
+        status: 201,
+        statusText: "OK",
+        headers: { "content-type": "application/json1" },
+        body: { name: "t123456789" },
+        duration: 100,
+        requestHeaders: { "content-type": "application/json2" },
+        requestBody: { id: "abc123124" },
+        allRequestResponses: [],
+        isOkStatusCode: false,
+        method: "POST",
+        url: "https://mytest.com/inventory/managedObjects?fragmentType=abcd",
+      };
+
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {
+        id: "123",
+        baseUrl: "https://mytest.com",
+      });
+
+      const client = new C8yPactFetchClient({ cypresspact: Cypress.c8ypact });
+      cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
+        // @ts-ignore
+        async (response: IFetchResponse) => {
+          expect(client.baseUrl).to.not.eq("https://mytest.com");
+          expect(response.status).to.eq(201);
+          expect(await response.json()).to.deep.eq({ name: "t123456789" });
+          expect(response.headers.get("content-type")).to.eq(
+            "application/json1"
+          );
+        }
+      );
     });
   });
 });

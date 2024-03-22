@@ -6,6 +6,7 @@ import {
 import { C8yAuthOptions, C8yClient, C8yClientOptions } from "../c8yclient";
 import { C8yDefaultPactUrlMatcher, C8yPactUrlMatcher } from "./urlmatcher";
 import { C8ySchemaGenerator } from ".";
+import { removeBaseUrlFromRequestUrl } from "./url";
 
 /**
  * ID representing a pact object. Should be unique.
@@ -120,7 +121,7 @@ export interface C8yPactInfo extends C8yPactConfigOptions {
   /**
    * Base URL when recording the pact.
    */
-  baseUrl?: string;
+  baseUrl: string;
   /**
    * Tenant when recording the pact.
    */
@@ -245,6 +246,7 @@ export class C8yDefaultPact implements C8yPact {
         client?._options,
         client?._auth
       );
+      removeBaseUrlFromRequestUrl(pactRecord, info.baseUrl);
       return new C8yDefaultPact([pactRecord], info, info.id);
     } else {
       let pact: C8yPact;
@@ -293,18 +295,20 @@ export class C8yDefaultPact implements C8yPact {
    * Currently only url and method are used for matching.
    * @param req The request to use for matching.
    */
-  getRecordsMatchingRequest(req: {
-    url?: string;
-    method?: string;
-    urlMatcher?: C8yPactUrlMatcher;
-  }): C8yPactRecord[] | null {
+  getRecordsMatchingRequest(
+    req: {
+      url?: string;
+      method?: string;
+    },
+    urlMatcher?: C8yPactUrlMatcher
+  ): C8yPactRecord[] | null {
     const matcher =
-      req.urlMatcher ??
+      urlMatcher ??
       // @ts-ignore - TODO
-      typeof Cypress != "undefined"
+      (typeof Cypress != "undefined"
         ? // @ts-ignore - TODO
           _.get(Cypress, "c8ypact.urlMatcher")
-        : C8yDefaultPact.urlMatcher;
+        : C8yDefaultPact.urlMatcher);
     if (!matcher) return null;
     const records = this.records.filter((record) => {
       return (
@@ -589,6 +593,7 @@ export async function toPactSerializableObject(
     authType: options?.authType,
   };
   const record = createPactRecord(response, options?.client, recordOptions);
+  removeBaseUrlFromRequestUrl(record, info.baseUrl);
   const pact = new C8yDefaultPact([record], info, info.id);
 
   if (
@@ -665,13 +670,4 @@ export function createPactRecord(
   }
 
   return C8yDefaultPactRecord.from(response, auth, client);
-}
-
-export function isURL(obj: any): obj is URL {
-  return obj instanceof URL;
-}
-
-export function relativeURL(url: URL | string): string {
-  const u = isURL(url) ? url : new URL(url);
-  return u.pathname + u.search;
 }
