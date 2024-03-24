@@ -51,6 +51,7 @@ declare global {
     bearer?: (() => string) | string;
     userAlias?: string;
     type?: string;
+    xsfrToken?: string;
   }
 
   type C8yAuthConfig = string | C8yAuthOptions;

@@ -1,4 +1,3 @@
-import { IDeviceCredentials } from "@c8y/client";
 import {
   expectHttpRequest,
   stubResponse,

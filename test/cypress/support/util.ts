@@ -36,6 +36,33 @@ export function initRequestStub(): void {
   cy.stub(Cypress, "automation").callThrough();
 }
 
+export function initLoginRequestStub(
+  xsrf?: string,
+  authorization?: string,
+  tenant?: string
+): void {
+  Cypress.env("C8Y_TENANT", tenant);
+  const headers = new Headers();
+  if (authorization) {
+    headers.append(
+      "set-cookie",
+      `authorization=${authorization}; path=/; domain=localhost; HttpOnly`
+    );
+  }
+  if (xsrf) {
+    headers.append(
+      "set-cookie",
+      `XSRF-TOKEN=${xsrf}; Path=/; Domain=localhost; Secure`
+    );
+  }
+  stubResponse({
+    isOkStatusCode: true,
+    status: 200,
+    headers,
+    body: undefined,
+  });
+}
+
 type StubbedResponseType<T> =
   | Partial<Cypress.Response<Partial<T>>> // cy.request response type
   | Partial<Response>; // window.fetch response type
@@ -186,6 +213,10 @@ export function stubCookies<T>(response: StubbedResponseType<T>): void {
   (Cypress.automation as sinon.SinonStub)
     .withArgs("get:cookies")
     .resolves(cookies);
+
+  cookies.forEach((cookie) => {
+    document.cookie = `${cookie.name}=${cookie.value}`;
+  });
 }
 
 /**

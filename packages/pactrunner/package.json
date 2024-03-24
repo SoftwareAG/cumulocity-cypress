@@ -32,7 +32,8 @@
     "cypress": "^13.3.2",
     "date-fns": "^2.30.0",
     "quicktype": "^23.0.81",
-    "semver": "^7.5.2"
+    "semver": "^7.5.2",
+    "set-cookie-parser": "^2.6.0"
   },
   "devDependencies": {
     "@types/chai": "^4.3.4",

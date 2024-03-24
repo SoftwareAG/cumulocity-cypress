@@ -35,7 +35,8 @@
     "ajv-formats": "^2.1.1",
     "date-fns": "^2.30.0",
     "quicktype": "^23.0.81",
-    "semver": "^7.5.2"
+    "semver": "^7.5.2",
+    "set-cookie-parser": "^2.6.0"
   },
   "devDependencies": {
     "@angular/common": "^14.1.2",

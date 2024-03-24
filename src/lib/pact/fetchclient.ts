@@ -1,5 +1,6 @@
 import {
   BasicAuth,
+  CookieAuth,
   FetchClient,
   IAuthentication,
   IFetchOptions,
@@ -15,22 +16,52 @@ const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
 const { _ } = Cypress;
 
 export class C8yPactFetchClient extends FetchClient {
-  private authOptions: C8yAuthOptions;
   private authentication: IAuthentication;
   private cypresspact: CypressC8yPact;
+  private authOptions: C8yAuthOptions;
+
+  private user: string;
+  private userAlias: string;
 
   constructor(options: {
-    auth?: IAuthentication | string;
+    auth?: C8yAuthOptions | IAuthentication | string;
     baseUrl?: string;
     cypresspact?: CypressC8yPact;
   }) {
     let auth: IAuthentication;
+    let authOptions: C8yAuthOptions;
     let baseUrl: string;
 
-    const authOptions = getAuthOptions(options?.auth);
-    if ((!options?.auth || _.isString(options?.auth)) && authOptions) {
-      auth = new BasicAuth(authOptions);
+    if (options.auth) {
+      if (_.isString(options.auth)) {
+        authOptions = getAuthOptions(options?.auth);
+      } else if (_.isObjectLike(options.auth)) {
+        if ("logout" in options.auth) {
+          auth = options.auth as IAuthentication;
+        } else {
+          authOptions = options.auth as C8yAuthOptions;
+        }
+      }
     }
+
+    if (!auth) {
+      const cookieAuth = new CookieAuth();
+      const token: string = _.get(
+        cookieAuth.getFetchOptions({}),
+        "headers.X-XSRF-TOKEN"
+      );
+      if (token?.trim() && !_.isEmpty(token.trim())) {
+        auth = cookieAuth;
+      } else if (authOptions) {
+        auth = new BasicAuth(authOptions);
+      }
+    }
+
+    let [user, userAlias] = [
+      // @ts-ignore
+      authOptions?.user || auth?.user || Cypress.env("C8Y_LOGGED_IN_USER"),
+      authOptions?.userAlias || Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+    ];
 
     baseUrl = baseUrl || getBaseUrlFromEnv();
     if (!auth) {
@@ -43,8 +74,14 @@ export class C8yPactFetchClient extends FetchClient {
     super(auth, baseUrl);
 
     this.authOptions = authOptions;
-    this.authentication = auth as IAuthentication;
+    this.authentication = auth;
     this.cypresspact = options?.cypresspact;
+    this.user = user;
+    this.userAlias = userAlias;
+  }
+
+  protected getUser(): [string, string] {
+    return [this.user, this.userAlias];
   }
 
   async fetch(
@@ -52,8 +89,8 @@ export class C8yPactFetchClient extends FetchClient {
     fetchOptions?: IFetchOptions
   ): Promise<IFetchResponse> {
     const setUserEnv = () => {
-      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", this.authOptions.userAlias);
-      Cypress.env("C8Y_LOGGED_IN_USER", this.authOptions.user);
+      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", this.userAlias);
+      Cypress.env("C8Y_LOGGED_IN_USER", this.user);
     };
 
     const isRecordingEnabled = this.cypresspact?.isRecordingEnabled() === true;
@@ -109,6 +146,25 @@ export class C8yPactFetchClient extends FetchClient {
     }
   }
 
+  getFetchOptions(options?: IFetchOptions): IFetchOptions {
+    const result = super.getFetchOptions(options);
+
+    // for full authentication xsrf token and bearer token are required
+    // always add Bearer token if no authorization header is set
+    if (!_.get(result, "headers.Authorization")) {
+      const bearer =
+        this.authOptions?.bearer || this.getCookieValue("Authorization");
+      if (bearer) {
+        // xsrf token header is set in CookieAuth
+        result.headers = Object.assign(
+          { Authorization: `Bearer ${bearer}` },
+          result.headers
+        );
+      }
+    }
+    return result;
+  }
+
   protected async savePact(
     response: IFetchResponse,
     url: string,
@@ -135,11 +191,19 @@ export class C8yPactFetchClient extends FetchClient {
       },
       {
         noqueue: true,
-        loggedInUser: this.authOptions.user,
-        loggedInUserAlias: this.authOptions.userAlias,
+        loggedInUser: this.user,
+        loggedInUserAlias: this.userAlias,
       }
     );
 
     return result;
+  }
+
+  // from c8y/client FetchClient
+  private getCookieValue(name: string) {
+    const value = document.cookie.match(
+      "(^|;)\\s*" + name + "\\s*=\\s*([^;]+)"
+    );
+    return value ? value.pop() : "";
   }
 }
