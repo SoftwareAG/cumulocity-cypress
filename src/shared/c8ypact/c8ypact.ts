@@ -305,7 +305,7 @@ export class C8yDefaultPact implements C8yPact {
     const matcher =
       urlMatcher ??
       // @ts-ignore - TODO
-      (typeof Cypress != "undefined"
+      (typeof Cypress != "undefined" && _.get(Cypress, "c8ypact.urlMatcher")
         ? // @ts-ignore - TODO
           _.get(Cypress, "c8ypact.urlMatcher")
         : C8yDefaultPact.urlMatcher);
@@ -653,10 +653,7 @@ export function createPactRecord(
 
   if (client?._auth) {
     // do not pick the password. passwords must not be stored in the pact.
-    auth = _.defaultsDeep(
-      client._auth,
-      _.pick(envAuth, ["user", "userAlias", "type"])
-    );
+    auth = _.defaultsDeep(client._auth, envAuth);
     if (client._auth.constructor != null) {
       if (!auth) {
         auth = { type: client._auth.constructor.name };
@@ -669,5 +666,7 @@ export function createPactRecord(
     auth = envAuth;
   }
 
+  // only store properties that need to be exposed. do not store password.
+  auth = _.pick(auth, ["user", "userAlias", "type"]);
   return C8yDefaultPactRecord.from(response, auth, client);
 }

@@ -1,6 +1,6 @@
 import { C8yDefaultPact, C8yPact } from "../../../src/shared/c8ypact";
 import { C8yPactFetchClient } from "../../../src/lib/pact/fetchclient";
-import { BasicAuth, CookieAuth, IFetchResponse } from "@c8y/client";
+import { BasicAuth, IFetchResponse } from "@c8y/client";
 import {
   initLoginRequestStub,
   initRequestStub,
@@ -200,6 +200,30 @@ describe("c8ypact fetchclient", () => {
           });
           expect(r.response.body).to.have.property("managedObjects");
           expect(r.response.$body).to.not.be.undefined;
+        });
+      });
+    });
+
+    it("should record only required auth properties", () => {
+      const auth = new BasicAuth(user);
+      // @ts-ignore - additional property should not be stored in auth
+      auth.xsfrToken = "pQWAHZQfh";
+      const client = new C8yPactFetchClient({
+        cypresspact: Cypress.c8ypact,
+        auth,
+      });
+      cy.wrap(
+        client.fetch("/inventory/managedObjects?fragmentType=abcd", {
+          log: false,
+        })
+      ).then(() => {
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          const r = pact.records[0];
+          expect(r.auth).to.deep.eq({
+            user: auth.user,
+            userAlias: "admin",
+            type: "BasicAuth",
+          });
         });
       });
     });
