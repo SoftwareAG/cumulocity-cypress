@@ -45,21 +45,21 @@ declare global {
     }
   }
 
-  interface C8yAuthOptions extends ICredentials {
-    // support cy.request properties
-    sendImmediately?: boolean;
-    bearer?: (() => string) | string;
-    userAlias?: string;
-    type?: string;
-    xsfrToken?: string;
-  }
-
   type C8yAuthConfig = string | C8yAuthOptions;
 
   type C8yAuthArgs =
     | [user: string]
     | [user: string, password: string]
     | [authOptions: C8yAuthOptions];
+}
+
+export interface C8yAuthOptions extends ICredentials {
+  // support cy.request properties
+  sendImmediately?: boolean;
+  bearer?: (() => string) | string;
+  userAlias?: string;
+  type?: string;
+  xsfrToken?: string;
 }
 
 Cypress.Commands.add(
@@ -78,6 +78,7 @@ Cypress.Commands.add(
       consoleProps: () => consoleProps,
     });
 
+    cy.oauthLogin;
     if (!auth) {
       throw new Error(
         `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`

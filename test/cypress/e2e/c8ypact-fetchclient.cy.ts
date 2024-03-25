@@ -9,6 +9,7 @@ import {
 } from "cypress/support/util";
 import { encodeBase64 } from "../../../src/shared/c8yclient";
 import { url as _url } from "../support/util";
+import { C8yAuthOptions } from "../../../src/lib/commands/auth";
 
 const { _ } = Cypress;
 

@@ -19,3 +19,4 @@ import "../../../src/lib/commands";
 import "../../../src/lib/commands/request";
 import "../../../src/lib/commands/c8ypact";
 import "../../../src/lib/commands/intercept";
+import "../../../src/lib/commands/oauthlogin";
