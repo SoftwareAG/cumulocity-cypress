@@ -266,49 +266,43 @@ describe("c8ypact", () => {
         baseUrl: "https://mytest.com",
       });
 
+      // matches with baseUrl
+      expect(
+        pact.getRecordsMatchingRequest(
+          { url: url(url1), method: "GET" },
+          Cypress.config().baseUrl
+        )
+      ).to.deep.eq([pact.records[0]]);
+      expect(
+        pact.getRecordsMatchingRequest(
+          { url: url1, method: "GET" },
+          Cypress.config().baseUrl
+        )
+      ).to.deep.eq([pact.records[0]]);
+      // does not match as it is has a different baseUrl
+      expect(
+        pact.getRecordsMatchingRequest(
+          {
+            url: `https://xyz.com${url1}`,
+            method: "GET",
+          },
+          Cypress.config().baseUrl
+        )
+      ).to.be.null;
+
+      // matches without baseUrl
       expect(
         pact.getRecordsMatchingRequest({ url: url(url1), method: "GET" })
       ).to.deep.eq([pact.records[0]]);
       expect(
         pact.getRecordsMatchingRequest({ url: url1, method: "GET" })
       ).to.deep.eq([pact.records[0]]);
-      // does not match as it is has a different baseUrl
+      // does match as without baseUrl relative urls are matched
       expect(
         pact.getRecordsMatchingRequest({
           url: `https://xyz.com${url1}`,
           method: "GET",
         })
-      ).to.be.null;
-    });
-
-    it("getRecordsMatchingRequest should match requests with custom urlMatcher", function () {
-      const matcher = new C8yDefaultPactUrlMatcher(
-        ["testIgnore"],
-        Cypress.config("baseUrl")
-      );
-      const url1 = "/service/oee-bundle/configurationmanager/2/configuration";
-
-      const r = _.cloneDeep(response);
-      r.url = "https://mytest.com" + url1 + "?testIgnore=123";
-      r.method = "GET";
-
-      // pact has been recorded with mytest.com as baseUrl
-      const pact = C8yDefaultPact.from(r, {
-        id: "testid",
-        baseUrl: "https://mytest.com",
-      });
-
-      expect(
-        pact.getRecordsMatchingRequest(
-          { url: url(url1), method: "GET" },
-          matcher
-        )
-      ).to.deep.eq([pact.records[0]]);
-      expect(
-        pact.getRecordsMatchingRequest(
-          { url: url(`${url1}?testIgnore=212121212`), method: "GET" },
-          matcher
-        )
       ).to.deep.eq([pact.records[0]]);
     });
 
@@ -319,6 +313,9 @@ describe("c8ypact", () => {
       const pact = C8yDefaultPact.from(response, {
         id: "testid",
         baseUrl: Cypress.config("baseUrl"),
+        requestMatching: {
+          ignoreUrlParameters: ["dateFrom", "dateTo", "_"],
+        },
       });
       pact.records[0].request.url = url(url1);
       pact.records[0].request.method = "GET";

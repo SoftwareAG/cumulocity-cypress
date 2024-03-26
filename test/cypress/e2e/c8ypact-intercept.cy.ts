@@ -582,7 +582,7 @@ describe("c8ypact intercept", () => {
         .then(expectSavePactNotCalled);
     });
 
-    it.only("should return recorded response with different baseUrl", () => {
+    it("should return recorded response with different baseUrl", () => {
       // @ts-ignore
       const r = _.cloneDeep(response);
       r.method = "GET";
@@ -591,6 +591,9 @@ describe("c8ypact intercept", () => {
       Cypress.c8ypact.current = C8yDefaultPact.from(r, {
         id: "123",
         baseUrl: "https://mytest.com",
+        requestMatching: {
+          ignoreUrlParameters: ["_"],
+        },
       });
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")

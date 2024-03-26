@@ -233,6 +233,10 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
       failOnMissingPacts: true,
       strictMatching: true,
       strictMocking: true,
+      requestMatching: {
+        ignoreUrlParameters: ["dateFrom", "dateTo", "_"],
+        baseUrl: getBaseUrlFromEnv(),
+      },
     },
     getConfigValue: (key: C8yPactConfigKeys, defaultValue?: any) => {
       const value =
