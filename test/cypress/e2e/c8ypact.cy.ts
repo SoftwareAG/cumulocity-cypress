@@ -338,6 +338,59 @@ describe("c8ypact", () => {
       expect(pact.getRecordsMatchingRequest({ url: "" })).to.be.null;
       expect(pact.getRecordsMatchingRequest({ method: "GET" })).to.be.null;
     });
+
+    it("getNextRecordMatchingRequest should work with series of get and put requests", function () {
+      const record1 = C8yDefaultPactRecord.from({
+        ...response,
+        method: "GET",
+        url: url("/test1"),
+        body: { name: "noname" },
+      });
+      const record2 = C8yDefaultPactRecord.from({
+        ...response,
+        method: "PUT",
+        url: url("/test1"),
+        body: { name: "abcdefghij" },
+        requestBody: { name: "abcdefghij" },
+      });
+      const record3 = C8yDefaultPactRecord.from({
+        ...response,
+        method: "GET",
+        url: url("/test1"),
+        body: { name: "abcdefghij" },
+      });
+
+      const pact = new C8yDefaultPact(
+        [record1, record2, record3],
+        {
+          id: "testid",
+          baseUrl: Cypress.config("baseUrl"),
+        },
+        "testid"
+      );
+
+      const r1 = pact.nextRecordMatchingRequest({
+        url: "/test1",
+        method: "GET",
+      });
+      expect(r1.request).to.have.property("body", record1.request.body);
+      const r2 = pact.nextRecordMatchingRequest({
+        url: "/test1",
+        method: "PUT",
+      });
+      expect(r2.request).to.have.property("body", record2.request.body);
+      expect(r2.response).to.have.property("body", record2.response.body);
+      const r3 = pact.nextRecordMatchingRequest({
+        url: "/test1",
+        method: "GET",
+      });
+      expect(r3.request).to.have.property("body", record3.request.body);
+
+      // @ts-ignore
+      expect(pact.getRequesIndex("get:/test1")).to.equal(2);
+      // @ts-ignore
+      expect(pact.getRequesIndex("put:/test1")).to.equal(1);
+    });
   });
 
   context("C8yDefaultPactRecord", function () {

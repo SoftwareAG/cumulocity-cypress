@@ -265,11 +265,10 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
 }
 
 function responseFromPact(obj: any, req: any): any {
-  const p = Cypress.c8ypact?.current as C8yDefaultPact;
-  const record = p?.getRecordsMatchingRequest(req, getBaseUrlFromEnv());
+  const p = Cypress.c8ypact?.current;
+  const record = p?.nextRecordMatchingRequest(req, getBaseUrlFromEnv());
   if (record) {
-    const first = _.first(record);
-    const r = first.modifiedResponse || first.response;
+    const r = record.modifiedResponse || record.response;
     const response = {
       body: r.body,
       headers: r.headers,

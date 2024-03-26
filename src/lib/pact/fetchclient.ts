@@ -95,22 +95,19 @@ export class C8yPactFetchClient extends FetchClient {
     };
 
     const isRecordingEnabled = this.cypresspact?.isRecordingEnabled() === true;
-    const currentPact = this.cypresspact?.current as C8yDefaultPact;
+    const currentPact = this.cypresspact?.current;
 
     if (!isRecordingEnabled) {
       const fullUrl: string = this.getUrl(url, fetchOptions);
       if (currentPact) {
-        const record = currentPact.getRecordsMatchingRequest({
+        const record = currentPact.nextRecordMatchingRequest({
           url: fullUrl?.replace(this.baseUrl, ""),
           method: fetchOptions?.method,
         });
         if (record) {
-          const first = _.first(record);
-          if (first) {
-            const response = toWindowFetchResponse(first);
-            if (response) {
-              return Promise.resolve(response);
-            }
+          const response = toWindowFetchResponse(record);
+          if (response) {
+            return Promise.resolve(response);
           }
         }
       }

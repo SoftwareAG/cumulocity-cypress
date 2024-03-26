@@ -108,6 +108,14 @@ export interface C8yPact {
    */
   nextRecord(): C8yPactRecord | null;
   /**
+   * Returns the next pact record matching the given request. Request matching is
+   * based ob criteria like url and method. Returns null if no record is found.
+   */
+  nextRecordMatchingRequest(
+    request: Partial<Request>,
+    baseUrl?: string
+  ): C8yPactRecord | null;
+  /**
    * Returns an iterator for the pact records.
    */
   [Symbol.iterator](): Iterator<C8yPactRecord | null>;
@@ -354,6 +362,11 @@ export class C8yDefaultPact implements C8yPact {
     const n1 = this.normalizeUrl(url1, ignoreParameters, baseUrl);
     const n2 = this.normalizeUrl(url2, ignoreParameters, baseUrl);
     return _.isEqual(n1, n2);
+  }
+
+  // debugging and test purposes only
+  protected getRequesIndex(key: string): number {
+    return this.requestIndexMap[key] || 0;
   }
 
   /**
