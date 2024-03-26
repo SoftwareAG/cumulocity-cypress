@@ -13,7 +13,6 @@ import {
   C8yDefaultPactRecord,
   C8yPact,
   createPactRecord,
-  C8yDefaultPactUrlMatcher,
 } from "../../../src/shared/c8ypact";
 
 const { _, sinon } = Cypress;
@@ -87,7 +86,6 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.preprocessor).to.be.a("object");
       expect(Cypress.c8ypact.pactRunner).to.be.a("object");
       expect(Cypress.c8ypact.matcher).to.be.a("object");
-      expect(Cypress.c8ypact.urlMatcher).to.be.a("object");
       expect(Cypress.c8ypact.schemaGenerator).to.be.a("object");
       expect(Cypress.c8ypact.schemaMatcher).to.be.a("object");
     });

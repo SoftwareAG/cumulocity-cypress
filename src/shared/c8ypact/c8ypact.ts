@@ -4,7 +4,6 @@ import {
   C8yPactPreprocessorOptions,
 } from "./preprocessor";
 import { C8yAuthOptions, C8yClient, C8yClientOptions } from "../c8yclient";
-import { C8yDefaultPactUrlMatcher, C8yPactUrlMatcher } from "./urlmatcher";
 import { C8ySchemaGenerator } from ".";
 import { isURL, removeBaseUrlFromRequestUrl } from "./url";
 
@@ -215,7 +214,6 @@ export class C8yDefaultPact implements C8yPact {
   protected iteratorIndex = 0;
   protected requestIndexMap: { [key: string]: number } = {};
 
-  static urlMatcher: C8yPactUrlMatcher = new C8yDefaultPactUrlMatcher([], "");
   static strictMatching: boolean;
 
   constructor(records: C8yPactRecord[], info: C8yPactInfo, id: C8yPactID) {

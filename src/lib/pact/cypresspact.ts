@@ -10,8 +10,6 @@ import {
   C8yDefaultPactPreprocessor,
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
-  C8yDefaultPactUrlMatcher,
-  C8yPactUrlMatcher,
   C8yAjvSchemaMatcher,
   C8yQicktypeSchemaGenerator,
   C8ySchemaGenerator,
@@ -79,10 +77,6 @@ declare global {
      * Can be overridden by setting a matcher in C8yPactConfigOptions.
      */
     matcher: C8yPactMatcher;
-    /**
-     * The C8yPactUrlMatcher implementation used to match records by url. Default is C8yDefaultPactUrlMatcher.
-     */
-    urlMatcher: C8yPactUrlMatcher;
     /**
      * The C8yPactPreprocessor implementation used to preprocess the pact objects.
      */
@@ -216,10 +210,6 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     savePact,
     isEnabled,
     matcher: new C8yDefaultPactMatcher(),
-    urlMatcher: new C8yDefaultPactUrlMatcher(
-      ["dateFrom", "dateTo", "_"],
-      getBaseUrlFromEnv()
-    ),
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: new C8yQicktypeSchemaGenerator(),
     schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),

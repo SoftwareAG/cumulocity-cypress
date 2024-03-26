@@ -10,7 +10,6 @@ if (!Cypress.c8ypact) {
     savePact: (...args) => new Promise((resolve) => resolve()),
     isEnabled: () => false,
     matcher: undefined,
-    urlMatcher: undefined,
     pactRunner: undefined,
     schemaGenerator: undefined,
     schemaMatcher: undefined,
