@@ -12,7 +12,8 @@
     "clean": "rimraf dist/ && rimraf packages/pactrunner/dist/ && rimraf packages/pactrunner/.yalc && rimraf packages/pactrunner/yalc.lock",
     "copy-files": "copyfiles --up 1 src/lib/**/*.*js src/lib/*.*js src/lib/**/*.d.ts dist/ && copyfiles README.md package.json dist/",
     "build": "npm run clean && npm run copy-files && tsc -b -v src/lib/ && cd dist/ && npm run clean-package-json",
-    "runner:yalc": "npm run clean && npm run build && cd dist/ && yalc publish && cd ../packages/pactrunner && yalc add cumulocity-cypress",
+    "yalc:runner": "npm run yalc:publish && cd packages/pactrunner && yalc add cumulocity-cypress",
+    "yalc:publish": "npm run clean && npm run build && cd dist/ && yalc publish && cd ..",
     "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },
   "repository": {
