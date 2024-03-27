@@ -107,7 +107,7 @@ Cypress.Commands.add(
                 grant_type: "PASSWORD",
                 username: auth.user,
                 password: auth.password,
-                tfa_code: undefined,
+                tfa_code: auth.tfa,
               },
               form: true,
             })

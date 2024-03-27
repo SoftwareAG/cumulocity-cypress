@@ -11,7 +11,7 @@ import {
   wrapFetchResponse,
 } from "../../shared/c8yclient";
 import { C8yDefaultPact } from "../../shared/c8ypact";
-import { C8yAuthOptions } from "../commands/auth";
+import { C8yAuthOptions, getCookieValue } from "../commands/auth";
 const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
 
 const { _ } = Cypress;
@@ -151,7 +151,7 @@ export class C8yPactFetchClient extends FetchClient {
     // always add Bearer token if no authorization header is set
     if (!_.get(result, "headers.Authorization")) {
       const bearer =
-        this.authOptions?.bearer || this.getCookieValue("Authorization");
+        this.authOptions?.bearer || getCookieValue("Authorization");
       if (bearer) {
         // xsrf token header is set in CookieAuth
         result.headers = Object.assign(
@@ -195,13 +195,5 @@ export class C8yPactFetchClient extends FetchClient {
     );
 
     return result;
-  }
-
-  // from c8y/client FetchClient
-  private getCookieValue(name: string) {
-    const value = document.cookie.match(
-      "(^|;)\\s*" + name + "\\s*=\\s*([^;]+)"
-    );
-    return value ? value.pop() : "";
   }
 }

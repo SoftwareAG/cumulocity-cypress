@@ -8,7 +8,9 @@ import "./intercept";
 
 import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
-import { C8yAuthOptions } from "./auth";
+import { C8yAuthOptions, oauthLogin } from "./auth";
+
+const { getAuthOptionsFromEnv } = require("./../utils");
 
 declare global {
   namespace Cypress {
@@ -22,24 +24,11 @@ Cypress.Commands.add(
   "mount",
   // @ts-ignore
   { prevSubject: "optional" },
-  mount
-);
-
-// overwrite mount command to inject fetch client and remove previous subject from passing
-// to original mount command.
-Cypress.Commands.overwrite(
-  "mount",
-  // @ts-ignore
-  (
-    originalFn: typeof mount,
-    subject: C8yAuthOptions | undefined,
-    component: any,
-    options: any
-  ) => {
-    if (subject && _.isObjectLike(subject)) {
+  (subject: C8yAuthOptions | undefined, component: any, options: any) => {
+    const registerFetchClient = (auth: C8yAuthOptions) => {
       const fetchClient = new C8yPactFetchClient({
         cypresspact: Cypress.c8ypact,
-        auth: subject,
+        auth,
       });
       if (options) {
         const providers = options.providers || [];
@@ -53,7 +42,20 @@ Cypress.Commands.overwrite(
           options.providers = providers;
         }
       }
-    }
-    return originalFn(component, options);
+    };
+
+    const auth = subject || getAuthOptionsFromEnv();
+    return cy
+      .wrap(Cypress.c8ypact.isRecordingEnabled() ? oauthLogin(auth) : auth, {
+        log: false,
+      })
+      .then((a: C8yAuthOptions) => {
+        registerFetchClient(a);
+
+        Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
+        Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+
+        return mount(component, options);
+      });
   }
 );
