@@ -4,13 +4,18 @@ import {
   C8yPactPreprocessorOptions,
 } from "./preprocessor";
 import { C8yAuthOptions, C8yClient, C8yClientOptions } from "../c8yclient";
-import { C8yDefaultPactUrlMatcher, C8yPactUrlMatcher } from "./urlmatcher";
 import { C8ySchemaGenerator } from ".";
+import { isURL, removeBaseUrlFromRequestUrl } from "./url";
 
 /**
  * ID representing a pact object. Should be unique.
  */
 export type C8yPactID = string;
+
+export interface C8yPactRequestMatchingOptions {
+  ignoreUrlParameters?: string[];
+  baseUrl?: string;
+}
 
 export interface C8yPactConfigOptions {
   /**
@@ -53,9 +58,19 @@ export interface C8yPactConfigOptions {
    */
   strictMatching?: boolean;
   /**
+   * If strictMocking is enabled, a 404 / Resource not found response will be returned if
+   * no pact record matches the current request. If disabled, the request will be passed
+   * through to the configured baseUrl.
+   */
+  strictMocking?: boolean;
+  /**
    * Options to configure the C8yPactPreprocessor.
    */
   preprocessor?: C8yPactPreprocessorOptions;
+  /**
+   * Options to configure the C8yPact request matching.
+   */
+  requestMatching?: C8yPactRequestMatchingOptions;
 }
 export type C8yPactConfigKeys = keyof C8yPactConfigOptions;
 
@@ -93,6 +108,14 @@ export interface C8yPact {
    */
   nextRecord(): C8yPactRecord | null;
   /**
+   * Returns the next pact record matching the given request. Request matching is
+   * based ob criteria like url and method. Returns null if no record is found.
+   */
+  nextRecordMatchingRequest(
+    request: Partial<Request>,
+    baseUrl?: string
+  ): C8yPactRecord | null;
+  /**
    * Returns an iterator for the pact records.
    */
   [Symbol.iterator](): Iterator<C8yPactRecord | null>;
@@ -114,7 +137,7 @@ export interface C8yPactInfo extends C8yPactConfigOptions {
   /**
    * Base URL when recording the pact.
    */
-  baseUrl?: string;
+  baseUrl: string;
   /**
    * Tenant when recording the pact.
    */
@@ -197,8 +220,8 @@ export class C8yDefaultPact implements C8yPact {
 
   protected recordIndex = 0;
   protected iteratorIndex = 0;
+  protected requestIndexMap: { [key: string]: number } = {};
 
-  static urlMatcher: C8yPactUrlMatcher = new C8yDefaultPactUrlMatcher([], "");
   static strictMatching: boolean;
 
   constructor(records: C8yPactRecord[], info: C8yPactInfo, id: C8yPactID) {
@@ -239,6 +262,7 @@ export class C8yDefaultPact implements C8yPact {
         client?._options,
         client?._auth
       );
+      removeBaseUrlFromRequestUrl(pactRecord, info.baseUrl);
       return new C8yDefaultPact([pactRecord], info, info.id);
     } else {
       let pact: C8yPact;
@@ -282,28 +306,83 @@ export class C8yDefaultPact implements C8yPact {
     return this.records[this.recordIndex++];
   }
 
+  nextRecordMatchingRequest(
+    request: Partial<Request>,
+    baseUrl?: string
+  ): C8yPactRecord | null {
+    if (!request?.url) return null;
+
+    const matches = this.getRecordsMatchingRequest(request);
+    if (!matches) return null;
+
+    const url = this.normalizeUrl(request.url, undefined, baseUrl);
+    const method = _.lowerCase(request.method || "get");
+
+    const currentIndex = this.requestIndexMap[`${method}:${url}`] || 0;
+    const result = matches[Math.min(currentIndex, matches.length - 1)];
+    this.requestIndexMap[`${method}:${url}`] = currentIndex + 1;
+    return result;
+  }
+
+  protected normalizeUrl(
+    url: string | URL,
+    parametersToRemove?: string[],
+    baseUrl?: string
+  ) {
+    const urlObj = isURL(url)
+      ? url
+      : new URL(decodeURIComponent(url), this.info.baseUrl);
+
+    const p =
+      parametersToRemove ||
+      this.info.requestMatching?.ignoreUrlParameters ||
+      [];
+
+    p.forEach((name) => {
+      urlObj.searchParams.delete(name);
+    });
+    if (!baseUrl) {
+      return decodeURIComponent(urlObj.pathname + urlObj.search + urlObj.hash);
+    }
+    return decodeURIComponent(
+      urlObj.toString()?.replace(this.info.baseUrl, "")?.replace(baseUrl, "")
+    );
+  }
+
+  protected matchUrls(
+    url1: string | URL,
+    url2: string | URL,
+    baseUrl?: string
+  ): boolean {
+    if (!url1 || !url2) return false;
+
+    const ignoreParameters =
+      this.info.requestMatching?.ignoreUrlParameters || [];
+
+    const n1 = this.normalizeUrl(url1, ignoreParameters, baseUrl);
+    const n2 = this.normalizeUrl(url2, ignoreParameters, baseUrl);
+    return _.isEqual(n1, n2);
+  }
+
+  // debugging and test purposes only
+  protected getRequesIndex(key: string): number {
+    return this.requestIndexMap[key] || 0;
+  }
+
   /**
    * Returns the pact record for the given request or null if no record is found.
    * Currently only url and method are used for matching.
    * @param req The request to use for matching.
    */
-  getRecordsMatchingRequest(req: {
-    url?: string;
-    method?: string;
-    urlMatcher?: C8yPactUrlMatcher;
-  }): C8yPactRecord[] | null {
-    const matcher =
-      req.urlMatcher ??
-      // @ts-ignore - TODO
-      typeof Cypress != "undefined"
-        ? // @ts-ignore - TODO
-          _.get(Cypress, "c8ypact.urlMatcher")
-        : C8yDefaultPact.urlMatcher;
-    if (!matcher) return null;
+  getRecordsMatchingRequest(
+    req: Partial<Request>,
+    baseUrl?: string
+  ): C8yPactRecord[] | null {
     const records = this.records.filter((record) => {
       return (
         record.request?.url &&
-        matcher.match(record.request.url, req.url) &&
+        req.url &&
+        this.matchUrls(record.request.url, req.url, baseUrl) &&
         (req.method != null
           ? _.lowerCase(req.method) === _.lowerCase(record.request.method)
           : true)
@@ -583,6 +662,7 @@ export async function toPactSerializableObject(
     authType: options?.authType,
   };
   const record = createPactRecord(response, options?.client, recordOptions);
+  removeBaseUrlFromRequestUrl(record, info.baseUrl);
   const pact = new C8yDefaultPact([record], info, info.id);
 
   if (
@@ -642,10 +722,7 @@ export function createPactRecord(
 
   if (client?._auth) {
     // do not pick the password. passwords must not be stored in the pact.
-    auth = _.defaultsDeep(
-      client._auth,
-      _.pick(envAuth, ["user", "userAlias", "type"])
-    );
+    auth = _.defaultsDeep(client._auth, envAuth);
     if (client._auth.constructor != null) {
       if (!auth) {
         auth = { type: client._auth.constructor.name };
@@ -658,14 +735,7 @@ export function createPactRecord(
     auth = envAuth;
   }
 
+  // only store properties that need to be exposed. do not store password.
+  auth = _.pick(auth, ["user", "userAlias", "type"]);
   return C8yDefaultPactRecord.from(response, auth, client);
-}
-
-export function isURL(obj: any): obj is URL {
-  return obj instanceof URL;
-}
-
-export function relativeURL(url: URL | string): string {
-  const u = isURL(url) ? url : new URL(url);
-  return u.pathname + u.search;
 }

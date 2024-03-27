@@ -555,15 +555,9 @@ cy.intercept(
 ).as("inventory");
 ```
 
-If recording is disabled, `cy.intercept` will use the recorded pacts to mock responses for requests. To find a matching record for the intercepted request in the pact, `cy.intercept` uses the `Cypress.c8ypact.urlMatcher`. Recorded URLs might contain dynamic values, such as dates making it hard to find the required URL at the time of mocking the request. For this reason, `C8yDefaultUrlMatcher` allows to provide a set of URL parameters to ignore when looking for matching records in the pact.
+If recording is disabled, `cy.intercept` will use the recorded pacts to mock responses for requests. To find a matching record for the intercepted request in the pact, `cy.intercept` uses a request matcher with the configuration options from `Cypress.c8ypact.config.requestMatching`. 
 
-Configure url matching based on your own needs by providing a custom implementation `C8yPactUrlMatcher` register with `Cypress.c8ypact.urlMatcher`. It is also possible to use `C8yDefaultPactUrlMatcher` and provide a custom set of parameters.
-
-```typescript
-Cypress.c8ypact.urlMatcher = new C8yDefaultPactUrlMatcher(["dateFrom", "dateTo", "_"]);
-```
-
-Finding recorded requests in the pact is not only based on the URL, but also on the request method. 
+Finding recorded requests in the pact is not only based on the URL, but also for example the request method. 
 
 ### Environment variables
 

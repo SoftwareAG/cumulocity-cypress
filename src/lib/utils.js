@@ -134,13 +134,25 @@ function getAuthOptionsFromArgs(...args) {
   if (!_.isEmpty(args) && _.isObjectLike(args[0])) {
     if (isAuth(args[0])) {
       return authWithTenant(
-        _.pick(args[0], ["user", "password", "tenant", "userAlias"])
+        _.pick(args[0], ["user", "password", "tenant", "userAlias", "type"])
       );
     }
-  }
 
-  // getAuthOptions({user: "abc", password: "abc"}, ...)
-  if (!_.isEmpty(args) && _.isObjectLike(args[0])) {
+    // getAuthOptions({userAlias: "abc"}, ...)
+    if (args[0].userAlias) {
+      const user =
+        Cypress.env(`${args[0].userAlias}_username`) || args[0].userAlias;
+      const password = Cypress.env(`${args[0].userAlias}_password`);
+      if (user && password) {
+        return authWithTenant({
+          user,
+          password,
+          userAlias: args[0].userAlias,
+          ...(args[0].type && { type: args[0].type }),
+        });
+      }
+    }
+    // getAuthOptions({user: "abc", password: "abc"}, ...)
     if (args[0].username && args[0].password) {
       let auth = _.pick(args[0], [
         "username",
@@ -189,6 +201,14 @@ function authWithTenant(options) {
     _.extend(options, { tenant });
   }
   return options;
+}
+
+export function getBaseUrlFromEnv() {
+  return (
+    Cypress.env(`C8Y_BASEURL`) ||
+    Cypress.env(`baseUrl`) ||
+    (Cypress.testingType != "component" ? Cypress.config().baseUrl : undefined)
+  );
 }
 
 export function storeClient(client) {

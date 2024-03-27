@@ -126,12 +126,26 @@ export function configureC8yPlugin(
 
 function getVersion() {
   try {
-    const packageJsonPath = path.resolve(__dirname, "../../../package.json");
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-    return packageJson.version;
+    let currentDir = __dirname;
+    let packageJsonPath;
+    let maxLevels = 3;
+    while (maxLevels > 0) {
+      packageJsonPath = path.resolve(currentDir, "package.json");
+      if (fs.existsSync(packageJsonPath)) {
+        const packageJson = JSON.parse(
+          fs.readFileSync(packageJsonPath, "utf8")
+        );
+        return packageJson.version;
+      }
+      currentDir = path.dirname(currentDir);
+      maxLevels--;
+    }
   } catch {
-    return "unknown";
+    console.error(
+      "Failed to get version from package.json. package.json not found."
+    );
   }
+  return "unknown";
 }
 
 module.exports = { configureC8yPlugin, C8yPactDefaultFileAdapter };

@@ -1,9 +1,10 @@
-import { C8yDefaultPact, C8yPactUrlMatcher } from "../../shared/c8ypact";
+import { C8yDefaultPact } from "../../shared/c8ypact";
 import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,
   STATIC_RESPONSE_WITH_OPTIONS_KEYS,
 } from "../pact/constants";
+const { getBaseUrlFromEnv } = require("../utils");
 
 const { _ } = Cypress;
 
@@ -23,11 +24,28 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
     return originalFn(...args);
   }
 
+  const isAbsoluteURL = (url: string) => {
+    return /^https?:\/\//i.test(url);
+  };
+
   const method =
     _.isString(args[0]) && HTTP_METHODS.includes(args[0].toUpperCase())
       ? args[0]
       : undefined;
-  const matcher = method ? args[1] : args[0];
+
+  let matcher = method ? args[1] : args[0];
+  // component testing does not know about a baseUrl so relative paths will be matched
+  // with url of cypress runner
+  if (Cypress.testingType === "component") {
+    const baseUrl = getBaseUrlFromEnv();
+    if (_.isString(matcher) && !isAbsoluteURL(matcher) && baseUrl) {
+      matcher = {
+        hostname: baseUrl.replace(/^https?:\/\//i, ""),
+        path: matcher,
+      };
+    }
+  }
+
   let response = method ? args[2] : args[1];
 
   let updatedArgs: any[] = [];
@@ -136,8 +154,7 @@ const wrapFunctionRouteHandler = (fn: any) => {
       if (Cypress.c8ypact.current == null) {
         reqContinue(resFn);
       } else {
-        const urlMatcher = Cypress.c8ypact.urlMatcher;
-        const response = responseFromPact(urlMatcher, {}, req);
+        const response = responseFromPact({}, req);
         if (resFn) {
           response.send = () => {};
           resFn(response);
@@ -199,13 +216,13 @@ const wrapStaticResponse = (obj: any) => {
 const wrapEmptyRoutHandler = () => {
   return function (req: any) {
     if (Cypress.c8ypact.current == null) {
+      failForStrictMocking();
       req.continue((res: any) => {
         emitInterceptionEvent(req, _.cloneDeep(res));
         res.send();
       });
     } else {
-      const urlMatcher = Cypress.c8ypact.urlMatcher;
-      const response = responseFromPact(urlMatcher, {}, req);
+      const response = responseFromPact({}, req);
       req.reply(response);
     }
   };
@@ -247,13 +264,11 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   }
 }
 
-function responseFromPact(matcher: C8yPactUrlMatcher, obj: any, req: any): any {
-  if (Cypress.c8ypact.current == null) return obj;
-  const p = Cypress.c8ypact.current as C8yDefaultPact;
-  const record = p.getRecordsMatchingRequest(req);
+function responseFromPact(obj: any, req: any): any {
+  const p = Cypress.c8ypact?.current;
+  const record = p?.nextRecordMatchingRequest(req, getBaseUrlFromEnv());
   if (record) {
-    const first = _.first(record);
-    const r = first.modifiedResponse || first.response;
+    const r = record.modifiedResponse || record.response;
     const response = {
       body: r.body,
       headers: r.headers,
@@ -267,8 +282,24 @@ function responseFromPact(matcher: C8yPactUrlMatcher, obj: any, req: any): any {
     } else if (_.isString(obj) || _.isArrayLike(obj)) {
       obj = response;
     }
+  } else {
+    failForStrictMocking();
   }
   return obj;
+}
+
+function failForStrictMocking() {
+  if (Cypress.c8ypact.isRecordingEnabled()) return;
+
+  const strictMocking =
+    Cypress.c8ypact?.getConfigValue("strictMocking", true) === true;
+  if (strictMocking) {
+    const error = new Error(
+      "Mocking failed in intercept. No recording found for request. Do re-recording or disable Cypress.c8ypact.strictMocking."
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
 }
 
 function hasStaticResponseKeys(obj: any) {

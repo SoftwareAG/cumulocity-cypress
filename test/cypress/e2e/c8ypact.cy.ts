@@ -86,7 +86,6 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.preprocessor).to.be.a("object");
       expect(Cypress.c8ypact.pactRunner).to.be.a("object");
       expect(Cypress.c8ypact.matcher).to.be.a("object");
-      expect(Cypress.c8ypact.urlMatcher).to.be.a("object");
       expect(Cypress.c8ypact.schemaGenerator).to.be.a("object");
       expect(Cypress.c8ypact.schemaMatcher).to.be.a("object");
     });
@@ -139,14 +138,20 @@ describe("c8ypact", () => {
     };
 
     it("from() should create C8yDefaultPact from Cypress.Response", function () {
-      const pact = C8yDefaultPact.from(response, { id: "testid" });
+      const pact = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+      });
       expect(pact).to.not.be.null;
       expect(pact.records).to.have.length(1);
       expect(isPact(pact)).to.be.true;
     });
 
     it("from() should create C8yDefaultPact from serialized string", function () {
-      const pact = C8yDefaultPact.from(response, { id: "testid" });
+      const pact = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+      });
       const pact2 = C8yDefaultPact.from(JSON.stringify(pact));
       expect(pact2).to.not.be.undefined.and.not.be.null;
       expect(pact2.records).to.have.length(1);
@@ -202,7 +207,10 @@ describe("c8ypact", () => {
     });
 
     it("nextRecord() should return next record", function () {
-      const pact = C8yDefaultPact.from(response, { id: "testid" });
+      const pact = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+      });
       pact.records.push(C8yDefaultPactRecord.from(response));
       expect(pact.records).to.have.length(2);
       expect(pact.nextRecord()).to.not.be.null;
@@ -217,7 +225,10 @@ describe("c8ypact", () => {
       const url3 = "/service/oee-bundle/configurationmanager/2/configuration";
 
       // matching of records is based on url and method
-      const pact = C8yDefaultPact.from(response, { id: "testid" });
+      const pact = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+      });
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records.push(C8yDefaultPactRecord.from(response));
       pact.records[0].request.url = url(url1);
@@ -241,11 +252,69 @@ describe("c8ypact", () => {
       expect(pact.getRecordsMatchingRequest({ url: url("/test") })).to.be.null;
     });
 
+    it("getRecordsMatchingRequest should match requests with different baseUrls", function () {
+      const url1 = "/service/oee-bundle/configurationmanager/2/configuration";
+
+      const r = _.cloneDeep(response);
+      r.url = "https://mytest.com" + url1;
+      r.method = "GET";
+      // pact has been recorded with mytest.com as baseUrl
+      const pact = C8yDefaultPact.from(r, {
+        id: "testid",
+        baseUrl: "https://mytest.com",
+      });
+
+      // matches with baseUrl
+      expect(
+        pact.getRecordsMatchingRequest(
+          { url: url(url1), method: "GET" },
+          Cypress.config().baseUrl
+        )
+      ).to.deep.eq([pact.records[0]]);
+      expect(
+        pact.getRecordsMatchingRequest(
+          { url: url1, method: "GET" },
+          Cypress.config().baseUrl
+        )
+      ).to.deep.eq([pact.records[0]]);
+      // does not match as it is has a different baseUrl
+      expect(
+        pact.getRecordsMatchingRequest(
+          {
+            url: `https://xyz.com${url1}`,
+            method: "GET",
+          },
+          Cypress.config().baseUrl
+        )
+      ).to.be.null;
+
+      // matches without baseUrl
+      expect(
+        pact.getRecordsMatchingRequest({ url: url(url1), method: "GET" })
+      ).to.deep.eq([pact.records[0]]);
+      expect(
+        pact.getRecordsMatchingRequest({ url: url1, method: "GET" })
+      ).to.deep.eq([pact.records[0]]);
+      // does match as without baseUrl relative urls are matched
+      expect(
+        pact.getRecordsMatchingRequest({
+          url: `https://xyz.com${url1}`,
+          method: "GET",
+        })
+      ).to.deep.eq([pact.records[0]]);
+    });
+
     it("getRecordsMatchingRequest should allow filtering url parameters", function () {
       const url1 =
         "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&dateFrom=2024-01-17T14%3A57%3A32.671Z&dateTo=2024-01-17T16%3A57%3A32.671Z&revert=true&valueFragmentSeries=3600s&source=54117556939";
 
-      const pact = C8yDefaultPact.from(response, { id: "testid" });
+      const pact = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+        requestMatching: {
+          ignoreUrlParameters: ["dateFrom", "dateTo", "_"],
+        },
+      });
       pact.records[0].request.url = url(url1);
       pact.records[0].request.method = "GET";
 
@@ -258,13 +327,69 @@ describe("c8ypact", () => {
     });
 
     it("getRecordsMatchingRequest should not fail for undefined url", function () {
-      const pact = C8yDefaultPact.from(response, { id: "testid" });
+      const pact = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+      });
       pact.records[0].request.method = "GET";
 
       expect(pact.getRecordsMatchingRequest({ url: undefined })).to.be.null;
       expect(pact.getRecordsMatchingRequest({ url: null })).to.be.null;
       expect(pact.getRecordsMatchingRequest({ url: "" })).to.be.null;
       expect(pact.getRecordsMatchingRequest({ method: "GET" })).to.be.null;
+    });
+
+    it("getNextRecordMatchingRequest should work with series of get and put requests", function () {
+      const record1 = C8yDefaultPactRecord.from({
+        ...response,
+        method: "GET",
+        url: url("/test1"),
+        body: { name: "noname" },
+      });
+      const record2 = C8yDefaultPactRecord.from({
+        ...response,
+        method: "PUT",
+        url: url("/test1"),
+        body: { name: "abcdefghij" },
+        requestBody: { name: "abcdefghij" },
+      });
+      const record3 = C8yDefaultPactRecord.from({
+        ...response,
+        method: "GET",
+        url: url("/test1"),
+        body: { name: "abcdefghij" },
+      });
+
+      const pact = new C8yDefaultPact(
+        [record1, record2, record3],
+        {
+          id: "testid",
+          baseUrl: Cypress.config("baseUrl"),
+        },
+        "testid"
+      );
+
+      const r1 = pact.nextRecordMatchingRequest({
+        url: "/test1",
+        method: "GET",
+      });
+      expect(r1.request).to.have.property("body", record1.request.body);
+      const r2 = pact.nextRecordMatchingRequest({
+        url: "/test1",
+        method: "PUT",
+      });
+      expect(r2.request).to.have.property("body", record2.request.body);
+      expect(r2.response).to.have.property("body", record2.response.body);
+      const r3 = pact.nextRecordMatchingRequest({
+        url: "/test1",
+        method: "GET",
+      });
+      expect(r3.request).to.have.property("body", record3.request.body);
+
+      // @ts-ignore
+      expect(pact.getRequesIndex("get:/test1")).to.equal(2);
+      // @ts-ignore
+      expect(pact.getRequesIndex("put:/test1")).to.equal(1);
     });
   });
 
@@ -972,7 +1097,10 @@ describe("c8ypact", () => {
         ignore: ["request.headers", "response.isOkStatusCode"],
       });
 
-      Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "testid" });
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+      });
       Cypress.c8ypact.current.records[0].response.$body = schema;
 
       const matchSpy = cy.spy(Cypress.c8ypact.schemaMatcher, "match");
@@ -1008,7 +1136,10 @@ describe("c8ypact", () => {
         "response.isOkStatusCode",
       ]);
 
-      Cypress.c8ypact.current = C8yDefaultPact.from(response, { id: "testid" });
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {
+        id: "testid",
+        baseUrl: Cypress.config("baseUrl"),
+      });
       Cypress.c8ypact.current.records[0].response.$body = schema;
 
       Cypress.once("fail", (err) => {
@@ -1268,7 +1399,6 @@ describe("c8ypact", () => {
           expect(record).to.not.be.null;
           expect(_.has(record, "request.headers.Authorization")).to.be.false;
           expect(record.response.body.password).to.be.undefined;
-          console.log(pact.info);
           expect(pact.info.preprocessor).to.deep.eq(
             Cypress.c8ypact.preprocessor.options
           );

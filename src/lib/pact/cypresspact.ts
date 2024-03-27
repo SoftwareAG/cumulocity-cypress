@@ -10,8 +10,6 @@ import {
   C8yDefaultPactPreprocessor,
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
-  C8yDefaultPactUrlMatcher,
-  C8yPactUrlMatcher,
   C8yAjvSchemaMatcher,
   C8yQicktypeSchemaGenerator,
   C8ySchemaGenerator,
@@ -24,6 +22,8 @@ import {
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yClient } from "../../shared/c8yclient";
+
+const { getBaseUrlFromEnv } = require("./../utils");
 const semver = require("semver");
 
 const { _ } = Cypress;
@@ -55,6 +55,8 @@ declare global {
   interface C8yPactSaveOptions {
     noqueue: boolean;
     modifiedResponse?: Cypress.Response<any>;
+    loggedInUser?: string;
+    loggedInUserAlias?: string;
   }
 
   /**
@@ -75,10 +77,6 @@ declare global {
      * Can be overridden by setting a matcher in C8yPactConfigOptions.
      */
     matcher: C8yPactMatcher;
-    /**
-     * The C8yPactUrlMatcher implementation used to match records by url. Default is C8yDefaultPactUrlMatcher.
-     */
-    urlMatcher: C8yPactUrlMatcher;
     /**
      * The C8yPactPreprocessor implementation used to preprocess the pact objects.
      */
@@ -212,10 +210,6 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     savePact,
     isEnabled,
     matcher: new C8yDefaultPactMatcher(),
-    urlMatcher: new C8yDefaultPactUrlMatcher(
-      ["dateFrom", "dateTo", "_"],
-      Cypress.config().baseUrl
-    ),
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: new C8yQicktypeSchemaGenerator(),
     schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
@@ -228,6 +222,11 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
       ignore: globalIgnore === "true" || globalIgnore === true,
       failOnMissingPacts: true,
       strictMatching: true,
+      strictMocking: true,
+      requestMatching: {
+        ignoreUrlParameters: ["dateFrom", "dateTo", "_"],
+        baseUrl: getBaseUrlFromEnv(),
+      },
     },
     getConfigValue: (key: C8yPactConfigKeys, defaultValue?: any) => {
       const value =
@@ -361,7 +360,7 @@ async function savePact(
         id: Cypress.c8ypact.getCurrentTestId(),
         title: Cypress.currentTest?.titlePath || [],
         tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
-        baseUrl: Cypress.config().baseUrl,
+        baseUrl: getBaseUrlFromEnv(),
         version: Cypress.env("C8Y_VERSION") && {
           system: Cypress.env("C8Y_VERSION"),
         },
@@ -370,10 +369,12 @@ async function savePact(
         )?.resolveOptions(),
       };
       pact = await toPactSerializableObject(response, info, {
-        loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),
-        loggedInUserAlias: Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+        loggedInUser:
+          options?.loggedInUser ?? Cypress.env("C8Y_LOGGED_IN_USER"),
+        loggedInUserAlias:
+          options?.loggedInUserAlias ?? Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
         client,
-        modifiedResponse: options.modifiedResponse,
+        modifiedResponse: options?.modifiedResponse,
         preprocessor: Cypress.c8ypact.preprocessor,
         schemaGenerator: Cypress.c8ypact.schemaGenerator,
       });
@@ -391,24 +392,21 @@ export function save(pact: any, options: C8yPactSaveOptions) {
       Cypress.testingType === "component" &&
       semver.gte(Cypress.version, "12.15.0")
     ) {
-      return (
-        new Promise((resolve) => setTimeout(resolve, 5))
-          .then(() =>
-            // @ts-ignore
-            Cypress.backend("run:privileged", {
-              commandName: "task",
-              userArgs: [taskName, pact],
-              options: {
-                task: taskName,
-                arg: pact,
-              },
-            })
-          )
-          // For some reason cypress throws empty error although the task indeed works.
-          .catch(() => {
-            /* noop */
+      return new Promise((resolve) => setTimeout(resolve, 5))
+        .then(() =>
+          // @ts-ignore
+          Cypress.backend("run:privileged", {
+            commandName: "task",
+            userArgs: [taskName, pact],
+            options: {
+              task: taskName,
+              arg: pact,
+            },
           })
-      );
+        )
+        .catch(() => {
+          /* noop */
+        });
     }
     // @ts-ignore
     const { args, promise } = Cypress.emitMap("command:invocation", {
@@ -428,7 +426,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
         })
       )
       .catch((err) => {
-        console.error("Error saving pact", err);
+        /* noop */
       });
   } else {
     cy.task("c8ypact:save", pact, debugLogger());

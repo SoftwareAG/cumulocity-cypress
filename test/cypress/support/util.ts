@@ -1,5 +1,6 @@
 import { encodeBase64 } from "../../../src/shared/c8yclient";
-
+const { getBaseUrlFromEnv } = require("../../../src/lib/utils");
+var setCookieParser = require("set-cookie-parser");
 const { _, sinon } = Cypress;
 
 declare global {
@@ -18,7 +19,7 @@ declare global {
  */
 export function url(
   path: string,
-  baseUrl: string = Cypress.config().baseUrl
+  baseUrl: string = getBaseUrlFromEnv()
 ): string {
   if (baseUrl && !baseUrl.toLowerCase().startsWith("http")) {
     baseUrl = `https://${baseUrl}`;
@@ -34,6 +35,33 @@ export function initRequestStub(): void {
   cy.stub(Cypress, "backend").callThrough();
   cy.stub(window, "fetchStub");
   cy.stub(Cypress, "automation").callThrough();
+}
+
+export function initLoginRequestStub(
+  xsrf?: string,
+  authorization?: string,
+  tenant?: string
+): void {
+  Cypress.env("C8Y_TENANT", tenant);
+  const headers = new Headers();
+  if (authorization) {
+    headers.append(
+      "set-cookie",
+      `authorization=${authorization}; path=/; domain=localhost; HttpOnly`
+    );
+  }
+  if (xsrf) {
+    headers.append(
+      "set-cookie",
+      `XSRF-TOKEN=${xsrf}; Path=/; Domain=localhost; Secure`
+    );
+  }
+  stubResponse({
+    isOkStatusCode: true,
+    status: 200,
+    headers,
+    body: undefined,
+  });
 }
 
 type StubbedResponseType<T> =
@@ -144,30 +172,8 @@ export function stubResponse<T>(
 export function stubCookies<T>(response: StubbedResponseType<T>): void {
   if (!response.headers?.getSetCookie) return;
 
-  let setCookie = response.headers.getSetCookie;
-  let cookies = [];
-  if (_.isFunction(setCookie)) {
-    cookies = (response.headers.getSetCookie as () => string[])();
-  } else if (_.isString(setCookie)) {
-    cookies = [setCookie];
-  } else if (_.isArray(setCookie)) {
-    cookies = setCookie;
-  }
-
-  cookies = cookies.map((c: string) => {
-    const components = c.split(";");
-    if (_.isEmpty(components)) return;
-
-    const [name, value] = components[0].split("=");
-    const result = { name, value };
-    if (components.length === 1) return result;
-
-    return components.reduce((acc, cookie) => {
-      let [name, value = ""] = cookie.split("=").map((c) => c.trim());
-      acc[name] = value;
-      return acc;
-    }, result);
-  });
+  let cookies: { name: string; value: string }[] = setCookieParser(response);
+  if (!cookies) return;
 
   (Cypress.automation as sinon.SinonStub)
     .withArgs(
@@ -181,11 +187,15 @@ export function stubCookies<T>(response: StubbedResponseType<T>): void {
         );
       })
     )
-    .resolves((c) => cookies.filter((c) => _.isEqual(c.name, c)));
+    .resolves((cookie: any) => cookies.filter((c) => _.isEqual(c.name, c)));
 
   (Cypress.automation as sinon.SinonStub)
     .withArgs("get:cookies")
     .resolves(cookies);
+
+  cookies.forEach((cookie) => {
+    document.cookie = `${cookie.name}=${cookie.value}`;
+  });
 }
 
 /**
