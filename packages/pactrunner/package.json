@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress-pactrunner",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Cypress runner for Cumulocity pact recordings",
   "scripts": {
     "test": "cypress run --config-file cypress.config.js --spec cypress/e2e/pact-runner.cy.ts",
@@ -28,7 +28,7 @@
     "@c8y/client": "^1017.0.374",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
-    "cumulocity-cypress": "^0.2.4",
+    "cumulocity-cypress": "^0.3.0",
     "cypress": "^13.3.2",
     "date-fns": "^2.30.0",
     "quicktype": "^23.0.81",
