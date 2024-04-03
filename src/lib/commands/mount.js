@@ -10,16 +10,35 @@ import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
 import { oauthLogin } from "./auth";
 
-const { getAuthOptionsFromEnv } = require("./../utils");
+const { getAuthOptionsFromEnv, getBaseUrlFromEnv } = require("./../utils");
 
 Cypress.Commands.add(
   "mount",
   { prevSubject: "optional" },
   (subject, component, options) => {
+    const baseUrl = getBaseUrlFromEnv();
+    if (!baseUrl) {
+      const error = new Error(
+        "No base URL configured. Use C8Y_BASEURL env variable for component testing."
+      );
+      error.name = "C8yPactError";
+      throw error;
+    }
+
+    const auth = subject || getAuthOptionsFromEnv();
+    if (!auth) {
+      const error = new Error(
+        "Missing authentication. cy.mount requires C8yAuthOptions."
+      );
+      error.name = "C8yPactError";
+      throw error;
+    }
+
     const registerFetchClient = (auth) => {
       const fetchClient = new C8yPactFetchClient({
         cypresspact: Cypress.c8ypact,
         auth,
+        baseUrl,
       });
       if (options) {
         const providers = options.providers || [];
@@ -33,7 +52,6 @@ Cypress.Commands.add(
       }
     };
 
-    const auth = subject || getAuthOptionsFromEnv();
     return cy
       .wrap(
         Cypress.c8ypact.isRecordingEnabled() ||
