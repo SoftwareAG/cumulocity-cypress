@@ -35,9 +35,15 @@ Cypress.Commands.add(
 
     const auth = subject || getAuthOptionsFromEnv();
     return cy
-      .wrap(Cypress.c8ypact.isRecordingEnabled() ? oauthLogin(auth) : auth, {
-        log: false,
-      })
+      .wrap(
+        Cypress.c8ypact.isRecordingEnabled() ||
+          Cypress.c8ypact.config.strictMocking === false
+          ? oauthLogin(auth)
+          : auth,
+        {
+          log: false,
+        }
+      )
       .then((a) => {
         registerFetchClient(a);
 
