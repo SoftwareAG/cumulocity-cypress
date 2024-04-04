@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Cypress commands for Cumulocity IoT",
   "main": "src/lib/commands/index.js",
   "scripts": {
