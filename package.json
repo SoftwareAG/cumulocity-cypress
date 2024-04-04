@@ -14,7 +14,8 @@
     "build": "npm run clean && npm run copy-files && tsc -b -v src/lib/ && cd dist/ && npm run clean-package-json",
     "yalc:runner": "npm run yalc:publish && cd packages/pactrunner && yalc add cumulocity-cypress",
     "yalc:publish": "npm run clean && npm run build && cd dist/ && yalc publish && cd ..",
-    "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
+    "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'",
+    "lint": "eslint ./"
   },
   "repository": {
     "type": "git",
@@ -52,8 +53,12 @@
     "@types/lodash": "^4.17.0",
     "@types/node": "^20.10.6",
     "@types/set-cookie-parser": "^2.4.7",
+    "@typescript-eslint/eslint-plugin": "^7.5.0",
+    "@typescript-eslint/parser": "^7.5.0",
     "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
+    "eslint": "^8.57.0",
+    "eslint-plugin-cypress": "^2.15.1",
     "http-server": "^14.1.1",
     "rimraf": "^5.0.1",
     "start-server-and-test": "^2.0.0",
