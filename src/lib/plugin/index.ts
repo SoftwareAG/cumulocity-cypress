@@ -6,6 +6,7 @@ import {
   C8yPactDefaultFileAdapter,
 } from "../../shared/c8ypact/fileadapter";
 import { C8yPact } from "../../shared/c8ypact";
+import { C8yAuthOptions, oauthLogin } from "../../shared/c8yclient";
 
 export { C8yPactFileAdapter };
 
@@ -115,12 +116,20 @@ export function configureC8yPlugin(
     }
   }
 
+  async function login(options: {
+    auth: C8yAuthOptions;
+    baseUrl: string;
+  }): Promise<C8yAuthOptions> {
+    return await oauthLogin(options?.auth, options?.baseUrl);
+  }
+
   on("task", {
     "c8ypact:save": savePact,
     "c8ypact:get": getPact,
     "c8ypact:load": loadPacts,
     "c8ypact:remove": removePact,
     "c8ypact:clearAll": clearAll,
+    "c8ypact:oauthLogin": login,
   });
 }
 

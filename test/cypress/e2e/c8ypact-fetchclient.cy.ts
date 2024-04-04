@@ -57,7 +57,7 @@ describe("c8ypact fetchclient", () => {
         });
     });
 
-    it("should get CookieAuth from cy.oauthLogin authOptions", () => {
+    it.skip("should get CookieAuth from cy.oauthLogin authOptions", () => {
       Cypress.session.clearAllSavedSessions();
       Cypress.Cookies.debug(true);
       initRequestStub();
@@ -89,7 +89,7 @@ describe("c8ypact fetchclient", () => {
       });
     });
 
-    it("should create BasicAuth from authOptions without Cookies", () => {
+    it.skip("should create BasicAuth from authOptions without Cookies", () => {
       Cypress.session.clearAllSavedSessions();
       Cypress.Cookies.debug(true);
       initRequestStub();

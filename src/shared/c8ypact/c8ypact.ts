@@ -739,3 +739,49 @@ export function createPactRecord(
   auth = _.pick(auth, ["user", "userAlias", "type"]);
   return C8yDefaultPactRecord.from(response, auth, client);
 }
+
+export function updateURLs(
+  value: string,
+  info: C8yPactInfo,
+  options?: { tenantId?: string; baseUrl?: string }
+): string {
+  if (!value || !info) return value;
+  let result = value;
+
+  const tenantUrl = (baseUrl?: string, tenant?: string): URL | undefined => {
+    if (!baseUrl || !tenant) return undefined;
+    try {
+      const url = new URL(baseUrl);
+      const instance = url.host.split(".")?.slice(1)?.join(".");
+      url.host = `${tenant}.${instance}`;
+      return url;
+    } catch {}
+    return undefined;
+  };
+
+  const infoUrl = tenantUrl(info.baseUrl, info.tenant)
+    ?.toString()
+    ?.replace(/\/$/, "");
+  const url =
+    (
+      tenantUrl(options?.baseUrl, options?.tenantId)?.toString() ??
+      options?.baseUrl
+    )?.replace(/\/$/, "") ?? "";
+
+  if (infoUrl && url) {
+    const regexp = new RegExp(`${infoUrl}`, "g");
+    result = result.replace(regexp, url);
+  }
+
+  if (options?.baseUrl && info.baseUrl) {
+    const regexp = new RegExp(`${info.baseUrl}`, "g");
+    result = result.replace(regexp, options?.baseUrl);
+  }
+
+  if (info.tenant && options?.tenantId) {
+    const regexp = new RegExp(`${info.tenant}`, "g");
+    result = result.replace(regexp, options?.tenantId);
+  }
+
+  return result;
+}

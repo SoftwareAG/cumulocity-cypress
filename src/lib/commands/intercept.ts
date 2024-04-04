@@ -1,4 +1,3 @@
-import { C8yDefaultPact } from "../../shared/c8ypact";
 import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,

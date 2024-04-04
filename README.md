@@ -44,6 +44,7 @@ Authentication related commands
 - `setAuth`
 - `useAuth`
 - `bootstrapDeviceCredentials`
+- `oauthLogin`
 
 Date related commands
 - `toDate`
@@ -55,6 +56,9 @@ Administration related commands
 - `createUser` and `deleteUser`
 - `assignUserRoles` and `clearUserRoles`
 - `getSystemVersion`
+
+Component testing
+- `mount`
 
 [Integration and API testing](./doc/API%20and%20Integration%20Testing.md) related commands
 - `c8yclient`, `c8yclientf`

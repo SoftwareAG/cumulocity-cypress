@@ -7,11 +7,11 @@ import {
   IFetchResponse,
 } from "@c8y/client";
 import {
+  getCookieValue,
   toWindowFetchResponse,
   wrapFetchResponse,
 } from "../../shared/c8yclient";
-import { C8yDefaultPact } from "../../shared/c8ypact";
-import { C8yAuthOptions, getCookieValue } from "../commands/auth";
+import { C8yAuthOptions } from "../commands/auth";
 const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
 
 const { _ } = Cypress;
