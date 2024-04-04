@@ -1,14 +1,12 @@
-const { _ } = Cypress;
-
 import { mount } from "cypress/angular";
 
 require("./auth");
 require("./c8ypact");
 require("./intercept");
+require("./oauthlogin");
 
 import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
-import { oauthLogin } from "./auth";
 
 const { getAuthOptionsFromEnv, getBaseUrlFromEnv } = require("./../utils");
 
@@ -52,23 +50,14 @@ Cypress.Commands.add(
       }
     };
 
-    return cy
-      .wrap(
-        Cypress.c8ypact.isRecordingEnabled() ||
-          Cypress.c8ypact.config.strictMocking === false
-          ? oauthLogin(auth)
-          : auth,
-        {
-          log: false,
-        }
-      )
-      .then((a) => {
-        registerFetchClient(a);
-
-        Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
-        Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
-
-        return mount(component, options);
-      });
+    return (
+      Cypress.c8ypact.isRecordingEnabled() ||
+      Cypress.c8ypact.config.strictMocking === false
+        ? cy.oauthLogin(auth, baseUrl)
+        : cy.wrap(auth)
+    ).then((a) => {
+      registerFetchClient(a);
+      return mount(component, options);
+    });
   }
 );

@@ -1,4 +1,4 @@
-import { C8yAuthOptions, getAuthCookies, oauthLogin } from "./auth";
+import { C8yAuthOptions } from "./auth";
 
 const { _ } = Cypress;
 const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
@@ -9,7 +9,8 @@ declare global {
       /**
        * Login to Cumulocity using OAuth Internal. Returns `C8yAuthOptions` object containing
        * required login information including xsrf and authorization tokens. The user and password
-       * will be read from environment and can be passed from cy.getAuth().
+       * will be read from environment and can be passed from cy.getAuth(). The authorization and
+       * x-xsrf-token cookies will be set in the browser.
        *
        * Obtaining an OAI-Secure access token via /tenant/oauth/token endpoint is currently
        * not supported.
@@ -32,17 +33,45 @@ Cypress.Commands.add(
   { prevSubject: "optional" },
   function (...args: C8yLoginAuthArgs) {
     const auth: C8yAuthOptions = getAuthOptions(...args);
-    expect(auth).to.not.be.undefined;
+    if (!auth) {
+      const error = new Error(
+        "C8yAuthOptions missing. cy.oauthLogin requires C8yAuthOptions."
+      );
+      error.name = "C8yPactError";
+      throw error;
+    }
 
     const consoleProps: any = {};
-    Cypress.log({
+    const logger = Cypress.log({
+      autoEnd: false,
       name: "oauthLogin",
-      message: auth,
+      message: auth.userAlias || auth.user || "-",
       consoleProps: () => consoleProps,
     });
 
-    return cy.wrap(oauthLogin(auth), { log: false }).then((auth) => {
-      return auth;
+    const baseUrl = getBaseUrlFromEnv();
+    cy.task<C8yAuthOptions>(
+      "c8ypact:oauthLogin",
+      { auth, baseUrl },
+      { log: Cypress.c8ypact.debugLog }
+    ).then((a) => {
+      consoleProps.auth = a;
+
+      Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
+      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+
+      if (a.bearer && typeof a.bearer === "string") {
+        cy.setCookie("Authorization", a.bearer, {
+          log: Cypress.c8ypact.debugLog,
+        });
+      }
+      if (a.xsrfToken) {
+        // must be upper case so CookieAuth does use it
+        cy.setCookie("XSRF-TOKEN", a.xsrfToken, {
+          log: Cypress.c8ypact.debugLog,
+        });
+      }
+      logger.end();
     });
   }
 );
