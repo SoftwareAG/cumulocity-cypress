@@ -27,6 +27,7 @@ export interface C8yPactMatcherOptions {
   strictMatching?: boolean;
   loggerProps?: { [key: string]: any };
   schemaMatcher?: C8ySchemaMatcher;
+  parents?: string[];
 }
 
 /**
@@ -60,14 +61,10 @@ export class C8yDefaultPactMatcher implements C8yPactMatcher {
     this.propertyMatchers = propertyMatchers;
   }
 
-  match(
-    obj1: any,
-    obj2: any,
-    options?: C8yPactMatcherOptions,
-    parents: string[] = []
-  ): boolean {
+  match(obj1: any, obj2: any, options?: C8yPactMatcherOptions): boolean {
     if (obj1 === obj2) return true;
 
+    const parents = options?.parents ?? [];
     const strictMatching = options?.strictMatching ?? true;
     const schemaMatcher =
       options?.schemaMatcher || C8yDefaultPactMatcher.schemaMatcher;
@@ -177,10 +174,11 @@ export class C8yDefaultPactMatcher implements C8yPactMatcher {
           continue;
         }
         if (
-          !this.propertyMatchers[key].match(value, pact, options, [
-            ...parents,
-            key,
-          ])
+          !this.propertyMatchers[key].match(
+            value,
+            pact,
+            _.extend(options, { parents: [...parents, key] })
+          )
         ) {
           throwPactError(`Values for "${keyPath(key)}" do not match.`, key);
         }
@@ -190,8 +188,7 @@ export class C8yDefaultPactMatcher implements C8yPactMatcher {
         this.match(
           strictMatching ? value : pact,
           strictMatching ? pact : value,
-          options,
-          [...parents, key]
+          _.extend(options, { parents: [...parents, key] })
         );
       } else if (isArrayOfPrimitives(value) && isArrayOfPrimitives(pact)) {
         const v = [value, pact].sort(
