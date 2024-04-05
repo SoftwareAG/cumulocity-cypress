@@ -12,7 +12,7 @@ import {
   wrapFetchResponse,
 } from "../../shared/c8yclient";
 import { C8yAuthOptions } from "../commands/auth";
-import { getBaseUrlFromEnv } from "../utils";
+import { getAuthOptions, getBaseUrlFromEnv } from "../utils";
 
 const { _ } = Cypress;
 

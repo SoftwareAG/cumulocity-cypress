@@ -395,6 +395,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "compareDates",
+  // @ts-expect-error
   { prevSubject: "optional" },
   (
     prevSubject: string,
