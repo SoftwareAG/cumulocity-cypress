@@ -89,7 +89,7 @@ describe("dates", () => {
         expect(newDate.toISOString()).to.equal("2023-09-04T22:00:00.000Z");
       });
 
-      // @ts-ignore - test is not defined
+      // @ts-expect-error: language test is not defined
       cy.setLanguage("test").then(() => {
         const testDate = Cypress.datefns.format(
           Cypress.datefns.parseISO("2023-02-03T22:00:00.000Z"),
@@ -221,9 +221,19 @@ describe("dates", () => {
       });
     });
 
+    it("should prefer argument over previousSubject", () => {
+      cy.wrap("3/12/23")
+        .toISODate("26/5/24", {
+          format: "d/M/yy",
+        })
+        .then((result) => {
+          expect(result).to.eq("2024-05-25T22:00:00.000Z");
+        });
+    });
+
     it("should work with invalid dates", () => {
       cy.wrap("-").toISODate().should("eq", undefined);
-      cy.wrap("-").toISODate({ invalid: "keep" }).should("eq", undefined);
+      cy.wrap("-").toISODate({ invalid: "keep" }).should("eq", "-");
     });
 
     it("should work with invalid dates and ignore option", () => {
@@ -306,7 +316,7 @@ describe("dates", () => {
     });
 
     it("throws error on locale id not being registered", (done) => {
-      // @ts-ignore
+      // @ts-expect-error: language UNSUPPORTED is not registered
       cy.setLanguage("UNSUPPORTED");
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain(

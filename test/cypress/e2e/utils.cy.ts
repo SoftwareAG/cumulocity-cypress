@@ -1,7 +1,4 @@
-const {
-  normalizedArguments,
-  getAuthOptions,
-} = require("../../../src/lib/utils");
+import { getAuthOptions, normalizedArguments } from "../../../src/lib/utils";
 
 describe("utils", () => {
   beforeEach(() => {
@@ -202,13 +199,10 @@ describe("utils", () => {
     });
 
     it("auth options failure ", () => {
-      // @ts-ignore
       const result1 = getAuthOptions({ abc: false });
       expect(result1).to.be.undefined;
-      // @ts-ignore
       const result2 = getAuthOptions({ user: "test" });
       expect(result2).to.be.undefined;
-      // @ts-ignore
       const result3 = getAuthOptions();
       expect(result3).to.be.undefined;
     });

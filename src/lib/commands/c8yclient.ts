@@ -1,6 +1,6 @@
 const { _ } = Cypress;
 
-const {
+import {
   getBaseUrlFromEnv,
   isAuth,
   normalizedArgumentsWithAuth,
@@ -8,7 +8,7 @@ const {
   storeClient,
   tenantFromBasicAuth,
   throwError,
-} = require("./../utils");
+} from "./../utils";
 
 import {
   BasicAuth,
@@ -121,9 +121,10 @@ declare global {
       ): Chainable<Response<T[]>>;
     }
 
-    interface Response<T = any> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface Response<T> {
       url?: string;
-      requestBody?: string | any;
+      requestBody?: any;
       method?: string;
       $body?: any;
     }
@@ -173,7 +174,7 @@ globalThis.fetch = async function (
   url: RequestInfo | URL,
   fetchOptions?: RequestInit
 ) {
-  let consoleProps: any = {};
+  const consoleProps: any = {};
 
   let logger: Cypress.Log;
   if (logOnce === true) {
@@ -182,7 +183,6 @@ globalThis.fetch = async function (
       autoEnd: false,
       message: "",
       consoleProps: () => consoleProps,
-      // @ts-ignore
       renderProps(): {
         message: string;
         indicator: "aborted" | "pending" | "successful" | "bad";
@@ -228,7 +228,7 @@ globalThis.fetch = async function (
 
 const c8yclientFn = (...args: any[]) => {
   const prevSubjectIsAuth = args && !_.isEmpty(args) && isAuth(args[0]);
-  let prevSubject: Cypress.Chainable<any> =
+  const prevSubject: Cypress.Chainable<any> =
     args && !_.isEmpty(args) && !isAuth(args[0]) ? args[0] : undefined;
   let $args = normalizedArgumentsWithAuth(
     args && prevSubject ? args.slice(1) : args
@@ -276,7 +276,7 @@ const c8yclientFn = (...args: any[]) => {
     $args.push({});
   }
 
-  let [argAuth, clientFn, argOptions] = $args;
+  const [argAuth, clientFn, argOptions] = $args;
   const options = _.defaults(argOptions, defaultClientOptions());
   // force CookieAuth over BasicAuth if present and not disabled by options
   const auth: C8yAuthentication & { userAlias?: string } =
@@ -460,7 +460,7 @@ function run(
 
         if (_.isArray(resultPromise)) {
           let toReject = false;
-          let result = [];
+          const result = [];
           for (const task of resultPromise) {
             try {
               result.push(await preprocessedResponse(task));
@@ -498,7 +498,7 @@ function run(
       matchPact(err, options.schema);
 
       cy.then(() => {
-        // @ts-ignore
+        // @ts-expect-error: utils is not public
         Cypress.utils.throwErrByPath("request.c8yclient_status_invalid", {
           args: err,
           stack: false,
@@ -508,7 +508,6 @@ function run(
   });
 }
 
-// @ts-ignore
 _.extend(Cypress.errorMessages.request, {
   c8yclient_status_invalid(obj: any) {
     const err = obj.args || obj.errorProps || obj;
@@ -572,9 +571,14 @@ Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
  * Checks if the given object is an array only containing functions.
  * @param obj The object to check.
  */
-export function isArrayOfFunctions<T>(
-  functions: C8yClientFnArg | Array<Function>
-): functions is Array<Function> {
+export function isArrayOfFunctions(
+  functions:
+    | C8yClientFnArg
+    | C8yClientServiceArrayFn<any, any>[]
+    | C8yClientServiceFn<any, any>[]
+): functions is
+  | C8yClientServiceArrayFn<any, any>[]
+  | C8yClientServiceFn<any, any>[] {
   if (!functions || !_.isArray(functions) || _.isEmpty(functions)) return false;
   return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
 }

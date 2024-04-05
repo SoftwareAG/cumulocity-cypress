@@ -1,4 +1,4 @@
-import { url } from "../support/util";
+import { url } from "../support/testutils";
 const { $, _ } = Cypress;
 
 describe("general", () => {

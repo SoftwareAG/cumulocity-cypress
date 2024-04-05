@@ -7,8 +7,7 @@ require("./oauthlogin");
 
 import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
-
-const { getAuthOptionsFromEnv, getBaseUrlFromEnv } = require("./../utils");
+import { getAuthOptionsFromEnv, getBaseUrlFromEnv } from "../utils";
 
 Cypress.Commands.add(
   "mount",

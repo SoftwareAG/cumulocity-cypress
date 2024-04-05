@@ -6,7 +6,7 @@ import {
   C8ySchemaMatcher,
 } from "../../shared/c8ypact";
 import { C8yClientOptions, isCypressError } from "../../shared/c8yclient";
-const { throwError } = require("./../utils");
+import { throwError } from "../utils";
 
 const { _ } = Cypress;
 

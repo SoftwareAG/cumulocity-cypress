@@ -1,8 +1,8 @@
+import { getAuthOptions, isAuth, resetClient } from "../utils";
 import { C8yAuthOptions } from "./auth";
 
 const { _ } = Cypress;
-const semver = require("semver");
-const { getAuthOptions, isAuth, resetClient } = require("./../utils");
+import semver from "semver";
 
 declare global {
   namespace Cypress {
@@ -71,86 +71,81 @@ export const defaultLoginOptions = () => {
   } as C8yLoginOptions;
 };
 
-Cypress.Commands.add(
-  "login",
-  // @ts-ignore
-  { prevSubject: "optional" },
-  function (...args: C8yLoginAuthArgs) {
-    const auth: C8yAuthOptions = getAuthOptions(...args);
-    expect(auth).to.not.be.undefined;
+Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
+  const auth: C8yAuthOptions = getAuthOptions(...args);
+  expect(auth).to.not.be.undefined;
 
-    const consoleProps: any = {};
-    Cypress.log({
-      name: "login",
-      message: auth,
-      consoleProps: () => consoleProps,
-    });
-    (Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false })).then(
-      (auth: C8yAuthOptions) => {
-        let options: C8yLoginOptions = {};
-        let lastArg: any = args.pop();
-        if (isAuth(lastArg) || !_.isObjectLike(lastArg)) {
-          options = defaultLoginOptions();
-        } else {
-          options = _.defaults(lastArg, defaultLoginOptions());
-        }
-
-        consoleProps.auth = auth;
-        consoleProps.options = options;
-
-        const loginRequest = (tenant: string) => {
-          return cy
-            .request({
-              method: "POST",
-              url: `/tenant/oauth?tenant_id=${tenant}`,
-              body: {
-                grant_type: "PASSWORD",
-                username: auth.user,
-                password: auth.password,
-                tfa_code: auth.tfa,
-              },
-              form: true,
-            })
-            .then((resp) => {
-              expect(resp).to.have.property("headers");
-              if (options.disableGainsight === true) {
-                cy.disableGainsight();
-              }
-              if (options.hideCookieBanner === true) {
-                cy.hideCookieBanner();
-              }
-            });
-        };
-
-        const tenant: string = auth.tenant || Cypress.env("C8Y_TENANT");
-        consoleProps.tenant = tenant;
-
-        if (options.useSession === true) {
-          cy.session(
-            auth.user,
-            () => {
-              loginRequest(tenant);
-            },
-            {
-              validate() {
-                options.validationFn();
-                Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
-                Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
-              },
-              cacheAcrossSpecs: true,
-            }
-          );
-        } else {
-          loginRequest(tenant).then(() => {
-            options.validationFn();
-            Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
-            Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
-          });
-        }
-
-        resetClient();
+  const consoleProps: any = {};
+  Cypress.log({
+    name: "login",
+    message: auth,
+    consoleProps: () => consoleProps,
+  });
+  (Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false })).then(
+    (auth: C8yAuthOptions) => {
+      let options: C8yLoginOptions = {};
+      const lastArg: any = args.pop();
+      if (isAuth(lastArg) || !_.isObjectLike(lastArg)) {
+        options = defaultLoginOptions();
+      } else {
+        options = _.defaults(lastArg, defaultLoginOptions());
       }
-    );
-    cy.wrap(auth, { log: false });
-  }
-);
+
+      consoleProps.auth = auth;
+      consoleProps.options = options;
+
+      const loginRequest = (tenant: string) => {
+        return cy
+          .request({
+            method: "POST",
+            url: `/tenant/oauth?tenant_id=${tenant}`,
+            body: {
+              grant_type: "PASSWORD",
+              username: auth.user,
+              password: auth.password,
+              tfa_code: auth.tfa,
+            },
+            form: true,
+          })
+          .then((resp) => {
+            expect(resp).to.have.property("headers");
+            if (options.disableGainsight === true) {
+              cy.disableGainsight();
+            }
+            if (options.hideCookieBanner === true) {
+              cy.hideCookieBanner();
+            }
+          });
+      };
+
+      const tenant: string = auth.tenant || Cypress.env("C8Y_TENANT");
+      consoleProps.tenant = tenant;
+
+      if (options.useSession === true) {
+        cy.session(
+          auth.user,
+          () => {
+            loginRequest(tenant);
+          },
+          {
+            validate() {
+              options.validationFn();
+              Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
+              Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+            },
+            cacheAcrossSpecs: true,
+          }
+        );
+      } else {
+        loginRequest(tenant).then(() => {
+          options.validationFn();
+          Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
+          Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+        });
+      }
+
+      resetClient();
+    }
+  );
+  cy.wrap(auth, { log: false });
+});

@@ -489,7 +489,7 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
    * Converts the C8yPactRecord to a Cypress.Response object.
    */
   toCypressResponse<T>(): Cypress.Response<T> {
-    let result = _.cloneDeep(this.response);
+    const result = _.cloneDeep(this.response);
     _.extend(result, {
       ...(result.status && {
         isOkStatusCode: result.status > 199 && result.status < 300,
@@ -755,7 +755,9 @@ export function updateURLs(
       const instance = url.host.split(".")?.slice(1)?.join(".");
       url.host = `${tenant}.${instance}`;
       return url;
-    } catch {}
+    } catch {
+      // no-op
+    }
     return undefined;
   };
 

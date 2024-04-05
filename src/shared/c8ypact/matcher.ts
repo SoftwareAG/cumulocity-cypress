@@ -177,7 +177,6 @@ export class C8yDefaultPactMatcher implements C8yPactMatcher {
           continue;
         }
         if (
-          // @ts-ignore
           !this.propertyMatchers[key].match(value, pact, options, [
             ...parents,
             key,
@@ -282,7 +281,7 @@ export class C8yStringMatcher implements C8yPactMatcher {
 }
 
 export class C8yIgnoreMatcher implements C8yPactMatcher {
-  match(obj1: any, obj2: any): boolean {
+  match(): boolean {
     return true;
   }
 }

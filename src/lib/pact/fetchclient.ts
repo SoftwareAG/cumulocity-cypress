@@ -12,7 +12,7 @@ import {
   wrapFetchResponse,
 } from "../../shared/c8yclient";
 import { C8yAuthOptions } from "../commands/auth";
-const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
+import { getBaseUrlFromEnv } from "../utils";
 
 const { _ } = Cypress;
 
@@ -31,7 +31,7 @@ export class C8yPactFetchClient extends FetchClient {
   }) {
     let auth: IAuthentication;
     let authOptions: C8yAuthOptions;
-    let baseUrl: string;
+    const url: string = options.baseUrl || getBaseUrlFromEnv();
 
     if (options.auth) {
       if (_.isString(options.auth)) {
@@ -58,21 +58,20 @@ export class C8yPactFetchClient extends FetchClient {
       }
     }
 
-    let [user, userAlias] = [
-      // @ts-ignore
+    const [user, userAlias] = [
+      // @ts-expect-error
       authOptions?.user || auth?.user || Cypress.env("C8Y_LOGGED_IN_USER"),
       authOptions?.userAlias || Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
     ];
 
-    baseUrl = baseUrl || getBaseUrlFromEnv();
     if (!auth) {
       throw new Error("C8yPactFetchClient Error. No authentication provided.");
     }
-    if (!baseUrl) {
+    if (!url) {
       throw new Error("C8yPactFetchClient Error. No baseUrl provided.");
     }
 
-    super(auth, baseUrl);
+    super(auth, url);
 
     this.authOptions = authOptions;
     this.authentication = auth;

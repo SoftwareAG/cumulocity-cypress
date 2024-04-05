@@ -4,12 +4,11 @@ import { FormatWidth } from "../commands/dates";
 import * as localeDe from "./de";
 import * as localeEn from "./en-GB";
 
-// @ts-ignore
+// @ts-expect-error
 import buildLocalizeFn from "date-fns/locale/_lib/buildLocalizeFn";
-// @ts-ignore
+// @ts-expect-error
 import buildMatchFn from "date-fns/locale/_lib/buildMatchFn";
-
-const { shortestUniquePrefixes } = require("./localeutil");
+import { shortestUniquePrefixes } from "./localeutil";
 
 const { _ } = Cypress;
 
@@ -48,7 +47,7 @@ export enum NgLocaleDataIndex {
   DfnsLocale,
 }
 
-let LOCALE_DATA: any = {};
+const LOCALE_DATA: any = {};
 
 export function getNgLocaleId(locale: string): string {
   const data = getNgLocale(locale);
@@ -105,12 +104,12 @@ export function registerLocale(
 
 export async function registerDefaultLocales() {
   registerLocale(
-    // @ts-ignore
+    // @ts-expect-error
     !isModule(localeDe) ? localeDe : localeDe.default,
     "de"
   );
   registerLocale(
-    // @ts-ignore
+    // @ts-expect-error
     !isModule(localeEn) ? localeEn : localeEn.default,
     "en"
   );
@@ -125,7 +124,7 @@ export function getNgLocale(localeId: string): any {
     const normalizedLocale = normalizeLocaleId(localeId);
     if (!(normalizedLocale in LOCALE_DATA)) {
       LOCALE_DATA[normalizedLocale] =
-        // @ts-ignore
+        // @ts-expect-error
         globalThis.ng?.common?.locales?.[normalizedLocale];
     }
     return LOCALE_DATA[normalizedLocale];
@@ -163,8 +162,8 @@ export function localizedDateTimeFormat(
   localeId: string = "en",
   formatWidth: FormatWidth | number = FormatWidth.Short
 ): string {
-  let fullTime = getLocaleTimeFormat(localeId, formatWidth);
-  let fullDate = getLocaleDateFormat(localeId, formatWidth);
+  const fullTime = getLocaleTimeFormat(localeId, formatWidth);
+  const fullDate = getLocaleDateFormat(localeId, formatWidth);
   return formatDateTime(getLocaleDateTimeFormat(localeId, formatWidth), [
     fullTime,
     fullDate,
@@ -181,11 +180,7 @@ function formatDateTime(str: string, opt_values: any): string {
   return str;
 }
 
-export function parseDate(
-  date: string | number | Date,
-  format: string,
-  localeId: string = "en"
-): Date {
+export function parseDate(date: string | number | Date, format: string): Date {
   let parsedDate: Date;
   // try to parse as number fist, if string is passed it might be converted without format being used
   if (_.isNumber(date)) {
@@ -209,7 +204,7 @@ export function isValidDate(date?: Date): boolean {
 
 function isModule(module: any): boolean {
   return (
-    // @ts-ignore
+    // @ts-expect-error
     module && _.isObject(module) && module.default && !_.isEmpty(module.default)
   );
 }
@@ -295,7 +290,7 @@ function parseDayPatterns(locale: string): {
 //   abbreviated: /^(son?|mon?|die?|mit?|don?|fre?|sam?)\.?/i,
 //   wide: /^(sonntag|montag|dienstag|mittwoch|donnerstag|freitag|samstag)/i
 // };
-function matchDayPatterns(locale: string): {} | null {
+function matchDayPatterns(locale: string): any | null {
   const l = getNgLocale(locale);
   if (!l) return null;
 

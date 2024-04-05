@@ -10,7 +10,7 @@ import {
   initRequestStub,
   stubResponse,
   stubResponses,
-} from "../support/util";
+} from "../support/testutils";
 import {
   defaultClientOptions,
   isArrayOfFunctions,
@@ -433,7 +433,7 @@ describe("c8yclient", () => {
 
   context("schema matching", () => {
     it("should use schema for matching response", () => {
-      //@ts-ignore
+      //@ts-expect-error
       const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match");
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
         .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
@@ -447,7 +447,7 @@ describe("c8yclient", () => {
           },
         })
         .then(() => {
-          // @ts-ignore
+          // @ts-expect-error
           expect(spy).to.have.been.calledOnce;
         });
     });
@@ -471,7 +471,7 @@ describe("c8yclient", () => {
           },
         })
         .then(() => {
-          // @ts-ignore
+          // @ts-expect-error
           const spy = Cypress.c8ypact.matcher.schemaMatcher
             .match as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
@@ -1012,7 +1012,7 @@ describe("c8yclient", () => {
 
     it("should return responseObject Cypress.Response", () => {
       const r: IResult<any> = {
-        // @ts-ignore
+        // @ts-expect-error
         res: new window.Response(JSON.stringify({ name: "t1234" }), {
           status: 404,
           statusText: "Error",
@@ -1145,7 +1145,7 @@ describe("c8yclient", () => {
     it("isIResult does not validate with incomplete res object", () => {
       const response: IResult<any> = {
         data: {},
-        // @ts-ignore
+        // @ts-expect-error
         res: {
           status: 200,
           statusText: "OK",
@@ -1167,7 +1167,7 @@ describe("c8yclient", () => {
 
     it("isArrayOfFunctions validates array of functions", () => {
       expect(isArrayOfFunctions([() => {}, () => {}])).to.be.true;
-      // @ts-ignore
+      // @ts-expect-error
       expect(isArrayOfFunctions([() => {}, "test"])).to.be.false;
     });
 

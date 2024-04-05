@@ -52,6 +52,7 @@
     "@types/glob": "^8.1.0",
     "@types/lodash": "^4.17.0",
     "@types/node": "^20.10.6",
+    "@types/semver": "^7.5.8",
     "@types/set-cookie-parser": "^2.4.7",
     "@typescript-eslint/eslint-plugin": "^7.5.0",
     "@typescript-eslint/parser": "^7.5.0",

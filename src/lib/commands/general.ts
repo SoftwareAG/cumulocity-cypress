@@ -1,5 +1,59 @@
 const { _ } = Cypress;
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Disables the Cumulocity cookie banner. Run before visit.
+       */
+      hideCookieBanner(): Chainable<void>;
+
+      /**
+       * Sets the language in user preferences.
+       *
+       * @param {C8yLanguage} lang - the language to be enabled in user preferences
+       */
+      setLanguage(lang: C8yLanguage): Chainable<void>;
+
+      /**
+       * Visits a given page and waits for a selector to become visible.
+       *
+       * @example
+       * cy.visitAndWaitToFinishLoading('/');
+       * cy.visitAndWaitToFinishLoading('/', 'en', '[data-cy=myelement]');
+       *
+       * @param {string} url - the page to be visited
+       * @param {string} selector - the selector to wait  to become visible. Defaults to `c8y-navigator-outlet c8y-app-icon`.
+       * @param {number} timeout - the timeout in milliseconds to wait for the selector to become visible. Defaults to `60000`.
+       */
+      visitAndWaitForSelector(
+        url: string,
+        language?: C8yLanguage,
+        selector?: string,
+        timeout?: number
+      ): Chainable<void>;
+
+      /**
+       * Disables Gainsight by intercepting tenant options and configuring
+       * `gainsightEnabled: false` for `customProperties`.
+       *
+       * ```
+       * {
+       *   customProperties: {
+       *     ...
+       *     gainsightEnabled: false,
+       *   }
+       * }
+       * ```
+       */
+      disableGainsight(): Chainable<void>;
+    }
+  }
+
+  export type C8yLanguage = "de" | "en";
+}
+
 Cypress.Commands.add("hideCookieBanner", () => {
   const COOKIE_NAME = "acceptCookieNotice";
   const COOKIE_VALUE = '{"required":true,"functional":true}';
@@ -12,7 +66,6 @@ Cypress.Commands.add("hideCookieBanner", () => {
   Cypress.log({
     name: "hideCookieBanner",
     message: "",
-    consoleProps: () => {},
   });
 });
 
@@ -42,12 +95,11 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add("setLanguage", (lang) => {
-  setLocale(lang);
+  globalThis.setLocale(lang);
 
   Cypress.log({
     name: "setLanguage",
     message: lang,
-    consoleProps: () => {},
   });
   cy.intercept(
     {
@@ -63,7 +115,7 @@ Cypress.Commands.add("setLanguage", (lang) => {
           res.body.managedObjects &&
           _.isArrayLike(res.body.managedObjects)
         ) {
-          res.body.managedObjects.forEach((mo) => {
+          res.body.managedObjects.forEach((mo: any) => {
             if (mo[languageFragment]) {
               mo[languageFragment] = lang;
             }
@@ -83,7 +135,6 @@ Cypress.Commands.add("setLanguage", (lang) => {
 Cypress.Commands.add("disableGainsight", () => {
   Cypress.log({
     name: "disableGainsight",
-    consoleProps: () => {},
   });
 
   cy.intercept("/tenant/system/options/gainsight/api.key*", (req) => {
@@ -95,7 +146,7 @@ Cypress.Commands.add("disableGainsight", () => {
 
   cy.intercept("/tenant/currentTenant*", (req) => {
     req.continue((res) => {
-      let customProperties = res.body.customProperties || {};
+      const customProperties: any = res.body.customProperties || {};
       customProperties.gainsightEnabled = false;
       res.body.customProperties = customProperties;
       res.send();

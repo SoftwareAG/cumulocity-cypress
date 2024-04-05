@@ -1,5 +1,5 @@
 import { C8yDefaultPact } from "../../../src/shared/c8ypact";
-import { url } from "../support/util";
+import { url } from "../support/testutils";
 
 const { $, _, sinon } = Cypress;
 
@@ -502,7 +502,7 @@ describe("c8ypact intercept", () => {
     };
 
     it("should ignore pact for static RouteHandlers", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", "test")
         .as("inventory")
@@ -515,7 +515,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should return pact response for interceptions without RouteHandler", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")
@@ -528,7 +528,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should return pact response for interceptions with RouteHandler continue function", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", (req) => {
         req.continue((res) => {
@@ -564,7 +564,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should not return pact response for interceptions with RouteHandler reply function", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", (req) => {
         req.reply({
@@ -583,7 +583,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should return recorded response with different baseUrl", () => {
-      // @ts-ignore
+      // @ts-expect-error
       const r = _.cloneDeep(response);
       r.method = "GET";
       r.url = "https://mytest.com/inventory/managedObjects?fragmentType=abcd";

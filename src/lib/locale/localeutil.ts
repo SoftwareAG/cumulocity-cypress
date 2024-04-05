@@ -1,4 +1,8 @@
 class TrieNode {
+  public children: Map<string, TrieNode>;
+  public isEndOfWord: boolean;
+  public count: number;
+
   constructor() {
     this.children = new Map();
     this.isEndOfWord = false;
@@ -6,7 +10,7 @@ class TrieNode {
   }
 }
 
-function insertWord(root, word) {
+function insertWord(root: TrieNode, word: string) {
   let currentNode = root;
 
   for (let i = 0; i < word.length; i++) {
@@ -21,7 +25,7 @@ function insertWord(root, word) {
   currentNode.isEndOfWord = true;
 }
 
-export function shortestUniquePrefixes(words) {
+export function shortestUniquePrefixes(words: string[]) {
   const root = new TrieNode();
   const prefixes = [];
 
@@ -31,7 +35,7 @@ export function shortestUniquePrefixes(words) {
 
   for (const word of words) {
     let currentNode = root;
-    let prefix = '';
+    let prefix = "";
 
     for (let i = 0; i < word.length; i++) {
       const char = word[i];

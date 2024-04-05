@@ -3,7 +3,7 @@ import {
   stubResponse,
   initRequestStub,
   url as _url,
-} from "../support/util";
+} from "../support/testutils";
 
 const { _, $ } = Cypress;
 
@@ -94,7 +94,6 @@ describe("login", () => {
         .c8yclient()
         .then((client) => {
           expect(client).to.not.be.undefined;
-          // @ts-ignore
           expect(cy.state("ccs.client")).to.not.be.undefined;
         });
 
@@ -110,7 +109,6 @@ describe("login", () => {
         expectHttpRequest({ url });
         expect(validationCalled).to.be.true;
         expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("user");
-        // @ts-ignore
         expect(cy.state("ccs.client")).to.be.undefined;
       });
     });

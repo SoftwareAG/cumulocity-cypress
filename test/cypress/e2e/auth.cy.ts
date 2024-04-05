@@ -1,5 +1,5 @@
 import { IDeviceCredentials } from "@c8y/client";
-import { url as _url } from "../support/util";
+import { url as _url } from "../support/testutils";
 
 const { _, $ } = Cypress;
 

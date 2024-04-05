@@ -1,6 +1,6 @@
 import { C8yClientOptions } from "../../shared/c8yclient";
 import { C8yPact, C8yPactInfo, C8yPactRecord } from "../../shared/c8ypact";
-const { getBaseUrlFromEnv } = require("./../utils");
+import { getBaseUrlFromEnv } from "../utils";
 const { _ } = Cypress;
 
 declare global {
@@ -59,7 +59,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     const tests: C8yPact[] = [];
 
     for (const pact of pacts) {
-      const { info, records, id } = pact;
+      const { info } = pact;
       if (!isPact(pact)) continue;
 
       if (
@@ -108,15 +108,14 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
   protected createTestsFromHierarchy(hierarchy: TestHierarchyTree<C8yPact>) {
     const keys = Object.keys(hierarchy);
-    keys.forEach((key: string, index: number) => {
+    keys.forEach((key: string) => {
       const subTree = hierarchy[key];
-      const that = this;
-
       if (isPact(subTree)) {
         it(key, () => {
-          that.runTest(subTree);
+          this.runTest(subTree);
         });
       } else {
+        const that = this;
         context(key, function () {
           that.createTestsFromHierarchy(subTree);
         });
@@ -128,7 +127,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     Cypress.c8ypact.current = pact;
     this.idMapper = {};
 
-    for (const record of pact?.records) {
+    for (const record of pact?.records || []) {
       cy.then(() => {
         Cypress.c8ypact.config.strictMatching =
           pact.info?.strictMatching != null ? pact.info.strictMatching : true;
@@ -165,7 +164,6 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
               Cypress.env(`${username}_password`, password);
             }
           }
-          // @ts-ignore
           if (response.method === "POST") {
             const newId = response.body.id;
             if (newId) {
@@ -189,8 +187,8 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     }
   }
 
-  protected createHeader(pact: C8yPactRecord, info: C8yPactInfo): any {
-    let headers = _.omit(pact.request.headers || {}, [
+  protected createHeader(pact: C8yPactRecord): any {
+    const headers = _.omit(pact.request.headers || {}, [
       "X-XSRF-TOKEN",
       "Authorization",
     ]);
@@ -198,11 +196,11 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
   }
 
   protected createFetchOptions(pact: C8yPactRecord, info: C8yPactInfo): any {
-    let options: any = {
+    const options: any = {
       method: pact.request.method || "GET",
-      headers: this.createHeader(pact, info),
+      headers: this.createHeader(pact),
     };
-    let body = pact.request.body;
+    const body = pact.request.body;
     if (body) {
       if (_.isString(body)) {
         options.body = this.updateIds(body);
@@ -241,7 +239,9 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
         const instance = url.host.split(".")?.slice(1)?.join(".");
         url.host = `${tenant}.${instance}`;
         return url;
-      } catch {}
+      } catch {
+        // no-op
+      }
       return undefined;
     };
 

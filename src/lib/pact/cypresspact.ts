@@ -22,13 +22,12 @@ import {
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yClient } from "../../shared/c8yclient";
-
-const { getBaseUrlFromEnv } = require("./../utils");
-const semver = require("semver");
+import { getBaseUrlFromEnv } from "../utils";
+import * as semver from "semver";
 
 const { _ } = Cypress;
 
-const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
+import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 
 declare global {
   namespace Cypress {
@@ -382,7 +381,9 @@ async function savePact(
 
     if (!pact) return;
     save(pact, options);
-  } catch {}
+  } catch {
+    // no-op
+  }
 }
 
 export function save(pact: any, options: C8yPactSaveOptions) {
@@ -394,7 +395,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
     ) {
       return new Promise((resolve) => setTimeout(resolve, 5))
         .then(() =>
-          // @ts-ignore
+          // @ts-expect-error
           Cypress.backend("run:privileged", {
             commandName: "task",
             userArgs: [taskName, pact],
@@ -408,14 +409,14 @@ export function save(pact: any, options: C8yPactSaveOptions) {
           /* noop */
         });
     }
-    // @ts-ignore
+    // @ts-expect-error
     const { args, promise } = Cypress.emitMap("command:invocation", {
       name: "task",
       args: [taskName, pact],
     })[0];
     new Promise((r) => promise.then(r))
       .then(() =>
-        // @ts-ignore
+        // @ts-expect-error
         Cypress.backend("run:privileged", {
           commandName: "task",
           args,
@@ -425,7 +426,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
           },
         })
       )
-      .catch((err) => {
+      .catch(() => {
         /* noop */
       });
   } else {

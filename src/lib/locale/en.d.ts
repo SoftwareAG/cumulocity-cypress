@@ -6,5 +6,5 @@
  * found in the LICENSE file at https://angular.io/license
  */
 /// <amd-module name="@angular/common/locales/en" />
-declare const _default: ({} | undefined)[];
+declare const _default: (any | undefined)[];
 export default _default;

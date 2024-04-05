@@ -83,7 +83,7 @@ export async function wrapFetchRequest(
   // as this is not required, remove it to avoid special handling in pact matching against recordings
   // not created by c8y/client.
   if (_.endsWith(toUrlString(url), "/tenant/currentTenant")) {
-    // @ts-ignore
+    // @ts-expect-error
     fetchOptions.headers = _.omit(fetchOptions.headers, ["content-type"]);
   } else {
     // add json content type if body is present and content-type is not set
@@ -548,7 +548,7 @@ export async function oauthLogin(
   }
 
   const fetchClient = new FetchClient(baseUrl);
-  let url = `/tenant/oauth?tenant_id=${tenant}`;
+  const url = `/tenant/oauth?tenant_id=${tenant}`;
   const params = new URLSearchParams({
     grant_type: "PASSWORD",
     username: auth.user || "",
