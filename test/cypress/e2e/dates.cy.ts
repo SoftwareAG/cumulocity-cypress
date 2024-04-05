@@ -1,3 +1,5 @@
+import { error } from "ajv/dist/vocabularies/applicator/dependencies";
+
 const { _ } = Cypress;
 
 describe("dates", () => {
@@ -249,17 +251,18 @@ describe("dates", () => {
         });
     });
 
-    it("should work with invalid input", () => {
-      cy.wrap(undefined)
-        .toISODate()
-        .then((result) => {
-          expect(result).to.eq(undefined);
-        });
-      cy.wrap([undefined, {}])
-        .toISODate()
-        .then((result) => {
-          expect(result).to.deep.eq([]);
-        });
+    it("should work with invalid input", (done) => {
+      const errorListener = (err: Error) => {
+        expect(err.message).to.contain(
+          "No or undefined source provided to cy.toDate."
+        );
+        done();
+      };
+      cy.on("fail", errorListener);
+
+      cy.wrap(undefined).toISODate();
+      cy.wrap({}).toISODate();
+      cy.wrap([undefined, {}]).toISODate();
     });
 
     it("should filter based on keep or ignore option", () => {
@@ -351,9 +354,7 @@ describe("dates", () => {
         done();
       });
 
-      cy.dateFormat("3/12/23121", { invalid: "throw" }).then(() => {
-        throw new Error("Expected error. Should not get here.");
-      });
+      cy.dateFormat("3/12/23121", { invalid: "throw" });
     });
 
     it("fails without error for invalid source and ignore option enabled", (done) => {

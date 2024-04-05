@@ -215,11 +215,10 @@ describe("request", () => {
   });
 
   context("retryRequest", () => {
-    let lastLog;
-    let delaySpy;
+    let lastLog: any;
+    let delaySpy: Cypress.Agent<sinon.SinonSpy<any[], any>>;
 
     beforeEach(() => {
-      // @ts-expect-error
       delaySpy = cy.spy(Promise, "delay");
 
       cy.on("log:added", (attrs, log) => {

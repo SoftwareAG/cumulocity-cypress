@@ -11,18 +11,21 @@ class TrieNode {
 }
 
 function insertWord(root: TrieNode, word: string) {
-  let currentNode = root;
+  let currentNode: TrieNode | undefined = root;
 
   for (let i = 0; i < word.length; i++) {
     const char = word[i];
-    if (!currentNode.children.has(char)) {
-      currentNode.children.set(char, new TrieNode());
+    if (!currentNode?.children.has(char)) {
+      currentNode?.children.set(char, new TrieNode());
     }
-    currentNode = currentNode.children.get(char);
-    currentNode.count++;
+    currentNode = currentNode?.children.get(char);
+    if (currentNode) {
+      currentNode.count++;
+    }
   }
-
-  currentNode.isEndOfWord = true;
+  if (currentNode) {
+    currentNode.isEndOfWord = true;
+  }
 }
 
 export function shortestUniquePrefixes(words: string[]) {
@@ -34,15 +37,15 @@ export function shortestUniquePrefixes(words: string[]) {
   }
 
   for (const word of words) {
-    let currentNode = root;
+    let currentNode: TrieNode | undefined = root;
     let prefix = "";
 
     for (let i = 0; i < word.length; i++) {
       const char = word[i];
       prefix += char;
-      currentNode = currentNode.children.get(char);
+      currentNode = currentNode?.children.get(char);
 
-      if (currentNode.count === 1) {
+      if (currentNode && currentNode.count === 1) {
         prefixes.push(prefix);
         break;
       }

@@ -82,7 +82,7 @@ Cypress.Commands.add("getAuth", { prevSubject: "optional" }, (...args) => {
 });
 
 Cypress.Commands.add("useAuth", { prevSubject: "optional" }, (...args) => {
-  const auth: C8yAuthOptions = getAuthOptions(...args);
+  const auth = getAuthOptions(...args);
   const consoleProps = {
     auth,
     arguments: args,

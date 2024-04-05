@@ -18,8 +18,8 @@ const { _ } = Cypress;
 
 export class C8yPactFetchClient extends FetchClient {
   private authentication: IAuthentication;
-  private cypresspact: CypressC8yPact;
-  private authOptions: C8yAuthOptions;
+  private cypresspact: CypressC8yPact | undefined;
+  private authOptions: C8yAuthOptions | undefined;
 
   private user: string;
   private userAlias: string;
@@ -29,8 +29,8 @@ export class C8yPactFetchClient extends FetchClient {
     baseUrl?: string;
     cypresspact?: CypressC8yPact;
   }) {
-    let auth: IAuthentication;
-    let authOptions: C8yAuthOptions;
+    let auth: IAuthentication | undefined;
+    let authOptions: C8yAuthOptions | undefined;
     const url: string = options.baseUrl || getBaseUrlFromEnv();
 
     if (options.auth) {
@@ -100,7 +100,7 @@ export class C8yPactFetchClient extends FetchClient {
       const fullUrl: string = this.getUrl(url, fetchOptions);
       if (currentPact) {
         const record = currentPact.nextRecordMatchingRequest({
-          url: fullUrl?.replace(this.baseUrl, ""),
+          url: fullUrl?.replace(this.baseUrl || "", ""),
           method: fetchOptions?.method,
         });
         if (record) {

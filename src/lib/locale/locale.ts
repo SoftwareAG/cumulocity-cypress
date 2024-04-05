@@ -66,14 +66,11 @@ export function registerLocale(
     LOCALE_DATA[angularId][NgLocaleDataIndex.ExtraData] = extraData;
   }
 
-  const dfnsLocale: Locale = loadDfnsLocale(
-    getNgLocaleId(c8yLocaleId),
-    localeId
-  );
+  const dfnsLocale = loadDfnsLocale(getNgLocaleId(c8yLocaleId), localeId);
   LOCALE_DATA[angularId][NgLocaleDataIndex.DfnsLocale] = {
     ...dfnsLocale,
     localize: {
-      ...dfnsLocale.localize,
+      ...dfnsLocale?.localize,
       month: buildLocalizeFn({
         values: monthValuesForLocale(angularId),
         defaultWidth: "wide",
@@ -85,7 +82,7 @@ export function registerLocale(
     },
     // node_modules/date-fns/locale/en-US/_lib/match/index.js
     match: {
-      ...dfnsLocale.match,
+      ...dfnsLocale?.match,
       month: buildMatchFn({
         matchPatterns: matchMonthPatterns(angularId),
         defaultMatchWidth: "wide",
@@ -180,8 +177,11 @@ function formatDateTime(str: string, opt_values: any): string {
   return str;
 }
 
-export function parseDate(date: string | number | Date, format: string): Date {
-  let parsedDate: Date;
+export function parseDate(
+  date: string | number | Date,
+  format: string
+): Date | undefined {
+  let parsedDate: Date | undefined = undefined;
   // try to parse as number fist, if string is passed it might be converted without format being used
   if (_.isNumber(date)) {
     parsedDate = new Date(date);
@@ -199,7 +199,7 @@ export function parseDate(date: string | number | Date, format: string): Date {
 }
 
 export function isValidDate(date?: Date): boolean {
-  return date && !isNaN(<any>date) && _.isDate(date);
+  return date != null && !isNaN(<any>date) && _.isDate(date);
 }
 
 function isModule(module: any): boolean {
@@ -246,7 +246,7 @@ function getLocaleDateTimeFormat(
 function loadDfnsLocale(
   angularLocaleId: string,
   dfnsLocaleId?: string
-): Locale {
+): Locale | null {
   const load: (locale: string) => Locale = (locale: string) => {
     return require(`date-fns/locale/${locale}/index.js`);
   };
@@ -347,7 +347,7 @@ function monthValuesForLocale(locale: string): {
   narrow: string[];
   abbreviated: string[];
   wide: string[];
-} {
+} | null {
   const l = getNgLocale(locale);
   if (!l) return null;
 
@@ -365,7 +365,7 @@ function dayValuesForLocale(locale: string): {
   narrow: string[];
   abbreviated: string[];
   wide: string[];
-} {
+} | null {
   const l = getNgLocale(locale);
   if (!l) return null;
 

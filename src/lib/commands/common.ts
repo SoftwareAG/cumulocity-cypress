@@ -24,7 +24,7 @@ declare global {
 if (!Cypress.c8ypact) {
   Cypress.c8ypact = {
     current: null,
-    getCurrentTestId: () => null,
+    getCurrentTestId: () => "-",
     isRecordingEnabled: () => false,
     savePact: () => new Promise((resolve) => resolve()),
     isEnabled: () => false,
@@ -36,7 +36,7 @@ if (!Cypress.c8ypact) {
     preprocessor: undefined,
     config: {},
     getConfigValue: () => undefined,
-    getConfigValues: () => undefined,
+    getConfigValues: () => ({}),
     loadCurrent: () => cy.wrap<C8yPact | null>(null, { log: false }),
     env: () => ({}),
   };

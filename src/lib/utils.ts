@@ -19,7 +19,7 @@ const { _ } = Cypress;
  *
  * Structure of 2) depends on the command chainer.
  */
-export function normalizedArguments(args: any[]) {
+export function normalizedArguments(args: any[] | any) {
   if (!args) return [];
 
   let result = [];
@@ -222,8 +222,8 @@ export function resetClient() {
   cy.state("ccs.client", undefined);
 }
 
-export function throwError(message: string) {
+export function throwError(message: string): never {
   const newErr = new Error(message);
-  newErr.name = "CypressError";
+  // newErr.name = "CypressError";
   throw newErr;
 }

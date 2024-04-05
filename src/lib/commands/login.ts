@@ -2,7 +2,7 @@ import { getAuthOptions, isAuth, resetClient } from "../utils";
 import { C8yAuthOptions } from "./auth";
 
 const { _ } = Cypress;
-import semver from "semver";
+import { gte } from "semver";
 
 declare global {
   namespace Cypress {
@@ -62,7 +62,7 @@ export const defaultLoginOptions = () => {
   return {
     disableGainsight: Cypress.env("C8Y_DISABLE_GAINSIGHT") ?? true,
     hideCookieBanner: Cypress.env("C8Y_HIDE_COOKIEBANNER") ?? true,
-    useSession: semver.gte(Cypress.version, "12.0.0"),
+    useSession: gte(Cypress.version, "12.0.0"),
 
     validationFn: () => {
       cy.getCookie("XSRF-TOKEN").should("exist");
@@ -72,7 +72,7 @@ export const defaultLoginOptions = () => {
 };
 
 Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
-  const auth: C8yAuthOptions = getAuthOptions(...args);
+  const auth = getAuthOptions(...args);
   expect(auth).to.not.be.undefined;
 
   const consoleProps: any = {};
@@ -101,9 +101,9 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
             url: `/tenant/oauth?tenant_id=${tenant}`,
             body: {
               grant_type: "PASSWORD",
-              username: auth.user,
-              password: auth.password,
-              tfa_code: auth.tfa,
+              username: auth?.user,
+              password: auth?.password,
+              tfa_code: auth?.tfa,
             },
             form: true,
           })
@@ -118,18 +118,20 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
           });
       };
 
-      const tenant: string = auth.tenant || Cypress.env("C8Y_TENANT");
+      const tenant: string = auth?.tenant || Cypress.env("C8Y_TENANT");
       consoleProps.tenant = tenant;
 
       if (options.useSession === true) {
         cy.session(
-          auth.user,
+          auth?.user || auth,
           () => {
             loginRequest(tenant);
           },
           {
             validate() {
-              options.validationFn();
+              if (_.isFunction(options.validationFn)) {
+                options?.validationFn();
+              }
               Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
               Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
             },
@@ -138,7 +140,9 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
         );
       } else {
         loginRequest(tenant).then(() => {
-          options.validationFn();
+          if (_.isFunction(options.validationFn)) {
+            options.validationFn();
+          }
           Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
           Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
         });

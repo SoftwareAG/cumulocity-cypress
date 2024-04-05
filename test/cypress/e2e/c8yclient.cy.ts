@@ -433,7 +433,6 @@ describe("c8yclient", () => {
 
   context("schema matching", () => {
     it("should use schema for matching response", () => {
-      //@ts-expect-error
       const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match");
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
         .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
@@ -447,7 +446,6 @@ describe("c8yclient", () => {
           },
         })
         .then(() => {
-          // @ts-expect-error
           expect(spy).to.have.been.calledOnce;
         });
     });
@@ -1012,7 +1010,6 @@ describe("c8yclient", () => {
 
     it("should return responseObject Cypress.Response", () => {
       const r: IResult<any> = {
-        // @ts-expect-error
         res: new window.Response(JSON.stringify({ name: "t1234" }), {
           status: 404,
           statusText: "Error",
@@ -1166,6 +1163,7 @@ describe("c8yclient", () => {
     });
 
     it("isArrayOfFunctions validates array of functions", () => {
+      // @ts-expect-error
       expect(isArrayOfFunctions([() => {}, () => {}])).to.be.true;
       // @ts-expect-error
       expect(isArrayOfFunctions([() => {}, "test"])).to.be.false;

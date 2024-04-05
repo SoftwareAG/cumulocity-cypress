@@ -160,10 +160,7 @@ describe("c8ypact", () => {
 
     it("from() should create C8yDefaultPact from C8yPact object", function () {
       const pactObject = {
-        records: [
-          // @ts-expect-error
-          C8yDefaultPactRecord.from(response),
-        ],
+        records: [C8yDefaultPactRecord.from(response)],
         info: {
           baseUrl: "http://localhost:4200",
         },
@@ -191,7 +188,6 @@ describe("c8ypact", () => {
         expect(err.message).to.contain("Invalid pact object.");
         done();
       });
-      // @ts-expect-error
       C8yDefaultPact.from(`{ "test": "test" }`);
     });
 
@@ -202,7 +198,6 @@ describe("c8ypact", () => {
         );
         done();
       });
-      // @ts-expect-error
       C8yDefaultPact.from(null);
     });
 

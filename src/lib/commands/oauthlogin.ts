@@ -26,7 +26,7 @@ declare global {
 }
 
 Cypress.Commands.add("oauthLogin", { prevSubject: "optional" }, (...args) => {
-  const auth: C8yAuthOptions = getAuthOptions(...args);
+  const auth = getAuthOptions(...args);
   if (!auth || !auth.user || !auth.password) {
     const error = new Error(
       "C8yAuthOptions missing. cy.oauthLogin requires at least user and password as C8yAuthOptions."

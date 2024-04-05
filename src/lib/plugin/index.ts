@@ -39,7 +39,7 @@ export function configureC8yPlugin(
   config: Cypress.PluginConfigOptions,
   options: C8yPluginConfig = {}
 ) {
-  let adapter: C8yPactFileAdapter = options.pactAdapter;
+  let adapter = options.pactAdapter;
   if (!adapter) {
     const folder =
       options.pactFolder ||
@@ -90,9 +90,12 @@ export function configureC8yPlugin(
     return pacts[pact] || null;
   }
 
-  function loadPacts(): { [key: string]: C8yPact } {
-    pacts = adapter?.loadPacts() || null;
-    return pacts;
+  function loadPacts(): { [key: string]: C8yPact } | undefined {
+    const p = adapter?.loadPacts();
+    if (p) {
+      pacts = p;
+    }
+    return p;
   }
 
   function removePact(pact: string): boolean {
@@ -101,7 +104,7 @@ export function configureC8yPlugin(
     if (!pacts[pact]) return false;
     delete pacts[pact];
 
-    adapter.deletePact(pact);
+    adapter?.deletePact(pact);
     return true;
   }
 

@@ -134,17 +134,17 @@ declare global {
 
   type C8yClientServiceFn<R, T> = (
     client: Client,
-    previousResponse?: Cypress.Response<R>
+    previousResponse: Cypress.Response<R>
   ) => Promise<C8yClientIResult<T>>;
 
   type C8yClientServiceArrayFn<R, T> = (
     client: Client,
-    previousResponse?: Cypress.Response<R>
+    previousResponse: Cypress.Response<R>
   ) => Promise<C8yClientIResult<T>>[];
 
   type C8yClientServiceListFn<R, T> = (
     client: Client,
-    previousResponse?: Cypress.Response<R>
+    previousResponse: Cypress.Response<R>
   ) => Promise<IResultList<T>>;
 
   type C8yClientFnArg<R = any, T = any> =
@@ -176,7 +176,7 @@ globalThis.fetch = async function (
 ) {
   const consoleProps: any = {};
 
-  let logger: Cypress.Log;
+  let logger: Cypress.Log | undefined = undefined;
   if (logOnce === true) {
     logger = Cypress.log({
       name: "c8yclient",
@@ -299,9 +299,7 @@ const c8yclientFn = (...args: any[]) => {
   }
 
   if (!c8yclient._client && clientFn && !auth) {
-    throw new Error(
-      "Missing authentication. Authentication or Client required."
-    );
+    throwError("Missing authentication. Authentication or Client required.");
   }
 
   // pass userAlias into the auth so it is part of the pact recording
@@ -349,8 +347,8 @@ function runClient(
     // return Cypress.isCy(client) ? client : cy.wrap(client._client, { log: false });
     return cy.wrap(client._client, { log: false });
   }
-  logOnce = client._options.log;
-  return run(client, fns, prevSubject, client._options, baseUrl);
+  logOnce = client._options?.log || true;
+  return run(client, fns, prevSubject, client._options || {}, baseUrl);
 }
 
 // create client as Client.authenticate() does, but also support
@@ -381,11 +379,17 @@ function run(
   baseUrl: string
 ) {
   const clientFn = isArrayOfFunctions(fns) ? fns.shift() : fns;
+  if (!clientFn) {
+    return;
+  }
+  const safeClient = client._client;
+  if (!safeClient) {
+    throwError("Client not initialized when running client function.");
+  }
   return cy.then({ timeout: options.timeout }, async () => {
-    const configIgnore =
-      (Cypress.config().c8ypact && Cypress.config().c8ypact.ignore) || false;
-    const optionsIgnore =
-      (options.ignorePact && options.ignorePact === true) || false;
+    const c8ypactConfig = Cypress.config().c8ypact;
+    const configIgnore = c8ypactConfig?.ignore === true || false;
+    const optionsIgnore = options?.ignorePact === true || false;
     const ignore = configIgnore || optionsIgnore;
     const savePact =
       Cypress.c8ypact.current == null &&
@@ -442,17 +446,19 @@ function run(
             result = error;
           }
           result = toCypressResponse(result);
-          result.$body = options.schema;
-          if (savePact) {
-            await Cypress.c8ypact.savePact(result, client);
-          }
-          if (isErrorResponse(result)) {
-            throw result;
+          if (result) {
+            result.$body = options.schema;
+            if (savePact) {
+              await Cypress.c8ypact.savePact(result, client);
+            }
+            if (isErrorResponse(result)) {
+              throw result;
+            }
           }
           return result;
         };
 
-        const resultPromise = clientFn(client._client, prevSubject);
+        const resultPromise = clientFn(safeClient, prevSubject);
         if (_.isError(resultPromise)) {
           reject(resultPromise);
           return;

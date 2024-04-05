@@ -1,4 +1,4 @@
-import * as _ from "lodash";
+import _ from "lodash";
 
 import {
   Client,
@@ -138,6 +138,8 @@ export async function wrapFetchResponse(
       options.url
     );
   })();
+  if (!responseObj) return response;
+
   let rawBody: string | undefined = undefined;
   if (response.data) {
     responseObj.body = response.data;
@@ -281,8 +283,8 @@ export function toCypressResponse(
   fetchOptions: IFetchOptions = {},
   url?: RequestInfo | URL,
   schema?: any
-): Cypress.Response<any> {
-  if (!obj) return obj;
+): Cypress.Response<any> | undefined {
+  if (!obj) return undefined;
 
   if (typeof isPactRecord === "function" && isPactRecord(obj)) {
     return obj.toCypressResponse();

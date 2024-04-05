@@ -244,11 +244,16 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
                 c.core.fetch(
                   "/user/" + c.core.tenant + "/groupByName/" + permission
                 ),
-              (c, groupResponse) =>
-                c.userGroup.addUserToGroup(
-                  groupResponse.body.id,
-                  userResponse.body.self
-                ),
+              (c, groupResponse) => {
+                const childId = userResponse?.body?.self;
+                const groupId = groupResponse?.body?.id;
+                if (!childId || !groupId) {
+                  throwError(
+                    `Failed to add user ${childId} to group ${childId}.`
+                  );
+                }
+                return c.userGroup.addUserToGroup(groupId, childId);
+              },
             ],
             clientOptions
           );
@@ -266,27 +271,29 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
                   },
                 }),
               (c, applicationResponse) => {
-                expect(applicationResponse.body).to.not.be.empty;
                 const applications =
-                  applicationResponse.body.applications ||
-                  applicationResponse.body;
-                if (_.isArray(applications)) {
-                  const apps = applications.map((a) => {
-                    if (_.isString(a)) {
-                      return {
-                        type: "HOSTED",
-                        id: a,
-                      };
-                    } else if (_.isObjectLike(a) && a.id) {
-                      return _.pick(_.defaults(a, { type: "HOSTED" }), [
-                        "id",
-                        "type",
-                      ]);
-                    }
-                    return undefined;
-                  });
-                  return c.user.update({ id: userId, applications: apps });
+                  applicationResponse?.body?.applications ||
+                  applicationResponse?.body;
+                if (!applications || _.isArrayLike(applications)) {
+                  throwError(
+                    `Application ${appName} not found. No or empty response.`
+                  );
                 }
+                const apps = applications.map((a: any) => {
+                  if (_.isString(a)) {
+                    return {
+                      type: "HOSTED",
+                      id: a,
+                    };
+                  } else if (_.isObjectLike(a) && a.id) {
+                    return _.pick(_.defaults(a, { type: "HOSTED" }), [
+                      "id",
+                      "type",
+                    ]);
+                  }
+                  return undefined;
+                });
+                return c.user.update({ id: userId, applications: apps });
               },
             ],
             clientOptions
@@ -426,11 +433,16 @@ Cypress.Commands.add(
                 client.core.fetch(
                   `/user/${client.core.tenant}/groupByName/${role}`
                 ),
-              (client, groupResponse) =>
-                client.userGroup.addUserToGroup(
-                  groupResponse.body.id,
-                  response.body.self
-                ),
+              (client, groupResponse) => {
+                const childId = response?.body?.self;
+                const groupId = groupResponse?.body?.id;
+                if (childId == null || !groupId) {
+                  throwError(
+                    `Failed to add user ${childId} to group ${childId}.`
+                  );
+                }
+                return client.userGroup.addUserToGroup(groupId, childId);
+              },
             ],
             options
           );
@@ -458,12 +470,10 @@ Cypress.Commands.add(
     });
 
     consoleProps.auth = auth;
-    return cy
-      .wrap(auth, { log: false })
-      .c8yclient((c) => c.tenant.current(), clientOptions)
-      .then((currentTenant) => {
-        return cy.wrap(currentTenant);
-      });
+    cy.wrap(auth, { log: false }).c8yclient(
+      (c) => c.tenant.current(),
+      clientOptions
+    );
   }
 );
 
@@ -485,13 +495,12 @@ Cypress.Commands.add("getTenantId", { prevSubject: "optional" }, (...args) => {
     return cy.wrap<string>(Cypress.env("C8Y_TENANT"));
   }
 
-  return cy
-    .wrap(auth, { log: false })
+  cy.wrap(auth, { log: false })
     .c8yclient()
     .then((c) => {
       expect(c.core.tenant).to.not.be.undefined;
       Cypress.env("C8Y_TENANT", c.core.tenant);
-      return cy.wrap(c.core.tenant);
+      cy.wrap(c.core.tenant);
     });
 });
 
@@ -513,8 +522,7 @@ Cypress.Commands.add(
 
     consoleProps.auth = auth;
 
-    return cy
-      .wrap(auth, { log: false })
+    cy.wrap(auth, { log: false })
       .c8yclient((c) => c.core.fetch("/tenant/system/options"), clientOptions)
       .then((systemOptions) => {
         const options = systemOptions.body && systemOptions.body.options;
@@ -556,8 +564,7 @@ Cypress.Commands.add(
     const success = 201;
     const failure = 404;
 
-    return cy
-      .wrap(auth, { log: false })
+    cy.wrap(auth, { log: false })
       .c8yclientf(
         (c) =>
           c.core.fetch("/devicecontrol/deviceCredentials", {
@@ -572,7 +579,7 @@ Cypress.Commands.add(
       )
       .then((response) => {
         expect(response.status).to.be.oneOf([success, failure]);
-        let result: IDeviceCredentials;
+        let result: IDeviceCredentials | undefined = undefined;
         if (
           response.status === success &&
           response.body &&
@@ -581,7 +588,7 @@ Cypress.Commands.add(
           result = response.body;
         }
         consoleProps.Yielded = result;
-        return cy.wrap(result);
+        cy.wrap(result);
       });
   }
 );

@@ -64,7 +64,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
       if (
         _.isString(options.consumer) &&
-        (_.isString(info?.consumer) ? info?.consumer : info?.consumer.name) !==
+        (_.isString(info?.consumer) ? info?.consumer : info?.consumer?.name) !==
           options.consumer
       ) {
         continue;
@@ -72,7 +72,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
       if (
         _.isString(options.producer) &&
-        (_.isString(info?.producer) ? info?.consumer : info?.producer.name) !==
+        (_.isString(info?.producer) ? info?.consumer : info?.producer?.name) !==
           options.consumer
       ) {
         continue;
@@ -96,7 +96,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
       const titles = pact.info.title;
 
       let currentNode = tree;
-      titles.forEach((title, index) => {
+      titles?.forEach((title, index) => {
         if (!currentNode[title]) {
           currentNode[title] = index === titles.length - 1 ? pact : {};
         }
@@ -135,9 +135,9 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
         const url = this.createURL(record, pact.info);
         const clientFetchOptions = this.createFetchOptions(record, pact.info);
 
-        let user = record.auth.userAlias || record.auth.user;
-        if (user.split("/").length > 1) {
-          user = user.split("/").slice(1).join("/");
+        let user = record.auth?.userAlias || record.auth?.user;
+        if ((user || "").split("/").length > 1) {
+          user = user?.split("/")?.slice(1)?.join("/");
         }
         if (url === "/devicecontrol/deviceCredentials") {
           user = "devicebootstrap";
@@ -166,19 +166,23 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
           }
           if (response.method === "POST") {
             const newId = response.body.id;
-            if (newId) {
+            if (newId && record.createdObject) {
               this.idMapper[record.createdObject] = newId;
             }
           }
         };
 
         if (record.auth && record.auth.type === "CookieAuth") {
-          cy.getAuth(user).login();
-          cy.c8yclient(
-            (c) => c.core.fetch(url, clientFetchOptions),
-            cOpts
-          ).then(responseFn);
-        } else {
+          if (user) {
+            cy.getAuth(user).login();
+          }
+          if (url) {
+            cy.c8yclient(
+              (c) => c.core.fetch(url, clientFetchOptions),
+              cOpts
+            ).then(responseFn);
+          }
+        } else if (user && url) {
           cy.getAuth(user)
             .c8yclient((c) => c.core.fetch(url, clientFetchOptions), cOpts)
             .then(responseFn);
@@ -215,16 +219,21 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     return options;
   }
 
-  protected createURL(pact: C8yPactRecord, info: C8yPactInfo): string {
+  protected createURL(
+    pact: C8yPactRecord,
+    info: C8yPactInfo
+  ): string | undefined {
     let url = pact.request.url;
-    if (info?.baseUrl && url.includes(info.baseUrl)) {
+    if (info?.baseUrl && url?.includes(info.baseUrl)) {
       url = url.replace(info.baseUrl, "");
     }
     const baseUrl = getBaseUrlFromEnv();
-    if (url.includes(baseUrl)) {
+    if (url?.includes(baseUrl)) {
       url = url.replace(baseUrl, "");
     }
-    url = this.updateIds(url);
+    if (url) {
+      url = this.updateIds(url);
+    }
     return url;
   }
 
@@ -232,7 +241,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     if (!value || !info) return value;
     let result = value;
 
-    const tenantUrl = (baseUrl: string, tenant: string): URL => {
+    const tenantUrl = (baseUrl: string, tenant?: string): URL | undefined => {
       if (!baseUrl || !tenant) return undefined;
       try {
         const url = new URL(baseUrl);
@@ -245,7 +254,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
       return undefined;
     };
 
-    const infoUrl = tenantUrl(info.baseUrl, info.tenant);
+    const infoUrl = tenantUrl(info.baseUrl, info?.tenant);
     const url = tenantUrl(getBaseUrlFromEnv(), Cypress.env("C8Y_TENANT"));
 
     if (infoUrl && url) {
