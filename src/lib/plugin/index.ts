@@ -8,7 +8,7 @@ import {
 import { C8yPact } from "../../shared/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../../shared/c8yclient";
 
-export { C8yPactFileAdapter };
+export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
 /**
  * Configuration options for the Cumulocity Cypress plugin.
@@ -159,5 +159,3 @@ function getVersion() {
   }
   return "unknown";
 }
-
-module.exports = { configureC8yPlugin, C8yPactDefaultFileAdapter };
