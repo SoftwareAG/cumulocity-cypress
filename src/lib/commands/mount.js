@@ -1,9 +1,9 @@
 import { mount } from "cypress/angular";
 
-require("./auth");
-require("./c8ypact");
-require("./intercept");
-require("./oauthlogin");
+import "./auth";
+import "./c8ypact";
+import "./intercept";
+import "./oauthlogin";
 
 import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
