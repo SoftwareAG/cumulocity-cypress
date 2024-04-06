@@ -34,7 +34,13 @@
     },
     "import/resolver": {
       "typescript": {
-        "alwaysTryTypes": true
+        "alwaysTryTypes": true,
+        "project": [
+          "./tsconfig.json",
+          "./test/tsconfig.json",
+          "./src/shared/tsconfig.json",
+          "./packages/pactrunner/tsconfig.json"
+        ]
       },
       "node": {
         "extensions": [".js", ".jsx", ".ts", ".tsx"],

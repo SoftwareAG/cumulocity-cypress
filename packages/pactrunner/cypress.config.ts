@@ -1,6 +1,6 @@
 import { defineConfig } from "cypress";
-import { C8yPactDefaultFileAdapter } from "../../src/shared/c8ypact/fileadapter";
-import { configureC8yPlugin } from "../../src/lib/plugin";
+import { configureC8yPlugin } from "cumulocity-cypress/lib/plugin";
+import { C8yPactDefaultFileAdapter } from "cumulocity-cypress/shared/c8ypact/fileadapter";
 
 module.exports = defineConfig({
   e2e: {

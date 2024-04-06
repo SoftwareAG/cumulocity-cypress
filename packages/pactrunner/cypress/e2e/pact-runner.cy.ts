@@ -15,4 +15,4 @@ const pactObjects = pacts.map((item) => {
   return C8yDefaultPact.from(item);
 });
 
-Cypress.c8ypact.pactRunner.run(pactObjects);
+Cypress.c8ypact.pactRunner?.run(pactObjects);

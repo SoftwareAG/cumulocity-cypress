@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": ".",
+    "lib": ["dom", "ES2020"],
+    "types": ["node", "cookie-parser", "cypress"],
+    "paths": {
+      "cumulocity-cypress/*": ["./../../src/*"]
+    },
+    "composite": true
+  },
+  "references": [
+    { "path": "./../../src/shared" },
+    { "path": "./../../src/lib" }
+  ]
+}
