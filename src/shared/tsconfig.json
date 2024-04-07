@@ -4,7 +4,7 @@
     "rootDir": ".",
     "outDir": "../../dist/shared",
     "lib": ["dom", "dom.iterable", "ES2020"],
-    "types": ["node", "cookie-parser"],
+    "types": ["node", "cookie-parser", "cypress"],
     "composite": true
   }
 }

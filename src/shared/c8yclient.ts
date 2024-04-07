@@ -12,7 +12,6 @@ import {
 } from "@c8y/client";
 import { C8yPactRecord, isCypressResponse, isPactRecord } from "./c8ypact";
 
-import "./cypress";
 import * as setCookieParser from "set-cookie-parser";
 
 declare global {
@@ -21,6 +20,15 @@ declare global {
     method?: string;
     responseObj?: Partial<Cypress.Response<any>>;
     requestBody?: string | any;
+  }
+  namespace Cypress {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface Response<T> {
+      url?: string;
+      requestBody?: string | any;
+      method?: string;
+      $body?: any;
+    }
   }
 }
 
