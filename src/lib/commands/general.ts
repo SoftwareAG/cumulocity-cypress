@@ -1,5 +1,7 @@
 const { _ } = Cypress;
 
+export {};
+
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
@@ -94,7 +96,7 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add("setLanguage", (lang) => {
+Cypress.Commands.add("setLanguage", (lang: string) => {
   globalThis.setLocale(lang);
 
   Cypress.log({

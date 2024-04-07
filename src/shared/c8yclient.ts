@@ -125,7 +125,7 @@ export async function wrapFetchResponse(
   response: Response,
   options: {
     url?: RequestInfo | URL;
-    fetchOptions?: RequestInit;
+    fetchOptions?: IFetchOptions;
     duration?: number;
     logOptions?: LogOptions;
   } = {}
@@ -204,7 +204,7 @@ export async function wrapFetchResponse(
 
 function updateConsoleProps(
   responseObj: Partial<Cypress.Response<any>>,
-  fetchOptions?: RequestInit,
+  fetchOptions?: IFetchOptions,
   logOptions?: LogOptions,
   url?: RequestInfo | URL
 ) {

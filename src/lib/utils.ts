@@ -22,7 +22,7 @@ const { _ } = Cypress;
 export function normalizedArguments(args: any[] | any) {
   if (!args) return [];
 
-  let result = [];
+  let result: any[] = [];
   if (_.isArray(args)) {
     result = args;
     if (args[0] != null && _.isArray(result[0])) {
@@ -33,7 +33,7 @@ export function normalizedArguments(args: any[] | any) {
     const values: any[] = Object.values(args);
     result = _.flatten(values[0]).concat(values.slice(1));
   }
-  return _.dropWhile(result, (a) => !a);
+  return _.dropWhile(result, (a: any) => !a);
 }
 
 /**
