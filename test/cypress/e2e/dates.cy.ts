@@ -1,4 +1,5 @@
-import { error } from "ajv/dist/vocabularies/applicator/dependencies";
+import * as localeEn from "./../../../src/lib/locale/en";
+import * as localeTest from "./../support/test";
 
 const { _ } = Cypress;
 
@@ -21,16 +22,15 @@ describe("dates", () => {
     });
 
     it("should allow registering additional locales", () => {
-      const localeEn = require("./../../../src/lib/locale/en");
-      registerLocale(localeEn, "en", undefined, "en-US");
-
-      cy.setLanguage("en");
-      // uses en (en) local to parse the date (different from default en-GB)
-      cy.wrap("5/26/23, 3:59 PM")
-        .toISODate()
-        .then((result) => {
-          expect(result).to.equal("2023-05-26T13:59:00.000Z");
-        });
+      registerLocale(localeEn.default, "en", undefined, "en-US").then(() => {
+        cy.setLanguage("en");
+        // uses en (en) local to parse the date (different from default en-GB)
+        cy.wrap("5/26/23, 3:59 PM")
+          .toISODate()
+          .then((result) => {
+            expect(result).to.equal("2023-05-26T13:59:00.000Z");
+          });
+      });
     });
 
     after(() => {
@@ -44,8 +44,7 @@ describe("dates", () => {
       // use test locale to test completely custom locale mappings
       // days: Test0... (come up with something )
       // months: Alpha, ... (Greek Alphabet)
-      const localeTest = require("./../support/test");
-      registerLocale(localeTest, "test");
+      registerLocale(localeTest.default, "test").then(() => {});
     });
 
     it("should register datefns", () => {

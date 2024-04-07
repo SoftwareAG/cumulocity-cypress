@@ -155,7 +155,7 @@ declare global {
     localeId: string,
     extraData?: unknown,
     datefnsLocale?: string
-  ): void;
+  ): Promise<void>;
 
   /**
    * Registers default Angular locales. Currently this is `en` (en-GB) and `de` (de) Angular locales.

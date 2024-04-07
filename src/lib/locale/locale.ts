@@ -54,7 +54,7 @@ export function getNgLocaleId(locale: string): string {
   return data[NgLocaleDataIndex.LocaleId];
 }
 
-export function registerLocale(
+export async function registerLocale(
   data: unknown[],
   c8yLocaleId: string,
   extraData: unknown = undefined,
@@ -66,7 +66,7 @@ export function registerLocale(
     LOCALE_DATA[angularId][NgLocaleDataIndex.ExtraData] = extraData;
   }
 
-  const dfnsLocale = loadDfnsLocale(getNgLocaleId(c8yLocaleId), localeId);
+  const dfnsLocale = await loadDfnsLocale(getNgLocaleId(c8yLocaleId), localeId);
   LOCALE_DATA[angularId][NgLocaleDataIndex.DfnsLocale] = {
     ...dfnsLocale,
     localize: {
@@ -100,12 +100,12 @@ export function registerLocale(
 }
 
 export async function registerDefaultLocales() {
-  registerLocale(
+  await registerLocale(
     // @ts-expect-error
     !isModule(localeDe) ? localeDe : localeDe.default,
     "de"
   );
-  registerLocale(
+  await registerLocale(
     // @ts-expect-error
     !isModule(localeEn) ? localeEn : localeEn.default,
     "en"
@@ -243,12 +243,18 @@ function getLocaleDateTimeFormat(
   return getLastDefinedValue(dateTimeFormatData, width);
 }
 
-function loadDfnsLocale(
+async function loadDfnsLocale(
   angularLocaleId: string,
   dfnsLocaleId?: string
-): Locale | null {
-  const load: (locale: string) => Locale = (locale: string) => {
-    return require(`date-fns/locale/${locale}/index.js`);
+): Promise<Locale | null> {
+  const load: (locale: string) => Promise<Locale> = async (locale: string) => {
+    try {
+      const l = await import(`date-fns/locale/${locale}/`);
+      return l.default;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
   };
   if (!angularLocaleId && !dfnsLocaleId) return null;
 
