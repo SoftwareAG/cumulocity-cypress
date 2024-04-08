@@ -1,7 +1,5 @@
+import { getAuthOptions, getBaseUrlFromEnv } from "../utils";
 import { C8yAuthOptions } from "./auth";
-
-const { _ } = Cypress;
-const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
 
 declare global {
   namespace Cypress {
@@ -27,62 +25,57 @@ declare global {
   }
 }
 
-Cypress.Commands.add(
-  "oauthLogin",
-  // @ts-ignore
-  { prevSubject: "optional" },
-  function (...args: C8yLoginAuthArgs) {
-    const auth: C8yAuthOptions = getAuthOptions(...args);
-    if (!auth || !auth.user || !auth.password) {
-      const error = new Error(
-        "C8yAuthOptions missing. cy.oauthLogin requires at least user and password as C8yAuthOptions."
-      );
-      error.name = "C8yPactError";
-      throw error;
-    }
-
-    const baseUrl = getBaseUrlFromEnv();
-    if (!baseUrl) {
-      const error = new Error(
-        "No base URL configured. oauthLogin requires a baseUrl. For component testing use C8Y_BASEURL env variable."
-      );
-      error.name = "C8yPactError";
-      throw error;
-    }
-
-    const consoleProps: any = {};
-    const logger = Cypress.log({
-      autoEnd: false,
-      name: "oauthLogin",
-      message: `${auth.userAlias || auth.user} -> ${baseUrl}`,
-      consoleProps: () => consoleProps,
-    });
-
-    cy.task<C8yAuthOptions>(
-      "c8ypact:oauthLogin",
-      { auth, baseUrl },
-      { log: Cypress.c8ypact.debugLog }
-    ).then((a) => {
-      consoleProps.auth = a;
-      consoleProps.baseUrl = baseUrl;
-
-      Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
-      Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
-
-      if (a.bearer && typeof a.bearer === "string") {
-        consoleProps.bearer = a.bearer;
-        cy.setCookie("Authorization", a.bearer, {
-          log: Cypress.c8ypact.debugLog,
-        });
-      }
-      if (a.xsrfToken) {
-        consoleProps.xsrfToken = a.xsrfToken;
-        // must be upper case so CookieAuth does use it
-        cy.setCookie("XSRF-TOKEN", a.xsrfToken, {
-          log: Cypress.c8ypact.debugLog,
-        });
-      }
-      logger.end();
-    });
+Cypress.Commands.add("oauthLogin", { prevSubject: "optional" }, (...args) => {
+  const auth = getAuthOptions(...args);
+  if (!auth || !auth.user || !auth.password) {
+    const error = new Error(
+      "C8yAuthOptions missing. cy.oauthLogin requires at least user and password as C8yAuthOptions."
+    );
+    error.name = "C8yPactError";
+    throw error;
   }
-);
+
+  const baseUrl = getBaseUrlFromEnv();
+  if (!baseUrl) {
+    const error = new Error(
+      "No base URL configured. oauthLogin requires a baseUrl. For component testing use C8Y_BASEURL env variable."
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+
+  const consoleProps: any = {};
+  const logger = Cypress.log({
+    autoEnd: false,
+    name: "oauthLogin",
+    message: `${auth.userAlias || auth.user} -> ${baseUrl}`,
+    consoleProps: () => consoleProps,
+  });
+
+  cy.task<C8yAuthOptions>(
+    "c8ypact:oauthLogin",
+    { auth, baseUrl },
+    { log: Cypress.c8ypact.debugLog }
+  ).then((a) => {
+    consoleProps.auth = a;
+    consoleProps.baseUrl = baseUrl;
+
+    Cypress.env("C8Y_LOGGED_IN_USER", auth.user);
+    Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", auth.userAlias);
+
+    if (a.bearer && typeof a.bearer === "string") {
+      consoleProps.bearer = a.bearer;
+      cy.setCookie("Authorization", a.bearer, {
+        log: Cypress.c8ypact.debugLog,
+      });
+    }
+    if (a.xsrfToken) {
+      consoleProps.xsrfToken = a.xsrfToken;
+      // must be upper case so CookieAuth does use it
+      cy.setCookie("XSRF-TOKEN", a.xsrfToken, {
+        log: Cypress.c8ypact.debugLog,
+      });
+    }
+    logger.end();
+  });
+});

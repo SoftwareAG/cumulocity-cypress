@@ -22,13 +22,12 @@ import {
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yClient } from "../../shared/c8yclient";
-
-const { getBaseUrlFromEnv } = require("./../utils");
-const semver = require("semver");
+import { getBaseUrlFromEnv } from "../utils";
+import * as semver from "semver";
 
 const { _ } = Cypress;
 
-const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
+import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 
 declare global {
   namespace Cypress {
@@ -76,19 +75,19 @@ declare global {
      * The C8yPactMatcher implementation used to match requests and responses. Default is C8yDefaultPactMatcher.
      * Can be overridden by setting a matcher in C8yPactConfigOptions.
      */
-    matcher: C8yPactMatcher;
+    matcher?: C8yPactMatcher;
     /**
      * The C8yPactPreprocessor implementation used to preprocess the pact objects.
      */
-    preprocessor: C8yPactPreprocessor;
+    preprocessor?: C8yPactPreprocessor;
     /**
      * The C8ySchemaGenerator implementation used to generate json schemas from json objects.
      */
-    schemaGenerator: C8ySchemaGenerator;
+    schemaGenerator?: C8ySchemaGenerator;
     /**
      * The C8ySchemaMatcher implementation used to match json schemas. Default is C8yAjvSchemaMatcher.
      */
-    schemaMatcher: C8ySchemaMatcher;
+    schemaMatcher?: C8ySchemaMatcher;
     /**
      * Save the given response as a pact record in the pact for the current test case.
      */
@@ -111,7 +110,7 @@ declare global {
     /**
      * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
      */
-    pactRunner: C8yPactRunner;
+    pactRunner?: C8yPactRunner;
     /**
      * Use debugLog to enable logging of debug information to the Cypress debug log.
      */
@@ -258,14 +257,14 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
           debugLogger()
         )
         .then((pact) => {
-          if (pact == null) return cy.wrap<C8yPact>(null, debugLogger());
+          if (pact == null) return cy.wrap<C8yPact | null>(null, debugLogger());
 
           // required to map the record object to a C8yPactRecord here as this can
           // not be done in the plugin
           pact.records = pact.records?.map((record) => {
             return C8yDefaultPactRecord.from(record);
           });
-          return cy.wrap(
+          return cy.wrap<C8yPact | null>(
             new C8yDefaultPact(pact.records, pact.info, pact.id),
             debugLogger()
           );
@@ -382,7 +381,9 @@ async function savePact(
 
     if (!pact) return;
     save(pact, options);
-  } catch {}
+  } catch {
+    // no-op
+  }
 }
 
 export function save(pact: any, options: C8yPactSaveOptions) {
@@ -394,7 +395,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
     ) {
       return new Promise((resolve) => setTimeout(resolve, 5))
         .then(() =>
-          // @ts-ignore
+          // @ts-expect-error
           Cypress.backend("run:privileged", {
             commandName: "task",
             userArgs: [taskName, pact],
@@ -408,14 +409,14 @@ export function save(pact: any, options: C8yPactSaveOptions) {
           /* noop */
         });
     }
-    // @ts-ignore
+    // @ts-expect-error
     const { args, promise } = Cypress.emitMap("command:invocation", {
       name: "task",
       args: [taskName, pact],
     })[0];
     new Promise((r) => promise.then(r))
       .then(() =>
-        // @ts-ignore
+        // @ts-expect-error
         Cypress.backend("run:privileged", {
           commandName: "task",
           args,
@@ -425,7 +426,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
           },
         })
       )
-      .catch((err) => {
+      .catch(() => {
         /* noop */
       });
   } else {

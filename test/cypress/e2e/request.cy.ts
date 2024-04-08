@@ -4,7 +4,7 @@ import {
   stubResponses,
   initRequestStub,
   url as _url,
-} from "../support/util";
+} from "../support/testutils";
 const { _, Promise } = Cypress;
 
 describe("request", () => {
@@ -127,11 +127,11 @@ describe("request", () => {
   });
 
   context("request command overwrite", () => {
-    // @ts-ignore
+    // @ts-expect-error
     const orgRequestFn = Cypress.cy["request"];
 
     beforeEach(() => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.cy["request"] = _.cloneDeep(orgRequestFn);
     });
 
@@ -215,11 +215,10 @@ describe("request", () => {
   });
 
   context("retryRequest", () => {
-    let lastLog;
-    let delaySpy;
+    let lastLog: any;
+    let delaySpy: Cypress.Agent<sinon.SinonSpy<any[], any>>;
 
     beforeEach(() => {
-      // @ts-ignore
       delaySpy = cy.spy(Promise, "delay");
 
       cy.on("log:added", (attrs, log) => {

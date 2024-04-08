@@ -3,7 +3,7 @@ import {
   expectC8yClientRequest,
   initRequestStub,
   stubResponses,
-} from "../support/util";
+} from "../support/testutils";
 const { _, sinon } = Cypress;
 
 declare global {
@@ -95,7 +95,7 @@ describe("administration", () => {
 
       cy.spy(Cypress, "log").log(false);
 
-      //@ts-ignore
+      //@ts-expect-error
       cy.deleteUser({ user: "test" });
     });
   });

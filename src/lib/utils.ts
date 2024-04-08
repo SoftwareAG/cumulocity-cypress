@@ -1,3 +1,6 @@
+import { C8yAuthOptions } from "./commands/auth";
+import { C8yClient } from "../shared/c8yclient";
+
 const { _ } = Cypress;
 
 /**
@@ -16,10 +19,10 @@ const { _ } = Cypress;
  *
  * Structure of 2) depends on the command chainer.
  */
-export function normalizedArguments(args) {
+export function normalizedArguments(args: any[] | any) {
   if (!args) return [];
 
-  let result = [];
+  let result: any[] = [];
   if (_.isArray(args)) {
     result = args;
     if (args[0] != null && _.isArray(result[0])) {
@@ -27,17 +30,17 @@ export function normalizedArguments(args) {
       result = subjects.concat(result.slice(1));
     }
   } else if (_.isObjectLike(args)) {
-    const values = Object.values(args);
+    const values: any[] = Object.values(args);
     result = _.flatten(values[0]).concat(values.slice(1));
   }
-  return _.dropWhile(result, (a) => !a);
+  return _.dropWhile(result, (a: any) => !a);
 }
 
 /**
  * Get `normalizedArguments` and insert auth options from
  * env variables at the beginning of the arguments.
  */
-export function normalizedArgumentsWithAuth(args) {
+export function normalizedArgumentsWithAuth(args: any[]) {
   const normalized = normalizedArguments(args);
   if (
     _.isEmpty(normalized) ||
@@ -55,7 +58,7 @@ export function normalizedArgumentsWithAuth(args) {
   return normalized;
 }
 
-export function getAuthOptionsFromEnv(...args) {
+export function getAuthOptionsFromEnv() {
   // check first environment variables
   const user = Cypress.env(`C8Y_USERNAME`);
   const password = Cypress.env(`C8Y_PASSWORD`);
@@ -84,13 +87,9 @@ export function getAuthOptionsFromEnv(...args) {
   return undefined;
 }
 
-export function getAuthOptions(...args) {
-  if (args[0] && Cypress.isCy(args[0])) {
-    return args[0];
-  }
-
+export function getAuthOptions(...args: any[]): C8yAuthOptions | undefined {
   if (!args || !args.length || (args[0] == null && args.length === 1)) {
-    return getAuthOptionsFromEnv(...args);
+    return getAuthOptionsFromEnv();
   }
 
   // first args are null for every { prevSubject: option } command in the
@@ -106,14 +105,14 @@ export function getAuthOptions(...args) {
     return authWithTenant(auth);
   }
 
-  return getAuthOptionsFromEnv(...args);
+  return getAuthOptionsFromEnv();
 }
 
-export function isAuth(obj) {
+export function isAuth(obj: any): obj is C8yAuthOptions {
   return obj && _.isObjectLike(obj) && obj.user && obj.password;
 }
 
-function getAuthOptionsFromArgs(...args) {
+function getAuthOptionsFromArgs(...args: any[]): C8yAuthOptions | undefined {
   // do not call getAuthOptionsFromEnv() in here!
 
   // getAuthOptions("admin")
@@ -154,7 +153,7 @@ function getAuthOptionsFromArgs(...args) {
     }
     // getAuthOptions({user: "abc", password: "abc"}, ...)
     if (args[0].username && args[0].password) {
-      let auth = _.pick(args[0], [
+      const auth = _.pick(args[0], [
         "username",
         "password",
         "tenantId",
@@ -179,23 +178,23 @@ function getAuthOptionsFromArgs(...args) {
   return undefined;
 }
 
-export function persistAuth(auth) {
+export function persistAuth(auth: C8yAuthOptions) {
   const win = cy.state("window");
   if (auth) {
     win.localStorage.setItem("__auth", JSON.stringify(auth));
   }
 }
 
-export function tenantFromBasicAuth(auth) {
-  if (!auth || !_.isObjectLike(auth)) return;
+export function tenantFromBasicAuth(auth: { user: string }) {
+  if (!auth || !_.isObjectLike(auth) || !auth.user) return undefined;
 
   const components = auth.user.split("/");
-  if (!components || components.length < 2) return;
+  if (!components || components.length < 2) return undefined;
 
   return components[0];
 }
 
-function authWithTenant(options) {
+function authWithTenant(options: C8yAuthOptions) {
   const tenant = Cypress.env(`C8Y_TENANT`);
   if (tenant && !options.tenant) {
     _.extend(options, { tenant });
@@ -211,7 +210,7 @@ export function getBaseUrlFromEnv() {
   );
 }
 
-export function storeClient(client) {
+export function storeClient(client: C8yClient) {
   cy.state("ccs.client", client);
 }
 
@@ -219,12 +218,12 @@ export function restoreClient() {
   return cy.state("ccs.client");
 }
 
-export function resetClient(client) {
+export function resetClient() {
   cy.state("ccs.client", undefined);
 }
 
-export function throwError(message) {
+export function throwError(message: string): never {
   const newErr = new Error(message);
-  newErr.name = "CypressError";
+  // newErr.name = "CypressError";
   throw newErr;
 }

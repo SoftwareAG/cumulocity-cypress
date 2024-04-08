@@ -1,6 +1,6 @@
 const { _ } = Cypress;
 
-const {
+import {
   getBaseUrlFromEnv,
   isAuth,
   normalizedArgumentsWithAuth,
@@ -8,7 +8,7 @@ const {
   storeClient,
   tenantFromBasicAuth,
   throwError,
-} = require("./../utils");
+} from "./../utils";
 
 import {
   BasicAuth,
@@ -121,9 +121,10 @@ declare global {
       ): Chainable<Response<T[]>>;
     }
 
-    interface Response<T = any> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface Response<T> {
       url?: string;
-      requestBody?: string | any;
+      requestBody?: any;
       method?: string;
       $body?: any;
     }
@@ -133,17 +134,17 @@ declare global {
 
   type C8yClientServiceFn<R, T> = (
     client: Client,
-    previousResponse?: Cypress.Response<R>
+    previousResponse: Cypress.Response<R>
   ) => Promise<C8yClientIResult<T>>;
 
   type C8yClientServiceArrayFn<R, T> = (
     client: Client,
-    previousResponse?: Cypress.Response<R>
+    previousResponse: Cypress.Response<R>
   ) => Promise<C8yClientIResult<T>>[];
 
   type C8yClientServiceListFn<R, T> = (
     client: Client,
-    previousResponse?: Cypress.Response<R>
+    previousResponse: Cypress.Response<R>
   ) => Promise<IResultList<T>>;
 
   type C8yClientFnArg<R = any, T = any> =
@@ -173,16 +174,15 @@ globalThis.fetch = async function (
   url: RequestInfo | URL,
   fetchOptions?: RequestInit
 ) {
-  let consoleProps: any = {};
+  const consoleProps: any = {};
 
-  let logger: Cypress.Log;
+  let logger: Cypress.Log | undefined = undefined;
   if (logOnce === true) {
     logger = Cypress.log({
       name: "c8yclient",
       autoEnd: false,
       message: "",
       consoleProps: () => consoleProps,
-      // @ts-ignore
       renderProps(): {
         message: string;
         indicator: "aborted" | "pending" | "successful" | "bad";
@@ -228,7 +228,7 @@ globalThis.fetch = async function (
 
 const c8yclientFn = (...args: any[]) => {
   const prevSubjectIsAuth = args && !_.isEmpty(args) && isAuth(args[0]);
-  let prevSubject: Cypress.Chainable<any> =
+  const prevSubject: Cypress.Chainable<any> =
     args && !_.isEmpty(args) && !isAuth(args[0]) ? args[0] : undefined;
   let $args = normalizedArgumentsWithAuth(
     args && prevSubject ? args.slice(1) : args
@@ -276,7 +276,7 @@ const c8yclientFn = (...args: any[]) => {
     $args.push({});
   }
 
-  let [argAuth, clientFn, argOptions] = $args;
+  const [argAuth, clientFn, argOptions] = $args;
   const options = _.defaults(argOptions, defaultClientOptions());
   // force CookieAuth over BasicAuth if present and not disabled by options
   const auth: C8yAuthentication & { userAlias?: string } =
@@ -299,9 +299,7 @@ const c8yclientFn = (...args: any[]) => {
   }
 
   if (!c8yclient._client && clientFn && !auth) {
-    throw new Error(
-      "Missing authentication. Authentication or Client required."
-    );
+    throwError("Missing authentication. Authentication or Client required.");
   }
 
   // pass userAlias into the auth so it is part of the pact recording
@@ -349,8 +347,8 @@ function runClient(
     // return Cypress.isCy(client) ? client : cy.wrap(client._client, { log: false });
     return cy.wrap(client._client, { log: false });
   }
-  logOnce = client._options.log;
-  return run(client, fns, prevSubject, client._options, baseUrl);
+  logOnce = client._options?.log || true;
+  return run(client, fns, prevSubject, client._options || {}, baseUrl);
 }
 
 // create client as Client.authenticate() does, but also support
@@ -381,11 +379,17 @@ function run(
   baseUrl: string
 ) {
   const clientFn = isArrayOfFunctions(fns) ? fns.shift() : fns;
+  if (!clientFn) {
+    return;
+  }
+  const safeClient = client._client;
+  if (!safeClient) {
+    throwError("Client not initialized when running client function.");
+  }
   return cy.then({ timeout: options.timeout }, async () => {
-    const configIgnore =
-      (Cypress.config().c8ypact && Cypress.config().c8ypact.ignore) || false;
-    const optionsIgnore =
-      (options.ignorePact && options.ignorePact === true) || false;
+    const c8ypactConfig = Cypress.config().c8ypact;
+    const configIgnore = c8ypactConfig?.ignore === true || false;
+    const optionsIgnore = options?.ignorePact === true || false;
     const ignore = configIgnore || optionsIgnore;
     const savePact =
       Cypress.c8ypact.current == null &&
@@ -442,17 +446,19 @@ function run(
             result = error;
           }
           result = toCypressResponse(result);
-          result.$body = options.schema;
-          if (savePact) {
-            await Cypress.c8ypact.savePact(result, client);
-          }
-          if (isErrorResponse(result)) {
-            throw result;
+          if (result) {
+            result.$body = options.schema;
+            if (savePact) {
+              await Cypress.c8ypact.savePact(result, client);
+            }
+            if (isErrorResponse(result)) {
+              throw result;
+            }
           }
           return result;
         };
 
-        const resultPromise = clientFn(client._client, prevSubject);
+        const resultPromise = clientFn(safeClient, prevSubject);
         if (_.isError(resultPromise)) {
           reject(resultPromise);
           return;
@@ -460,7 +466,7 @@ function run(
 
         if (_.isArray(resultPromise)) {
           let toReject = false;
-          let result = [];
+          const result = [];
           for (const task of resultPromise) {
             try {
               result.push(await preprocessedResponse(task));
@@ -498,7 +504,7 @@ function run(
       matchPact(err, options.schema);
 
       cy.then(() => {
-        // @ts-ignore
+        // @ts-expect-error: utils is not public
         Cypress.utils.throwErrByPath("request.c8yclient_status_invalid", {
           args: err,
           stack: false,
@@ -508,7 +514,6 @@ function run(
   });
 }
 
-// @ts-ignore
 _.extend(Cypress.errorMessages.request, {
   c8yclient_status_invalid(obj: any) {
     const err = obj.args || obj.errorProps || obj;
@@ -572,9 +577,14 @@ Cypress.Commands.add("c8yclient", { prevSubject: "optional" }, c8yclientFn);
  * Checks if the given object is an array only containing functions.
  * @param obj The object to check.
  */
-export function isArrayOfFunctions<T>(
-  functions: C8yClientFnArg | Array<Function>
-): functions is Array<Function> {
+export function isArrayOfFunctions(
+  functions:
+    | C8yClientFnArg
+    | C8yClientServiceArrayFn<any, any>[]
+    | C8yClientServiceFn<any, any>[]
+): functions is
+  | C8yClientServiceArrayFn<any, any>[]
+  | C8yClientServiceFn<any, any>[] {
   if (!functions || !_.isArray(functions) || _.isEmpty(functions)) return false;
   return _.isEmpty(functions.filter((f) => !_.isFunction(f)));
 }

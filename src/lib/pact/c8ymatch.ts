@@ -6,7 +6,7 @@ import {
   C8ySchemaMatcher,
 } from "../../shared/c8ypact";
 import { C8yClientOptions, isCypressError } from "../../shared/c8yclient";
-const { throwError } = require("./../utils");
+import { throwError } from "../utils";
 
 const { _ } = Cypress;
 
@@ -37,7 +37,10 @@ declare global {
 }
 
 Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
-  let matcher: C8yPactMatcher | C8ySchemaMatcher = Cypress.c8ypact.matcher;
+  let matcher: C8yPactMatcher | C8ySchemaMatcher | undefined =
+    Cypress.c8ypact.matcher;
+  if (!matcher) return;
+
   const isSchemaMatching =
     !("request" in pact) && !("response" in pact) && _.isObjectLike(pact);
   if (isSchemaMatching) {
@@ -49,14 +52,14 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   const logger = Cypress.log({
     autoEnd: false,
     consoleProps: () => consoleProps,
-    message: matcher.constructor.name || "-",
+    message: matcher?.constructor.name || "-",
   });
 
   try {
     if (isSchemaMatching) {
       const schema = pact;
       _.extend(consoleProps, { response }, { schema });
-      matcher.match(response.body, schema);
+      matcher?.match(response.body, schema);
     } else {
       const matchingProperties = ["request", "response"];
       const pactToMatch = _.pick(pact, matchingProperties);

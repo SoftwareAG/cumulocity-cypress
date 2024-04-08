@@ -12,14 +12,14 @@ import {
   wrapFetchResponse,
 } from "../../shared/c8yclient";
 import { C8yAuthOptions } from "../commands/auth";
-const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
+import { getAuthOptions, getBaseUrlFromEnv } from "../utils";
 
 const { _ } = Cypress;
 
 export class C8yPactFetchClient extends FetchClient {
   private authentication: IAuthentication;
-  private cypresspact: CypressC8yPact;
-  private authOptions: C8yAuthOptions;
+  private cypresspact: CypressC8yPact | undefined;
+  private authOptions: C8yAuthOptions | undefined;
 
   private user: string;
   private userAlias: string;
@@ -29,9 +29,9 @@ export class C8yPactFetchClient extends FetchClient {
     baseUrl?: string;
     cypresspact?: CypressC8yPact;
   }) {
-    let auth: IAuthentication;
-    let authOptions: C8yAuthOptions;
-    let baseUrl: string;
+    let auth: IAuthentication | undefined;
+    let authOptions: C8yAuthOptions | undefined;
+    const url: string = options.baseUrl || getBaseUrlFromEnv();
 
     if (options.auth) {
       if (_.isString(options.auth)) {
@@ -58,21 +58,20 @@ export class C8yPactFetchClient extends FetchClient {
       }
     }
 
-    let [user, userAlias] = [
-      // @ts-ignore
+    const [user, userAlias] = [
+      // @ts-expect-error
       authOptions?.user || auth?.user || Cypress.env("C8Y_LOGGED_IN_USER"),
       authOptions?.userAlias || Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
     ];
 
-    baseUrl = baseUrl || getBaseUrlFromEnv();
     if (!auth) {
       throw new Error("C8yPactFetchClient Error. No authentication provided.");
     }
-    if (!baseUrl) {
+    if (!url) {
       throw new Error("C8yPactFetchClient Error. No baseUrl provided.");
     }
 
-    super(auth, baseUrl);
+    super(auth, url);
 
     this.authOptions = authOptions;
     this.authentication = auth;
@@ -101,7 +100,7 @@ export class C8yPactFetchClient extends FetchClient {
       const fullUrl: string = this.getUrl(url, fetchOptions);
       if (currentPact) {
         const record = currentPact.nextRecordMatchingRequest({
-          url: fullUrl?.replace(this.baseUrl, ""),
+          url: fullUrl?.replace(this.baseUrl || "", ""),
           method: fetchOptions?.method,
         });
         if (record) {

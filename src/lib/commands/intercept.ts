@@ -3,7 +3,7 @@ import {
   STATIC_RESPONSE_KEYS,
   STATIC_RESPONSE_WITH_OPTIONS_KEYS,
 } from "../pact/constants";
-const { getBaseUrlFromEnv } = require("../utils");
+import { getBaseUrlFromEnv } from "../utils";
 
 const { _ } = Cypress;
 
@@ -47,7 +47,7 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
 
   let response = method ? args[2] : args[1];
 
-  let updatedArgs: any[] = [];
+  const updatedArgs: any[] = [];
   if (method) {
     updatedArgs.push(method);
   }
@@ -70,7 +70,7 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
     updatedArgs.push(response);
   }
 
-  // @ts-ignore
+  // @ts-expect-error
   return originalFn(...updatedArgs);
 });
 
@@ -86,16 +86,15 @@ Cypress.on("log:intercept", (options) => {
 
   Cypress.c8ypact.savePact(
     cypressResponse,
-    // @ts-ignore
     {},
     { noqueue: true, ...(modifiedResponse && { modifiedResponse }) }
   );
 });
 
-function toCypressResponse(req: any, res: any): Cypress.Response {
+function toCypressResponse(req: any, res: any): Cypress.Response<any> {
   const isBody = res != null && !("body" in res);
   const statusCode = isBody ? 200 : res?.statusCode;
-  const result: Cypress.Response = {
+  const result: Cypress.Response<any> = {
     body: isBody ? res : res?.body,
     url: req?.url,
     headers: isBody ? {} : res?.headers,
@@ -229,7 +228,7 @@ const wrapEmptyRoutHandler = () => {
 
 function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   if (Cypress.c8ypact.isRecordingEnabled()) {
-    let responsePromise = new Cypress.Promise((resolve, reject) => {
+    const responsePromise = new Cypress.Promise((resolve) => {
       // "before:response" is the event to use as in "response" event the continue handler
       // seems to be called resulting in a timeout
       // https://docs.cypress.io/api/commands/intercept#Intercepted-responses
@@ -237,7 +236,7 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
         let modifiedResponse = obj;
         if (_.isObjectLike(obj) && "fixture" in obj) {
           const [path, encoding] = obj.fixture.split(",");
-          // @ts-ignore
+          // @ts-expect-error
           modifiedResponse = await Cypress.backend("get:fixture", path, {
             encoding: encoding || "utf-8",
           });

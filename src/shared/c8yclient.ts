@@ -1,4 +1,4 @@
-import * as _ from "lodash";
+import _ from "lodash";
 
 import {
   Client,
@@ -12,7 +12,6 @@ import {
 } from "@c8y/client";
 import { C8yPactRecord, isCypressResponse, isPactRecord } from "./c8ypact";
 
-import "./cypress";
 import * as setCookieParser from "set-cookie-parser";
 
 declare global {
@@ -21,6 +20,15 @@ declare global {
     method?: string;
     responseObj?: Partial<Cypress.Response<any>>;
     requestBody?: string | any;
+  }
+  namespace Cypress {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface Response<T> {
+      url?: string;
+      requestBody?: string | any;
+      method?: string;
+      $body?: any;
+    }
   }
 }
 
@@ -83,7 +91,7 @@ export async function wrapFetchRequest(
   // as this is not required, remove it to avoid special handling in pact matching against recordings
   // not created by c8y/client.
   if (_.endsWith(toUrlString(url), "/tenant/currentTenant")) {
-    // @ts-ignore
+    // @ts-expect-error
     fetchOptions.headers = _.omit(fetchOptions.headers, ["content-type"]);
   } else {
     // add json content type if body is present and content-type is not set
@@ -125,7 +133,7 @@ export async function wrapFetchResponse(
   response: Response,
   options: {
     url?: RequestInfo | URL;
-    fetchOptions?: RequestInit;
+    fetchOptions?: IFetchOptions;
     duration?: number;
     logOptions?: LogOptions;
   } = {}
@@ -138,6 +146,8 @@ export async function wrapFetchResponse(
       options.url
     );
   })();
+  if (!responseObj) return response;
+
   let rawBody: string | undefined = undefined;
   if (response.data) {
     responseObj.body = response.data;
@@ -202,7 +212,7 @@ export async function wrapFetchResponse(
 
 function updateConsoleProps(
   responseObj: Partial<Cypress.Response<any>>,
-  fetchOptions?: RequestInit,
+  fetchOptions?: IFetchOptions,
   logOptions?: LogOptions,
   url?: RequestInfo | URL
 ) {
@@ -281,8 +291,8 @@ export function toCypressResponse(
   fetchOptions: IFetchOptions = {},
   url?: RequestInfo | URL,
   schema?: any
-): Cypress.Response<any> {
-  if (!obj) return obj;
+): Cypress.Response<any> | undefined {
+  if (!obj) return undefined;
 
   if (typeof isPactRecord === "function" && isPactRecord(obj)) {
     return obj.toCypressResponse();
@@ -548,7 +558,7 @@ export async function oauthLogin(
   }
 
   const fetchClient = new FetchClient(baseUrl);
-  let url = `/tenant/oauth?tenant_id=${tenant}`;
+  const url = `/tenant/oauth?tenant_id=${tenant}`;
   const params = new URLSearchParams({
     grant_type: "PASSWORD",
     username: auth.user || "",

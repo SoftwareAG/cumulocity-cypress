@@ -128,12 +128,8 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
       if (absolutePath) {
         currentPath = path.join(path.sep, currentPath);
       }
-      try {
-        if (!fs.existsSync(currentPath)) {
-          fs.mkdirSync(currentPath);
-        }
-      } catch (err) {
-        throw err;
+      if (!fs.existsSync(currentPath)) {
+        fs.mkdirSync(currentPath);
       }
     });
   }

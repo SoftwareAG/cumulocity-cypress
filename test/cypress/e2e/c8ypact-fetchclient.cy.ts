@@ -6,9 +6,9 @@ import {
   initRequestStub,
   stubResponse,
   url,
-} from "cypress/support/util";
+} from "cypress/support/testutils";
 import { encodeBase64 } from "../../../src/shared/c8yclient";
-import { url as _url } from "../support/util";
+import { url as _url } from "../support/testutils";
 import { C8yAuthOptions } from "../../../src/lib/commands/auth";
 
 const { _ } = Cypress;
@@ -52,7 +52,7 @@ describe("c8ypact fetchclient", () => {
             "Authorization",
             `Bearer eyJhbGciOiJ`
           );
-          // @ts-ignore
+          // @ts-expect-error
           expect(client.getUser()).to.deep.eq(["test", "admin"]);
         });
     });
@@ -84,7 +84,7 @@ describe("c8ypact fetchclient", () => {
           `Bearer eyJhbGciOiJ`
         );
         expect(options.headers).to.have.property("UseXBasic", true);
-        // @ts-ignore
+        // @ts-expect-error
         expect(client.getUser()).to.deep.eq(["test1", "admin1"]);
       });
     });
@@ -113,7 +113,7 @@ describe("c8ypact fetchclient", () => {
           `Basic ${encodeBase64(`t702341987/${u.user}:${u.password}`)}`
         );
         expect(options.headers).to.have.property("UseXBasic", true);
-        // @ts-ignore
+        // @ts-expect-error
         expect(client.getUser()).to.deep.eq(["test2", "admin2"]);
       });
     });
@@ -134,7 +134,7 @@ describe("c8ypact fetchclient", () => {
         `Basic ${encodeBase64(`${u.user}:${u.password}`)}`
       );
       expect(options.headers).to.have.property("UseXBasic", true);
-      // @ts-ignore
+      // @ts-expect-error
       expect(client.getUser()).to.deep.eq(["test3", undefined]);
     });
 
@@ -149,7 +149,7 @@ describe("c8ypact fetchclient", () => {
         auth: new BasicAuth(u),
       });
       const options = client.getFetchOptions({});
-      // @ts-ignore
+      // @ts-expect-error
       expect(client.getUser()).to.deep.eq(["test3", "admin3"]);
     });
   });
@@ -206,7 +206,7 @@ describe("c8ypact fetchclient", () => {
 
     it("should record only required auth properties", () => {
       const auth = new BasicAuth(user);
-      // @ts-ignore - additional property should not be stored in auth
+      // @ts-expect-error - additional property should not be stored in auth
       auth.xsfrToken = "pQWAHZQfh";
       const client = new C8yPactFetchClient({
         cypresspact: Cypress.c8ypact,
@@ -306,7 +306,7 @@ describe("c8ypact fetchclient", () => {
         auth: new BasicAuth(user),
       });
       cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
-        // @ts-ignore
+        // @ts-expect-error
         async (response: IFetchResponse) => {
           expect(response.status).to.eq(201);
           expect(await response.json()).to.deep.eq({ name: "t123456789" });
@@ -341,7 +341,7 @@ describe("c8ypact fetchclient", () => {
         auth: new BasicAuth(user),
       });
       cy.wrap(client.fetch("/inventory/notfound")).then(
-        // @ts-ignore
+        // @ts-expect-error
         async (response: IFetchResponse) => {
           expect(response.status).to.eq(404);
           expect(await response.text()).to.eq("Resource not found");
@@ -392,7 +392,7 @@ describe("c8ypact fetchclient", () => {
         auth: new BasicAuth(user),
       });
       cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
-        // @ts-ignore
+        // @ts-expect-error
         async (response: IFetchResponse) => {
           expect(client.baseUrl).to.not.eq("https://mytest.com");
           expect(response.status).to.eq(201);

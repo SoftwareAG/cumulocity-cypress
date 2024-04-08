@@ -1,5 +1,5 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
-import { initRequestStub, stubResponses, url } from "../support/util";
+import { initRequestStub, stubResponses, url } from "../support/testutils";
 import { defaultClientOptions } from "../../../src/lib/commands/c8yclient";
 import { C8yCypressEnvPreprocessor } from "../../../src/lib/pact/cypresspact";
 import { C8yAuthentication, C8yClient } from "../../../src/shared/c8yclient";
@@ -160,16 +160,13 @@ describe("c8ypact", () => {
 
     it("from() should create C8yDefaultPact from C8yPact object", function () {
       const pactObject = {
-        records: [
-          // @ts-ignore
-          C8yDefaultPactRecord.from(response),
-        ],
+        records: [C8yDefaultPactRecord.from(response)],
         info: {
           baseUrl: "http://localhost:4200",
         },
         id: "test",
       };
-      // @ts-ignore
+      // @ts-expect-error
       const pact = C8yDefaultPact.from(pactObject);
       expect(pact).to.not.be.null;
       expect(pact.records).to.have.length(1);
@@ -182,7 +179,7 @@ describe("c8ypact", () => {
         expect(err.message).to.contain("Invalid pact object.");
         done();
       });
-      // @ts-ignore
+      // @ts-expect-error
       C8yDefaultPact.from({ test: "test" });
     });
 
@@ -191,7 +188,6 @@ describe("c8ypact", () => {
         expect(err.message).to.contain("Invalid pact object.");
         done();
       });
-      // @ts-ignore
       C8yDefaultPact.from(`{ "test": "test" }`);
     });
 
@@ -202,7 +198,6 @@ describe("c8ypact", () => {
         );
         done();
       });
-      // @ts-ignore
       C8yDefaultPact.from(null);
     });
 
@@ -386,9 +381,9 @@ describe("c8ypact", () => {
       });
       expect(r3.request).to.have.property("body", record3.request.body);
 
-      // @ts-ignore
+      // @ts-expect-error
       expect(pact.getRequesIndex("get:/test1")).to.equal(2);
-      // @ts-ignore
+      // @ts-expect-error
       expect(pact.getRequesIndex("put:/test1")).to.equal(1);
     });
   });
@@ -449,7 +444,7 @@ describe("c8ypact", () => {
     });
 
     it("from() should create from cloned source objects", function () {
-      // @ts-ignore
+      // @ts-expect-error
       const obj: Cypress.Response<any> = {
         body: {
           id: "12312312",
@@ -463,7 +458,7 @@ describe("c8ypact", () => {
     });
 
     it("from() should create C8yDefaultPactRecord without optional properties if undefined", function () {
-      // @ts-ignore
+      // @ts-expect-error
       let response: Cypress.Response<any> = {};
       let pactRecord = C8yDefaultPactRecord.from(response);
       expect(pactRecord.response).to.deep.equal({});
@@ -472,7 +467,7 @@ describe("c8ypact", () => {
       expect(_.has(pactRecord, "options")).to.be.false;
       expect(_.has(pactRecord, "createdObject")).to.be.false;
 
-      // @ts-ignore
+      // @ts-expect-error
       response = Cypress.Response<any> = {
         status: 200,
         requestBody: "test",
@@ -489,7 +484,7 @@ describe("c8ypact", () => {
       Cypress.env("C8Y_LOGGED_IN_USER", "admin");
       Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", "alias");
 
-      // @ts-ignore
+      // @ts-expect-error
       let response: Cypress.Response<any> = {};
       let pactRecord = createPactRecord(response, undefined, {
         loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),
@@ -515,7 +510,7 @@ describe("c8ypact", () => {
         _auth: auth,
         _client: new Client(auth),
       };
-      // @ts-ignore
+      // @ts-expect-error
       let response: Cypress.Response<any> = {};
       let pactRecord = createPactRecord(response, client);
       expect(pactRecord.auth).to.deep.equal({
@@ -526,7 +521,7 @@ describe("c8ypact", () => {
     });
 
     it("from() should create C8yDefaultPactRecord with createdObject", function () {
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response<any> = {
         method: "POST",
         body: {
@@ -557,7 +552,7 @@ describe("c8ypact", () => {
     });
 
     it("toCypressResponse() should create Response without adding defaults", function () {
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response<any> = {
         statusText: "OK",
         headers: { "content-type": "application/json" },
@@ -574,7 +569,7 @@ describe("c8ypact", () => {
     });
 
     it("date() should return date from response", function () {
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response<any> = {
         headers: {
           date: "Fri, 17 Nov 2023 13:12:04 GMT",
@@ -944,7 +939,7 @@ describe("c8ypact", () => {
 
     it("should use custom matcher", { auth: "admin" }, function (done) {
       Cypress.c8ypact.current = new C8yDefaultPact(
-        // @ts-ignore
+        // @ts-expect-error
         [{ request: { url: "test" } }],
         {},
         "test"
@@ -1009,7 +1004,7 @@ describe("c8ypact", () => {
     it("should match with existing pact", function () {
       Cypress.c8ypact.matcher = new AcceptAllMatcher();
       Cypress.c8ypact.current = new C8yDefaultPact(
-        // @ts-ignore
+        // @ts-expect-error
         [{ request: { url: "test" } }, { request: { url: "test2" } }],
         {},
         "test"
@@ -1055,7 +1050,7 @@ describe("c8ypact", () => {
 
       Cypress.c8ypact.matcher = new AcceptAllMatcher();
       Cypress.c8ypact.current = new C8yDefaultPact(
-        // @ts-ignore
+        // @ts-expect-error
         [{ request: { url: "test" } }, { request: { url: "test2" } }],
         {},
         "test"
@@ -1277,10 +1272,10 @@ describe("c8ypact", () => {
         ignore: ["request.headers.date", "response.body.creationTime"],
       });
       preprocessor.apply(obj);
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.request.headers.Authorization).to.eq("<abcdefg>");
       expect(obj.response.body.password).to.eq("<abcdefg>");
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.request.headers.date).to.be.undefined;
       expect(obj.response.body.creationTime).to.be.undefined;
     });
@@ -1320,22 +1315,22 @@ describe("c8ypact", () => {
         ignore: ["request.headers.date", "response.body.creationTime"],
       });
       preprocessor.apply(obj);
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.records[0].request.headers.Authorization).to.eq("<abcdefg>");
       expect(obj.records[0].response.body.password).to.eq("<abcdefg>");
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.records[1].request.headers.Authorization).to.eq("<abcdefg>");
       expect(obj.records[1].response.body.password).to.eq("<abcdefg>");
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.records[2].request.headers.Authorization).to.eq("<abcdefg>");
       expect(obj.records[2].response.body.password).to.eq("<abcdefg>");
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.records[0].request.headers.date).to.be.undefined;
       expect(obj.records[0].response.body.creationTime).to.be.undefined;
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.records[1].request.headers.date).to.be.undefined;
       expect(obj.records[1].response.body.creationTime).to.be.undefined;
-      // @ts-ignore
+      // @ts-expect-error
       expect(obj.records[2].request.headers.date).to.be.undefined;
       expect(obj.records[2].response.body.creationTime).to.be.undefined;
     });
@@ -1498,7 +1493,7 @@ describe("c8ypact", () => {
     it("isPact validates records to be C8yDefaultPactRecord", function () {
       const pact: C8yPact = new C8yDefaultPact(
         [
-          // @ts-ignore
+          // @ts-expect-error
           {
             response: {
               status: 201,

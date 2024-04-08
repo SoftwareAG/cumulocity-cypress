@@ -1,3 +1,6 @@
+import * as localeEn from "./../../../src/lib/locale/en";
+import * as localeTest from "./../support/test";
+
 const { _ } = Cypress;
 
 describe("dates", () => {
@@ -19,16 +22,15 @@ describe("dates", () => {
     });
 
     it("should allow registering additional locales", () => {
-      const localeEn = require("./../../../src/lib/locale/en");
-      registerLocale(localeEn, "en", undefined, "en-US");
-
-      cy.setLanguage("en");
-      // uses en (en) local to parse the date (different from default en-GB)
-      cy.wrap("5/26/23, 3:59 PM")
-        .toISODate()
-        .then((result) => {
-          expect(result).to.equal("2023-05-26T13:59:00.000Z");
-        });
+      registerLocale(localeEn.default, "en", undefined, "en-US").then(() => {
+        cy.setLanguage("en");
+        // uses en (en) local to parse the date (different from default en-GB)
+        cy.wrap("5/26/23, 3:59 PM")
+          .toISODate()
+          .then((result) => {
+            expect(result).to.equal("2023-05-26T13:59:00.000Z");
+          });
+      });
     });
 
     after(() => {
@@ -42,8 +44,7 @@ describe("dates", () => {
       // use test locale to test completely custom locale mappings
       // days: Test0... (come up with something )
       // months: Alpha, ... (Greek Alphabet)
-      const localeTest = require("./../support/test");
-      registerLocale(localeTest, "test");
+      registerLocale(localeTest.default, "test").then(() => {});
     });
 
     it("should register datefns", () => {
@@ -89,7 +90,7 @@ describe("dates", () => {
         expect(newDate.toISOString()).to.equal("2023-09-04T22:00:00.000Z");
       });
 
-      // @ts-ignore - test is not defined
+      // @ts-expect-error: language test is not defined
       cy.setLanguage("test").then(() => {
         const testDate = Cypress.datefns.format(
           Cypress.datefns.parseISO("2023-02-03T22:00:00.000Z"),
@@ -221,9 +222,19 @@ describe("dates", () => {
       });
     });
 
+    it("should prefer argument over previousSubject", () => {
+      cy.wrap("3/12/23")
+        .toISODate("26/5/24", {
+          format: "d/M/yy",
+        })
+        .then((result) => {
+          expect(result).to.eq("2024-05-25T22:00:00.000Z");
+        });
+    });
+
     it("should work with invalid dates", () => {
       cy.wrap("-").toISODate().should("eq", undefined);
-      cy.wrap("-").toISODate({ invalid: "keep" }).should("eq", undefined);
+      cy.wrap("-").toISODate({ invalid: "keep" }).should("eq", "-");
     });
 
     it("should work with invalid dates and ignore option", () => {
@@ -239,17 +250,18 @@ describe("dates", () => {
         });
     });
 
-    it("should work with invalid input", () => {
-      cy.wrap(undefined)
-        .toISODate()
-        .then((result) => {
-          expect(result).to.eq(undefined);
-        });
-      cy.wrap([undefined, {}])
-        .toISODate()
-        .then((result) => {
-          expect(result).to.deep.eq([]);
-        });
+    it("should work with invalid input", (done) => {
+      const errorListener = (err: Error) => {
+        expect(err.message).to.contain(
+          "No or undefined source provided to cy.toDate."
+        );
+        done();
+      };
+      cy.on("fail", errorListener);
+
+      cy.wrap(undefined).toISODate();
+      cy.wrap({}).toISODate();
+      cy.wrap([undefined, {}]).toISODate();
     });
 
     it("should filter based on keep or ignore option", () => {
@@ -306,7 +318,7 @@ describe("dates", () => {
     });
 
     it("throws error on locale id not being registered", (done) => {
-      // @ts-ignore
+      // @ts-expect-error: language UNSUPPORTED is not registered
       cy.setLanguage("UNSUPPORTED");
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain(
@@ -341,9 +353,7 @@ describe("dates", () => {
         done();
       });
 
-      cy.dateFormat("3/12/23121", { invalid: "throw" }).then(() => {
-        throw new Error("Expected error. Should not get here.");
-      });
+      cy.dateFormat("3/12/23121", { invalid: "throw" });
     });
 
     it("fails without error for invalid source and ignore option enabled", (done) => {

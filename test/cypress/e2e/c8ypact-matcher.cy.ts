@@ -22,7 +22,7 @@ describe("c8ypactmatcher", () => {
 
   context("cy.c8ymatch", function () {
     it("should clone arguments and not preprocess source objects", function () {
-      // @ts-ignore
+      // @ts-expect-error
       const obj: Cypress.Response<any> = {
         requestHeaders: {
           Authorization: "asdasdasdasd",
@@ -39,7 +39,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should preprocess response before matching against contract", function (done) {
-      // @ts-ignore
+      // @ts-expect-error
       const obj: Cypress.Response<any> = {
         requestHeaders: {
           Test: "testauth",
@@ -62,7 +62,7 @@ describe("c8ypactmatcher", () => {
 
       const pact = C8yDefaultPactRecord.from(pactSourceObj);
       const obfuscationPattern = preprocessor.options.obfuscationPattern;
-      // @ts-ignore
+      // @ts-expect-error
       expect(pact.request.headers.Test).to.eq(obfuscationPattern);
       expect(pact.response.body.Test).to.eq(obfuscationPattern);
 
@@ -83,7 +83,7 @@ describe("c8ypactmatcher", () => {
 
     it("should match with request and response only", function () {
       cy.spy(Cypress.c8ypact.matcher, "match").log(false);
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
         requestBody: "test",
@@ -113,7 +113,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should throw error if response and pact do not match", function (done) {
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
         requestBody: "test",
@@ -135,7 +135,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should not throw if response and pact do not match and failOnPactValidation is false", function () {
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
         requestBody: "test",
@@ -154,7 +154,7 @@ describe("c8ypactmatcher", () => {
 
     it("should pass consoleProps", function () {
       const spy = cy.spy(Cypress.c8ypact.matcher, "match");
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
         requestBody: "test",
@@ -178,7 +178,7 @@ describe("c8ypactmatcher", () => {
 
     it("should add error props to consoleProps", function (done) {
       const spy = cy.spy(Cypress.c8ypact.matcher, "match").log(false);
-      // @ts-ignore
+      // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
         requestBody: { x: { y: { z: "test" } } },

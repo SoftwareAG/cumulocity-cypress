@@ -24,11 +24,10 @@
     "url": "https://github.com/SoftwareAG/cumulocity-cypress/issues"
   },
   "dependencies": {
-    "@angular/common": "^14.1.2",
-    "@c8y/client": "^1017.0.374",
+    "@angular/common": "^16.2.0",
+    "@c8y/client": "1019.4.8",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
-    "cumulocity-cypress": "^0.3.2",
     "cypress": "^13.3.2",
     "date-fns": "^2.30.0",
     "quicktype": "^23.0.81",
