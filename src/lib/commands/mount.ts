@@ -8,15 +8,33 @@ import "./oauthlogin";
 import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
 import { getAuthOptionsFromEnv, getBaseUrlFromEnv } from "../utils";
+import { C8yAuthOptions } from "./auth";
+
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Mount a Cumulocity Angular component. When mounting the component FetchClient
+       * provider will be C8yPactFetchClient to enable recording and mocking of
+       * requests and responses. Set base url with C8Y_BASEURL and pass authentication
+       * via cy.getAuth() or cy.useAuth().
+       */
+      mount: typeof mount;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "mount",
+  // @ts-expect-error
   { prevSubject: "optional" },
-  (subject, component, options) => {
-    const consoleProps = {};
+  (subject: C8yAuthOptions, ...args) => {
+    const [component, options] = args;
+    const consoleProps: any = {};
     const logger = Cypress.log({
       autoEnd: false,
       name: "mount",
+      // @ts-expect-error
       message: isClass(component) ? component.name : component,
       consoleProps: () => consoleProps,
     });
@@ -45,7 +63,7 @@ Cypress.Commands.add(
       throw error;
     }
 
-    const registerFetchClient = (auth) => {
+    const registerFetchClient = (auth: C8yAuthOptions) => {
       const fetchClient = new C8yPactFetchClient({
         cypresspact: Cypress.c8ypact,
         auth,
@@ -69,18 +87,19 @@ Cypress.Commands.add(
 
     return (
       Cypress.c8ypact.isRecordingEnabled() ||
-      Cypress.c8ypact.config.strictMocking === false
-        ? cy.oauthLogin(auth, baseUrl)
-        : cy.wrap(auth)
-    ).then((a) => {
+      Cypress.c8ypact.config?.strictMocking === false
+        ? cy.oauthLogin(auth)
+        : cy.wrap<C8yAuthOptions>(auth)
+    ).then((a: C8yAuthOptions) => {
       registerFetchClient(a);
       logger.end();
+
       return mount(component, options);
     });
   }
 );
 
-function isClass(component) {
+function isClass(component: any) {
   return (
     component &&
     typeof component === "function" &&

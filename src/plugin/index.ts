@@ -4,9 +4,9 @@ import * as fs from "fs";
 import {
   C8yPactFileAdapter,
   C8yPactDefaultFileAdapter,
-} from "../../shared/c8ypact/fileadapter";
-import { C8yPact } from "../../shared/c8ypact/c8ypact";
-import { C8yAuthOptions, oauthLogin } from "../../shared/c8yclient";
+} from "../shared/c8ypact/fileadapter";
+import { C8yPact } from "../shared/c8ypact/c8ypact";
+import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
 
 export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
