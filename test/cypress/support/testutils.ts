@@ -267,6 +267,7 @@ export function expectC8yClientRequest(
     headers: {
       UseXBasic: true,
     },
+    body: undefined,
   }
 ): any[] {
   let all = (
@@ -288,7 +289,6 @@ export function expectC8yClientRequest(
     // window.fetch gets 2 arguments url and options
     return [url, result];
   });
-
   expect(window.fetchStub).to.have.callCount(all.length);
   const calls = window.fetchStub.getCalls();
   return expectCallsWithArgs(calls, all);
