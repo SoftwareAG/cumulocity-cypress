@@ -4,7 +4,7 @@ import {
   C8yPactPreprocessorOptions,
 } from "./preprocessor";
 import { C8yAuthOptions, C8yClient, C8yClientOptions } from "../c8yclient";
-import { C8ySchemaGenerator } from ".";
+import { C8ySchemaGenerator } from "./schema";
 import { isURL, removeBaseUrlFromRequestUrl } from "./url";
 
 /**

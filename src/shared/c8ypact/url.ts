@@ -1,4 +1,4 @@
-import { C8yPactRecord } from ".";
+import { C8yPactRecord } from "./c8ypact";
 import _ from "lodash";
 
 export function isURL(obj: any): obj is URL {
