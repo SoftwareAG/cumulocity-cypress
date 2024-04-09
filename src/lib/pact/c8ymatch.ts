@@ -25,7 +25,7 @@ declare global {
       c8ymatch(
         response: Cypress.Response<any>,
         record: Partial<C8yPactRecord>,
-        info?: C8yPactInfo,
+        info?: Partial<C8yPactInfo>,
         options?: C8yClientOptions
       ): Cypress.Chainable<void>;
       c8ymatch(

@@ -1,5 +1,9 @@
-import { C8yDefaultPact, C8yPact } from "../../../src/shared/c8ypact";
-import { C8yPactFetchClient } from "../../../src/lib/pact/fetchclient";
+import {
+  C8yDefaultPact,
+  C8yPact,
+  C8yPactFetchClient,
+} from "cumulocity-cypress/lib/commands/c8ypact";
+import { C8yAuthOptions } from "cumulocity-cypress/lib/commands/auth";
 import { BasicAuth, IFetchResponse } from "@c8y/client";
 import {
   initLoginRequestStub,
@@ -9,9 +13,6 @@ import {
 } from "cypress/support/testutils";
 import { encodeBase64 } from "../../../src/shared/c8yclient";
 import { url as _url } from "../support/testutils";
-import { C8yAuthOptions } from "../../../src/lib/commands/auth";
-
-const { _ } = Cypress;
 
 describe("c8ypact fetchclient", () => {
   beforeEach(() => {

@@ -1,4 +1,4 @@
-import { C8yDefaultPact } from "../../../src/shared/c8ypact";
+import { C8yDefaultPact } from "cumulocity-cypress/lib/commands/c8ypact";
 import { url } from "../support/testutils";
 
 const { $, _, sinon } = Cypress;
@@ -583,7 +583,6 @@ describe("c8ypact intercept", () => {
     });
 
     it("should return recorded response with different baseUrl", () => {
-      // @ts-expect-error
       const r = _.cloneDeep(response);
       r.method = "GET";
       r.url = "https://mytest.com/inventory/managedObjects?fragmentType=abcd";

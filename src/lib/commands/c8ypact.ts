@@ -5,7 +5,10 @@ import "../pact/fetchclient";
 import * as P from "../../shared/c8ypact";
 import * as C from "../../shared/c8yclient";
 
-export { P };
+export * from "../../shared/c8ypact";
+export * from "../pact/runner";
+export * from "../pact/fetchclient";
+export { C8yCypressEnvPreprocessor } from "../pact/cypresspact";
 
 declare global {
   /**

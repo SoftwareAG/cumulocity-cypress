@@ -10,7 +10,10 @@
     "strict": true,
     "module": "Node16",
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "paths": {
+      "cumulocity-cypress/*": ["./../src/*"]
+    }
   },
   "references": [
     { "path": "./../src/shared" },

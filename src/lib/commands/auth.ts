@@ -1,5 +1,7 @@
-import { ICredentials } from "@c8y/client";
 import { getAuthOptions, resetClient } from "../utils";
+import { C8yAuthOptions, C8yAuthentication, isAuth } from "../../shared/auth";
+
+export { C8yAuthOptions, C8yAuthentication, isAuth };
 
 declare global {
   namespace Cypress {
@@ -49,15 +51,6 @@ declare global {
     | [user: string]
     | [user: string, password: string]
     | [authOptions: C8yAuthOptions];
-}
-
-export interface C8yAuthOptions extends ICredentials {
-  // support cy.request properties
-  sendImmediately?: boolean;
-  bearer?: (() => string) | string;
-  userAlias?: string;
-  type?: string;
-  xsfrToken?: string;
 }
 
 Cypress.Commands.add("getAuth", { prevSubject: "optional" }, (...args) => {
