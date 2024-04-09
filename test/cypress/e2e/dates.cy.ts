@@ -1,4 +1,4 @@
-import * as localeEn from "./../../../src/lib/locale/en";
+import { localeEn } from "../../../src/lib/locale/locale";
 import * as localeTest from "./../support/test";
 
 const { _ } = Cypress;
