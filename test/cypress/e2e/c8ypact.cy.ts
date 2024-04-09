@@ -1,8 +1,10 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/testutils";
-import { defaultClientOptions } from "../../../src/lib/commands/c8yclient";
-import { C8yCypressEnvPreprocessor } from "../../../src/lib/pact/cypresspact";
-import { C8yAuthentication, C8yClient } from "../../../src/shared/c8yclient";
+import {
+  C8yClient,
+  defaultClientOptions,
+} from "cumulocity-cypress/lib/commands/c8yclient";
+import { C8yAuthentication } from "cumulocity-cypress/lib/commands/auth";
 
 import {
   C8yDefaultPactMatcher,
@@ -13,9 +15,10 @@ import {
   C8yDefaultPactRecord,
   C8yPact,
   createPactRecord,
-} from "../../../src/shared/c8ypact";
+  C8yCypressEnvPreprocessor,
+} from "cumulocity-cypress/lib/commands/c8ypact";
 
-const { _, sinon } = Cypress;
+const { _ } = Cypress;
 
 class AcceptAllMatcher implements C8yPactMatcher {
   match(obj1: any, obj2: any): boolean {

@@ -1,7 +1,4 @@
-import { localeEn } from "../../../src/lib/locale/locale";
 import * as localeTest from "./../support/test";
-
-const { _ } = Cypress;
 
 describe("dates", () => {
   // en: [
@@ -22,7 +19,7 @@ describe("dates", () => {
     });
 
     it("should allow registering additional locales", () => {
-      registerLocale(localeEn.default, "en", undefined, "en-US").then(() => {
+      registerLocale(localeTest.default, "en", undefined, "en-US").then(() => {
         cy.setLanguage("en");
         // uses en (en) local to parse the date (different from default en-GB)
         cy.wrap("5/26/23, 3:59 PM")

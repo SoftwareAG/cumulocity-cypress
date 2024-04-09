@@ -41,10 +41,10 @@
       "default": "./plugin/index.js"
     },
     "./lib/commands/*": "./lib/commands/*",
-    "./lib/locale/*": "./lib/locale/*",
-    "./lib/pact/*": "./lib/pact/*",
-    "./shared/*": "./shared/*",
-    "./shared/c8ypact/*": "./shared/c8ypact/*"
+    "./lib/locale/*": null,
+    "./lib/pact/*": null,
+    "./shared/*": null,
+    "./shared/c8ypact/*": null
   },
   "dependencies": {
     "ajv": "^8.12.0",

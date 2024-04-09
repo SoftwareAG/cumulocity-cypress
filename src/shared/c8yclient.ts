@@ -1,5 +1,7 @@
 import _ from "lodash";
 
+import { C8yAuthentication } from "./auth";
+
 import {
   Client,
   FetchClient,
@@ -48,8 +50,6 @@ export type C8yClientOptions = Partial<Cypress.Loggable> &
     ignorePact: boolean;
     schema: any;
   }>;
-
-export type C8yAuthentication = IAuthentication;
 
 /**
  * Wrapper for Client to pass auth and options without extending Client.

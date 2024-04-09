@@ -1,13 +1,13 @@
-import { C8yCypressEnvPreprocessor } from "../../../src/lib/pact/cypresspact";
 import {
   C8yDefaultPactRecord,
   C8yPactRecord,
   C8yDefaultPactMatcher,
   C8yISODateStringMatcher,
   C8yPactMatcherOptions,
-} from "../../../src/shared/c8ypact";
+  C8yCypressEnvPreprocessor,
+} from "cumulocity-cypress/lib/commands/c8ypact";
 
-const { _, sinon } = Cypress;
+const { _ } = Cypress;
 
 describe("c8ypactmatcher", () => {
   let obj1: C8yPactRecord, obj2: C8yPactRecord;

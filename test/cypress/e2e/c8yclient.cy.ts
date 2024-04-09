@@ -14,15 +14,13 @@ import {
 import {
   defaultClientOptions,
   isArrayOfFunctions,
-} from "../../../src/lib/commands/c8yclient";
-import {
   isIResult,
   isWindowFetchResponse,
   toCypressResponse,
   isCypressError,
-} from "../../../src/shared/c8yclient";
+} from "cumulocity-cypress/lib/commands/c8yclient";
 
-const { _, sinon } = Cypress;
+const { _ } = Cypress;
 
 declare global {
   interface Window {

@@ -2,7 +2,6 @@ const { _ } = Cypress;
 
 import {
   getBaseUrlFromEnv,
-  isAuth,
   normalizedArgumentsWithAuth,
   restoreClient,
   storeClient,
@@ -20,12 +19,24 @@ import {
   IResultList,
 } from "@c8y/client";
 import {
-  C8yAuthentication,
   C8yClient,
   C8yClientOptions,
   toCypressResponse,
   wrapFetchRequest,
+  isCypressError,
+  isIResult,
+  isWindowFetchResponse,
 } from "../../shared/c8yclient";
+import { C8yAuthentication, isAuth } from "../../shared/auth";
+
+export {
+  isCypressError,
+  isIResult,
+  isWindowFetchResponse,
+  toCypressResponse,
+  C8yClient,
+  C8yClientOptions,
+};
 
 declare global {
   namespace Cypress {

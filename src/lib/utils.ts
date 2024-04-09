@@ -1,4 +1,4 @@
-import { C8yAuthOptions } from "./commands/auth";
+import { C8yAuthOptions, isAuth } from "../shared/auth";
 import { C8yClient } from "../shared/c8yclient";
 
 const { _ } = Cypress;
@@ -106,10 +106,6 @@ export function getAuthOptions(...args: any[]): C8yAuthOptions | undefined {
   }
 
   return getAuthOptionsFromEnv();
-}
-
-export function isAuth(obj: any): obj is C8yAuthOptions {
-  return obj && _.isObjectLike(obj) && obj.user && obj.password;
 }
 
 function getAuthOptionsFromArgs(...args: any[]): C8yAuthOptions | undefined {

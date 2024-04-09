@@ -1,5 +1,5 @@
-import { getAuthOptions, isAuth, resetClient } from "../utils";
-import { C8yAuthOptions } from "./auth";
+import { getAuthOptions, resetClient } from "../utils";
+import { C8yAuthOptions, isAuth } from "./auth";
 
 const { _ } = Cypress;
 import { gte } from "semver";
