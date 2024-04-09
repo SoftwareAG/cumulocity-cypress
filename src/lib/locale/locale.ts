@@ -1,8 +1,6 @@
-import { FormatWidth } from "../commands/dates";
-
 // default locales to be registered automatically
-import * as localeDe from "./de";
-import * as localeEn from "./en-GB";
+import localeDe from "@angular/common/locales/de";
+import localeEn from "@angular/common/locales/en-GB";
 
 // @ts-expect-error
 import buildLocalizeFn from "date-fns/locale/_lib/buildLocalizeFn";
@@ -11,6 +9,18 @@ import buildMatchFn from "date-fns/locale/_lib/buildMatchFn";
 import { shortestUniquePrefixes } from "./localeutil";
 
 const { _ } = Cypress;
+
+// https://angular.io/api/common/DatePipe#pre-defined-format-options
+// https://github.com/angular/angular/blob/9847085448feff29ac6d51493e224250990c3ff0/packages/common/src/pipes/date_pipe.ts#L58
+// not imported from @angular/common to avoid requiring jit at runtime
+export enum FormatWidth {
+  Short,
+  Medium,
+  Long,
+  Full,
+}
+
+export { localeDe, localeEn };
 
 // Some i18n functions from Angular are used directly in here. This is required to not have Angular in a particular
 // version as a dependency of this package. locales must be imported in the tests with the version used in the project.

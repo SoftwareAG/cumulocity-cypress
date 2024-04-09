@@ -1,4 +1,5 @@
 import {
+  FormatWidth,
   NgLocaleDataIndex,
   getNgLocale,
   getNgLocaleId,
@@ -163,15 +164,6 @@ declare global {
   function registerDefaultLocales(): void;
 
   function setLocale(localeId: string): void;
-}
-
-// https://angular.io/api/common/DatePipe#pre-defined-format-options
-// https://github.com/angular/angular/blob/9847085448feff29ac6d51493e224250990c3ff0/packages/common/src/pipes/date_pipe.ts#L58
-export enum FormatWidth {
-  Short,
-  Medium,
-  Long,
-  Full,
 }
 
 Cypress.datefns = datefns;
