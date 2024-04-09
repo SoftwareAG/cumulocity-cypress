@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
-    "target": "es2022",
-    "module": "Node16",
+    "rootDir": ".",
+    "target": "es2020",
+    "module": "es2020",
+    "moduleResolution": "node",
     "declaration": true,
     "declarationMap": true,
     "strict": true,

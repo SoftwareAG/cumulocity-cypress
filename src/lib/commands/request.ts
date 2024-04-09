@@ -1,6 +1,44 @@
 import { getAuthOptionsFromEnv, normalizedArgumentsWithAuth } from "../utils";
 const { _ } = Cypress;
 
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Retry a request for a given number of max retries and delay. When test function
+       * `testFn` returns `true` stop retrying and continue.
+       *
+       * Use `retries` to pass number of retries and `retryDelay` to pass delay in milliseconds.
+       *
+       * @example
+       *  cy.retryRequest(
+       *    {
+       *      method: "GET",
+       *      url: "/service/apama-oeeapp/mon/ping",
+       *      retries: Cypress.env("livenessRetries") || 5,
+       *      retryDelay: Cypress.env("livenessRetryTimeout") || 10000,
+       *    },
+       *    (response) => {
+       *      return response.status === 200;
+       *    }
+       *  );
+       */
+      retryRequest<T = any>(
+        options: C8yRequestOptions,
+        testFn: (response: any) => boolean
+      ): Chainable<Response<T>>;
+    }
+    interface Cypress {
+      cy: {
+        addCommand: (cmd: any) => void;
+      };
+    }
+  }
+
+  type RetryOptions = { retries: number; retryDelay: number };
+  type C8yRequestOptions = Partial<Cypress.RequestOptions> & RetryOptions;
+}
+
 const methods = [
   "GET",
   "POST",
@@ -30,7 +68,7 @@ const methods = [
   "CONNECT",
 ];
 
-function retryRequest(...args) {
+function retryRequest(...args: any[]) {
   const $args = normalizedArgumentsWithAuth(args);
   if (!$args || $args.length !== 3) {
     throw new Error(
@@ -38,6 +76,7 @@ function retryRequest(...args) {
     );
   }
 
+  // eslint-disable-next-line prefer-const -- auth is not reassigned
   let [auth, options, testFn] = $args;
   const orgOptions = _.cloneDeep(options);
   const retryOptions = _.pick(options, ["retryDelay", "retries"]);
@@ -85,14 +124,16 @@ Cypress.Commands.add("retryRequest", { prevSubject: "optional" }, retryRequest);
 // current solution uses a wrapper for the default request function that adds the authentication
 // from environment.
 
-const requestCommandWrapper = (wrappedFn) => {
-  return function (...args) {
-    const options = {};
+const requestCommandWrapper = (
+  wrappedFn: Cypress.CommandFnWithOriginalFn<any>
+) => {
+  return function (...args: any[]) {
+    const options: Partial<Cypress.RequestOptions> = {};
 
     const originalFn = _.isFunction(args[0]) ? args[0] : undefined;
     const $args = originalFn ? args.slice(1) : args;
 
-    const auth = getAuthOptionsFromEnv(...$args);
+    const auth = getAuthOptionsFromEnv.apply($args);
 
     if (_.isObjectLike($args[0])) {
       _.extend(options, $args[0]);
@@ -116,21 +157,29 @@ const requestCommandWrapper = (wrappedFn) => {
       options.auth = _.omit(auth, "tenant");
     }
 
-    const wrappedArgs = originalFn ? [args[0], options] : [options];
+    const wrappedArgs: any[] =
+      originalFn && args?.length > 0 ? [args[0], options] : [options];
+
+    // @ts-expect-error
     return wrappedFn(...wrappedArgs);
   };
 };
 
-const requestFn = Cypress.cy["request"];
-Cypress.cy.addCommand({
-  name: "request",
-  fn: requestCommandWrapper(requestFn),
-  type: "parent",
-  prevSubject: null,
-});
+const requestFn = _.get(Cypress.cy, "request");
+if (requestFn) {
+  Cypress.cy.addCommand({
+    name: "request",
+    fn: requestCommandWrapper(requestFn),
+    type: "parent",
+    prevSubject: null,
+  });
+}
 
 const overwriteFn = Cypress.Commands.overwrite;
-Cypress.Commands.overwrite = (name, fn) => {
+Cypress.Commands.overwrite = (
+  name: keyof Cypress.Chainable<any>,
+  fn: Cypress.CommandFnWithOriginalFn<any>
+) => {
   if (name === "request") {
     overwriteFn(name, requestCommandWrapper(fn));
   } else {
