@@ -1,5 +1,5 @@
 import { defineConfig } from "cypress";
-import { configureC8yPlugin } from "../src/lib/plugin";
+import { configureC8yPlugin } from "../src/plugin";
 
 module.exports = defineConfig({
   e2e: {

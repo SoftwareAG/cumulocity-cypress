@@ -12,6 +12,7 @@
   },
   "references": [
     { "path": "./../../src/shared" },
-    { "path": "./../../src/lib" }
+    { "path": "./../../src/lib" },
+    { "path": "./../../src/plugin" }
   ]
 }

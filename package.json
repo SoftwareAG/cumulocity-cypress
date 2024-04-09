@@ -13,7 +13,7 @@
     "build": "npm run clean && npm run copy-files && tsc -b -v src/lib && tsc -b -v src/plugin && npm run build:plugin && cd dist/ && npm run clean-package-json",
     "build:plugin": "rollup -c rollup.config.mjs",
     "yalc:runner": "npm run yalc:publish && cd packages/pactrunner && yalc add cumulocity-cypress",
-    "yalc:publish": "cd dist/ && yalc publish && cd ..",
+    "yalc:publish": "npm run clean && npm run build && cd dist/ && yalc publish && cd ..",
     "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'",
     "lint": "eslint ./"
   },
