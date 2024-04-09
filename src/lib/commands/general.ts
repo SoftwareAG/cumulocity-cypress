@@ -35,7 +35,6 @@ declare global {
         selector?: string,
         timeout?: number
       ): Chainable<void>;
-      visitAndWaitForSelector(options: C8yVisitOptions): Chainable<void>;
 
       /**
        * Disables Gainsight by intercepting tenant options and configuring
@@ -53,15 +52,6 @@ declare global {
       disableGainsight(): Chainable<void>;
     }
   }
-
-  export type C8yVisitOptions = {
-    language?: C8yLanguage;
-    selector?: string;
-    timeout?: number;
-    url?: string;
-    shellTarget?: string;
-    shellExtension?: string;
-  };
 
   export type C8yLanguage = "de" | "en";
 }
@@ -84,52 +74,24 @@ Cypress.Commands.add("hideCookieBanner", () => {
 Cypress.Commands.add(
   "visitAndWaitForSelector",
   (
-    _url: string | C8yVisitOptions,
-    _language = "en",
-    _selector = "c8y-navigator-outlet c8y-app-icon",
-    _timeout: number = Cypress.config().pageLoadTimeout || 60000
+    url,
+    language = "en",
+    selector = "c8y-navigator-outlet c8y-app-icon",
+    timeout = Cypress.config().pageLoadTimeout || 60000
   ) => {
-    let url = _.isString(_url) ? _url : _url?.url || "";
-    const options: C8yVisitOptions = _.isObjectLike(_url)
-      ? (_url as C8yVisitOptions)
-      : {};
-    const shellTarget: string =
-      options?.shellTarget || Cypress.env("C8Y_SHELL_TARGET");
-    if (shellTarget && _.isString(shellTarget)) {
-      url = `/apps/${shellTarget}/index.html#/${url}`;
-    }
-
-    const shellExtension: string =
-      options?.shellExtension || Cypress.env("C8Y_SHELL_EXTENSION");
-
-    const language = options?.language || _language;
-    const selector = options?.selector || _selector;
-    const timeout = options?.timeout || _timeout;
-
     const consoleProps = {
       url,
       language,
       selector,
       timeout,
-      shellTarget,
-      shellExtension,
-      options,
     };
-
     Cypress.log({
-      name: "visitShellAndWaitForSelector",
+      name: "visitAndWaitForSelector",
       message: url,
       consoleProps: () => consoleProps,
     });
     cy.setLanguage(language);
-
-    if (shellExtension) {
-      const qs = { remotes: shellExtension };
-      cy.visit(`${url}`, { qs });
-    } else {
-      cy.visit(url);
-    }
-
+    cy.visit(url);
     cy.get(selector, { timeout }).should("be.visible");
   }
 );
