@@ -1,4 +1,6 @@
+import { FetchClient } from "@c8y/client";
 import { C8yPact } from "../../shared/c8ypact";
+import { C8yAuthOptions, getC8yClientAuthentication } from "../../shared/auth";
 
 declare global {
   interface ChainableWithState {
@@ -34,5 +36,7 @@ if (!Cypress.c8ypact) {
     getConfigValues: () => ({}),
     loadCurrent: () => cy.wrap<C8yPact | null>(null, { log: false }),
     env: () => ({}),
+    createFetchClient: (auth: C8yAuthOptions, baseUrl: string) =>
+      new FetchClient(getC8yClientAuthentication(auth), baseUrl),
   };
 }

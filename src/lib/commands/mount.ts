@@ -5,7 +5,6 @@ import "./c8ypact";
 import "./intercept";
 import "./oauthlogin";
 
-import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
 import { getAuthOptionsFromEnv, getBaseUrlFromEnv } from "../utils";
 import { C8yAuthOptions } from "../../shared/c8yclient";
@@ -29,8 +28,8 @@ Cypress.Commands.add(
   // @ts-expect-error
   { prevSubject: "optional" },
   (subject: C8yAuthOptions, ...args) => {
-    const [component, options] = args;
     const consoleProps: any = {};
+    const [component, options = {}] = args;
     const logger = Cypress.log({
       autoEnd: false,
       name: "mount",
@@ -64,21 +63,18 @@ Cypress.Commands.add(
     }
 
     const registerFetchClient = (auth: C8yAuthOptions) => {
-      const fetchClient = new C8yPactFetchClient({
-        cypresspact: Cypress.c8ypact,
-        auth,
-        baseUrl,
-      });
-      if (options) {
-        const providers = options.providers || [];
-        if (!providers.some((provider) => provider.provide === FetchClient)) {
-          providers.push({
-            provide: FetchClient,
-            useValue: fetchClient,
-          });
-          options.providers = providers;
-          consoleProps.providers = providers;
-        }
+      const fetchClient = Cypress.c8ypact.createFetchClient(auth, baseUrl);
+      if (!fetchClient) {
+        return;
+      }
+      const providers = options.providers || [];
+      if (!providers.some((provider) => provider.provide === FetchClient)) {
+        providers.push({
+          provide: FetchClient,
+          useValue: fetchClient,
+        });
+        options.providers = providers;
+        consoleProps.providers = providers;
       }
     };
 

@@ -1,6 +1,4 @@
 import {
-  BasicAuth,
-  CookieAuth,
   FetchClient,
   IAuthentication,
   IFetchOptions,
@@ -11,8 +9,8 @@ import {
   toWindowFetchResponse,
   wrapFetchResponse,
 } from "../../shared/c8yclient";
-import { C8yAuthOptions } from "../commands/auth";
-import { getAuthOptions, getBaseUrlFromEnv } from "../utils";
+import { C8yAuthOptions, getC8yClientAuthentication } from "../../shared/auth";
+import { getBaseUrlFromEnv } from "../utils";
 
 const { _ } = Cypress;
 
@@ -34,35 +32,8 @@ export class C8yPactFetchClient extends FetchClient {
     const url: string = options.baseUrl || getBaseUrlFromEnv();
 
     if (options.auth) {
-      if (_.isString(options.auth)) {
-        authOptions = getAuthOptions(options?.auth);
-      } else if (_.isObjectLike(options.auth)) {
-        if ("logout" in options.auth) {
-          auth = options.auth as IAuthentication;
-        } else {
-          authOptions = options.auth as C8yAuthOptions;
-        }
-      }
+      auth = getC8yClientAuthentication(options.auth);
     }
-
-    if (!auth) {
-      const cookieAuth = new CookieAuth();
-      const token: string = _.get(
-        cookieAuth.getFetchOptions({}),
-        "headers.X-XSRF-TOKEN"
-      );
-      if (token?.trim() && !_.isEmpty(token.trim())) {
-        auth = cookieAuth;
-      } else if (authOptions) {
-        auth = new BasicAuth(authOptions);
-      }
-    }
-
-    const [user, userAlias] = [
-      // @ts-expect-error
-      authOptions?.user || auth?.user || Cypress.env("C8Y_LOGGED_IN_USER"),
-      authOptions?.userAlias || Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
-    ];
 
     if (!auth) {
       throw new Error("C8yPactFetchClient Error. No authentication provided.");
@@ -71,6 +42,11 @@ export class C8yPactFetchClient extends FetchClient {
       throw new Error("C8yPactFetchClient Error. No baseUrl provided.");
     }
 
+    const [user, userAlias] = [
+      // @ts-expect-error
+      authOptions?.user || auth?.user || Cypress.env("C8Y_LOGGED_IN_USER"),
+      authOptions?.userAlias || Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+    ];
     super(auth, url);
 
     this.authOptions = authOptions;
