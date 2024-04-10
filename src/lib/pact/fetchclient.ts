@@ -9,8 +9,12 @@ import {
   toWindowFetchResponse,
   wrapFetchResponse,
 } from "../../shared/c8yclient";
-import { C8yAuthOptions, getC8yClientAuthentication } from "../../shared/auth";
-import { getBaseUrlFromEnv } from "../utils";
+import {
+  C8yAuthOptions,
+  getC8yClientAuthentication,
+  isAuth,
+} from "../../shared/auth";
+import { getAuthOptions, getBaseUrlFromEnv } from "../utils";
 
 const { _ } = Cypress;
 
@@ -27,12 +31,14 @@ export class C8yPactFetchClient extends FetchClient {
     baseUrl?: string;
     cypresspact?: CypressC8yPact;
   }) {
-    let auth: IAuthentication | undefined;
-    let authOptions: C8yAuthOptions | undefined;
+    const auth = getC8yClientAuthentication(options.auth);
     const url: string = options.baseUrl || getBaseUrlFromEnv();
 
-    if (options.auth) {
-      auth = getC8yClientAuthentication(options.auth);
+    let authOptions: C8yAuthOptions | undefined;
+    if (_.isString(auth)) {
+      authOptions = getAuthOptions(auth);
+    } else if (isAuth(auth)) {
+      authOptions = auth;
     }
 
     if (!auth) {

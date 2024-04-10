@@ -25,7 +25,7 @@ export function isAuth(obj: any): obj is C8yAuthOptions {
  * Gets and implementation of IAuthentication from the given auth options.
  */
 export function getC8yClientAuthentication(
-  auth: C8yAuthOptions | string | IAuthentication
+  auth: C8yAuthOptions | string | IAuthentication | undefined
 ): IAuthentication | undefined {
   let authOptions: C8yAuthOptions | undefined;
   let result: IAuthentication | undefined;
