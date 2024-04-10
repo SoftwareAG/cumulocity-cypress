@@ -1,7 +1,5 @@
 import { C8yPact } from "../../shared/c8ypact";
 
-export {};
-
 declare global {
   interface ChainableWithState {
     state(state: string): any;

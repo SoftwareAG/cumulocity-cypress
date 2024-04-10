@@ -5,7 +5,8 @@ import {
   C8yISODateStringMatcher,
   C8yPactMatcherOptions,
   C8yCypressEnvPreprocessor,
-} from "cumulocity-cypress/lib/commands/c8ypact";
+  C8ySchemaMatcher,
+} from "cumulocity-cypress";
 
 const { _ } = Cypress;
 
@@ -61,7 +62,7 @@ describe("c8ypactmatcher", () => {
       expect(obj.body.Test).to.eq("testpassword");
 
       const pact = C8yDefaultPactRecord.from(pactSourceObj);
-      const obfuscationPattern = preprocessor.options.obfuscationPattern;
+      const obfuscationPattern = preprocessor.options!.obfuscationPattern;
       // @ts-expect-error
       expect(pact.request.headers.Test).to.eq(obfuscationPattern);
       expect(pact.response.body.Test).to.eq(obfuscationPattern);
@@ -82,7 +83,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should match with request and response only", function () {
-      cy.spy(Cypress.c8ypact.matcher, "match").log(false);
+      cy.spy(Cypress.c8ypact.matcher!, "match").log(false);
       // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
@@ -105,7 +106,7 @@ describe("c8ypactmatcher", () => {
         { id: "123" },
         { failOnPactValidation: true }
       ).then(() => {
-        const spy = Cypress.c8ypact.matcher.match as sinon.SinonSpy;
+        const spy = Cypress.c8ypact.matcher?.match as sinon.SinonSpy;
         expect(spy).to.have.been.called;
         expect(Object.keys(spy.getCall(0).args[0])).to.deep.eq(matchKeys);
         expect(Object.keys(spy.getCall(0).args[1])).to.deep.eq(matchKeys);
@@ -153,7 +154,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should pass consoleProps", function () {
-      const spy = cy.spy(Cypress.c8ypact.matcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.matcher!, "match");
       // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
@@ -177,7 +178,7 @@ describe("c8ypactmatcher", () => {
     });
 
     it("should add error props to consoleProps", function (done) {
-      const spy = cy.spy(Cypress.c8ypact.matcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.matcher!, "match").log(false);
       // @ts-expect-error
       const response: Cypress.Response = {
         status: 201,
@@ -377,12 +378,14 @@ describe("c8ypactmatcher", () => {
     };
 
     beforeEach(() => {
-      C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
+      if (Cypress.c8ypact.schemaMatcher) {
+        C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
+      }
     });
 
     it("schema keys should not break object matching", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
 
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {};
@@ -410,7 +413,7 @@ describe("c8ypactmatcher", () => {
 
     it("matching should not fail for different number of keys in matched objects", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       Cypress.c8ypact.config.strictMatching = false;
 
@@ -426,7 +429,7 @@ describe("c8ypactmatcher", () => {
 
     it("should not fail if only schema is available for key", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       delete pact.response.body;
       pact.response["$body"] = {};
@@ -439,7 +442,7 @@ describe("c8ypactmatcher", () => {
 
     it("should prefer schema over object matching", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response.body = { other: 101 };
       pact.response["$body"] = {
@@ -459,7 +462,7 @@ describe("c8ypactmatcher", () => {
     it("should match schema with strictMatching disabled", function () {
       Cypress.c8ypact.config.strictMatching = false;
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -477,7 +480,7 @@ describe("c8ypactmatcher", () => {
 
     it("should fail for not matching schema", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -497,7 +500,7 @@ describe("c8ypactmatcher", () => {
 
     it("should fail if schema validates not an object", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -517,7 +520,7 @@ describe("c8ypactmatcher", () => {
 
     it("should fail for properties not defined in schema", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -537,9 +540,12 @@ describe("c8ypactmatcher", () => {
 
     it("should fail when no schema matcher is registered", function () {
       const matcher = new C8yDefaultPactMatcher();
+      // @ts-expect-error
       C8yDefaultPactMatcher.schemaMatcher = undefined;
 
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy
+        .spy<C8ySchemaMatcher>(Cypress.c8ypact.schemaMatcher!, "match")
+        .log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -559,7 +565,7 @@ describe("c8ypactmatcher", () => {
 
     it("should not fail for additional properties with strictMatching disabled", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response["$body"] = {
         type: "object",
@@ -577,7 +583,7 @@ describe("c8ypactmatcher", () => {
 
     it("should match nested schema", function () {
       const matcher = new C8yDefaultPactMatcher();
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match").log(false);
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match").log(false);
       const pact = _.cloneDeep(obj1);
       pact.response.body = { id: "123", nested: { name: "abcd" } };
       pact.response.body.$nested = {

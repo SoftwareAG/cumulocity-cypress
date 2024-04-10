@@ -1,18 +1,16 @@
 import {
+  C8yAuthOptions,
   C8yDefaultPact,
-  C8yPact,
   C8yPactFetchClient,
-} from "cumulocity-cypress/lib/commands/c8ypact";
-import { C8yAuthOptions } from "cumulocity-cypress/lib/commands/auth";
+} from "cumulocity-cypress";
 import { BasicAuth, IFetchResponse } from "@c8y/client";
+import { encodeBase64 } from "../../../src/shared/c8yclient";
 import {
+  url as _url,
   initLoginRequestStub,
   initRequestStub,
   stubResponse,
-  url,
-} from "cypress/support/testutils";
-import { encodeBase64 } from "../../../src/shared/c8yclient";
-import { url as _url } from "../support/testutils";
+} from "../support/testutils";
 
 describe("c8ypact fetchclient", () => {
   beforeEach(() => {
@@ -178,29 +176,29 @@ describe("c8ypact fetchclient", () => {
         })
       ).then(() => {
         Cypress.c8ypact.loadCurrent().then((pact) => {
-          expect(pact.info).to.have.property(
+          expect(pact?.info).to.have.property(
             "baseUrl",
             Cypress.config("baseUrl")
           );
 
-          expect(pact.records).to.have.length(1);
-          const r = pact.records[0];
-          expect(r.request).to.not.be.undefined;
-          expect(r.request).to.have.property("method", "GET");
-          expect(r.request).to.have.property(
+          expect(pact?.records).to.have.length(1);
+          const r = pact?.records[0];
+          expect(r?.request).to.not.be.undefined;
+          expect(r?.request).to.have.property("method", "GET");
+          expect(r?.request).to.have.property(
             "url",
             "/inventory/managedObjects?fragmentType=abcd"
           );
-          expect(r.response).to.not.be.undefined;
-          expect(r.response).to.have.property("status", 200);
-          expect(r.response).to.have.property("headers");
-          expect(r.auth).to.deep.eq({
+          expect(r?.response).to.not.be.undefined;
+          expect(r?.response).to.have.property("status", 200);
+          expect(r?.response).to.have.property("headers");
+          expect(r?.auth).to.deep.eq({
             user: auth.user,
             userAlias: "admin",
             type: "BasicAuth",
           });
-          expect(r.response.body).to.have.property("managedObjects");
-          expect(r.response.$body).to.not.be.undefined;
+          expect(r?.response.body).to.have.property("managedObjects");
+          expect(r?.response.$body).to.not.be.undefined;
         });
       });
     });
@@ -219,8 +217,8 @@ describe("c8ypact fetchclient", () => {
         })
       ).then(() => {
         Cypress.c8ypact.loadCurrent().then((pact) => {
-          const r = pact.records[0];
-          expect(r.auth).to.deep.eq({
+          const r = pact?.records[0];
+          expect(r?.auth).to.deep.eq({
             user: auth.user,
             userAlias: "admin",
             type: "BasicAuth",
@@ -247,24 +245,24 @@ describe("c8ypact fetchclient", () => {
           return failure;
         })
       ).then(() => {
-        Cypress.c8ypact.loadCurrent().then((pact: C8yPact) => {
-          expect(pact.records).to.have.length(1);
-          expect(pact.info).to.have.property(
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact?.records).to.have.length(1);
+          expect(pact?.info).to.have.property(
             "baseUrl",
             Cypress.config("baseUrl")
           );
 
-          const r = pact.records[0];
-          expect(r.request).to.not.be.undefined;
-          expect(r.request).to.have.property("url", "/inventory/notfound");
-          expect(r.request).to.have.property("method", "GET");
-          expect(r.request).to.have.property("headers");
-          expect(r.request.headers).to.have.property("Authorization");
-          expect(r.response.status).to.eq(404);
-          expect(r.response).to.have.property("headers");
-          expect(r.response.headers).to.have.property("content-type");
-          expect(r.response.statusText).to.eq("Not Found");
-          expect(r.response.body).to.eq("Resource not found");
+          const r = pact?.records[0];
+          expect(r?.request).to.not.be.undefined;
+          expect(r?.request).to.have.property("url", "/inventory/notfound");
+          expect(r?.request).to.have.property("method", "GET");
+          expect(r?.request).to.have.property("headers");
+          expect(r?.request.headers).to.have.property("Authorization");
+          expect(r?.response.status).to.eq(404);
+          expect(r?.response).to.have.property("headers");
+          expect(r?.response.headers).to.have.property("content-type");
+          expect(r?.response.statusText).to.eq("Not Found");
+          expect(r?.response.body).to.eq("Resource not found");
         });
       });
     });
@@ -294,12 +292,12 @@ describe("c8ypact fetchclient", () => {
         allRequestResponses: [],
         isOkStatusCode: false,
         method: "POST",
-        url: url("/inventory/managedObjects?fragmentType=abcd"),
+        url: _url("/inventory/managedObjects?fragmentType=abcd"),
       };
 
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {
         id: "123",
-        baseUrl: Cypress.config("baseUrl"),
+        baseUrl: Cypress.config("baseUrl") || "",
       });
 
       const client = new C8yPactFetchClient({
@@ -329,12 +327,12 @@ describe("c8ypact fetchclient", () => {
         allRequestResponses: [],
         isOkStatusCode: false,
         method: "GET",
-        url: url("/inventory/notfound"),
+        url: _url("/inventory/notfound"),
       };
 
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {
         id: "123",
-        baseUrl: Cypress.config("baseUrl"),
+        baseUrl: Cypress.config("baseUrl") || "",
       });
 
       const client = new C8yPactFetchClient({

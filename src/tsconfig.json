@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "lib": ["dom", "dom.iterable", "ES2020"],
+    "types": ["cypress", "node", "semver", "cookie-parser"],
+    "outDir": "../dist/"
+  }
+}

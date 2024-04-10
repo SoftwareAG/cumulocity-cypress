@@ -9,6 +9,11 @@
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "composite": true,
+    "paths": {
+      "cumulocity-cypress/*": ["./src/*"],
+      "cumulocity-cypress": ["./src"]
+    }
   }
 }

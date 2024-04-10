@@ -14,13 +14,15 @@ import {
 import {
   defaultClientOptions,
   isArrayOfFunctions,
+} from "../../../src/lib/commands/c8yclient";
+import {
   isIResult,
   isWindowFetchResponse,
   toCypressResponse,
   isCypressError,
-} from "cumulocity-cypress/lib/commands/c8yclient";
+} from "cumulocity-cypress";
 
-const { _ } = Cypress;
+const { _, sinon } = Cypress;
 
 declare global {
   interface Window {
@@ -431,7 +433,7 @@ describe("c8yclient", () => {
 
   context("schema matching", () => {
     it("should use schema for matching response", () => {
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match");
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
         .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
           schema: {
@@ -966,6 +968,7 @@ describe("c8yclient", () => {
   context("toCypressResponse", () => {
     it("should not fail for undefined response", () => {
       const response = toCypressResponse(
+        // @ts-expect-error
         undefined,
         0,
         {},
@@ -1001,8 +1004,8 @@ describe("c8yclient", () => {
       expect(response)
         .to.have.property("allRequestResponses")
         .that.is.an("array");
-      expect(response.body).to.deep.eq({});
-      expect(response.requestBody).to.deep.eq({ id: "10101" });
+      expect(response?.body).to.deep.eq({});
+      expect(response?.requestBody).to.deep.eq({ id: "10101" });
       expect(response).to.have.property("method", "PUT");
     });
 
@@ -1033,8 +1036,8 @@ describe("c8yclient", () => {
       expect(response).to.have.property("statusText", "Error");
       expect(response).to.have.property("duration", 0);
       expect(response).to.have.property("url", "http://example.com");
-      expect(response.body).to.deep.eq({});
-      expect(response.requestBody).to.deep.eq({});
+      expect(response?.body).to.deep.eq({});
+      expect(response?.requestBody).to.deep.eq({});
       expect(response).to.have.property("method", "PUT");
     });
 
@@ -1156,6 +1159,7 @@ describe("c8yclient", () => {
     });
 
     it("isArrayOfFunctions validates undefined and empty", () => {
+      // @ts-expect-error
       expect(isArrayOfFunctions(undefined)).to.be.false;
       expect(isArrayOfFunctions([])).to.be.false;
     });

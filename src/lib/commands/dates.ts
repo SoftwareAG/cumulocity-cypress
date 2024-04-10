@@ -16,8 +16,6 @@ import * as datefns from "date-fns";
 import { throwError } from "../utils";
 const { _ } = Cypress;
 
-export { registerDefaultLocales, registerLocale };
-
 declare global {
   namespace Cypress {
     interface Chainable extends ChainableWithState {

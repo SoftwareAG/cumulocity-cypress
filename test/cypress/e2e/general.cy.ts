@@ -42,7 +42,7 @@ describe("general", () => {
 
       cy.window().then((win) => {
         const cookie = JSON.parse(
-          win.localStorage.getItem("acceptCookieNotice")
+          win.localStorage.getItem("acceptCookieNotice")!
         );
         expect(cookie).to.deep.eq({ required: true, functional: true });
       });
