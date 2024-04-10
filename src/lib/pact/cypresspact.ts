@@ -21,6 +21,7 @@ import {
   C8yPactSaveKeys,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
+import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClient } from "../../shared/c8yclient";
 import { getBaseUrlFromEnv } from "../utils";
 import * as semver from "semver";
@@ -28,6 +29,8 @@ import * as semver from "semver";
 const { _ } = Cypress;
 
 import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
+import { FetchClient, IAuthentication } from "@c8y/client";
+import { C8yPactFetchClient } from "./fetchclient";
 
 declare global {
   namespace Cypress {
@@ -139,6 +142,15 @@ declare global {
      * Resolves all environment variables as a C8yPactEnv object.
      */
     env(): C8yPactEnv;
+    /**
+     * Create a custom FetchClient from given auth options and baseUrl. Default implementation
+     * of FetchClient is C8yPactFetchClient. Override to provide a custom FetchClient implementation to
+     * cy.mount. If undefined is returned, cy.mount will not register a custom FetchClient provider.
+     */
+    createFetchClient(
+      auth: C8yAuthOptions | IAuthentication,
+      baseUrl: string
+    ): FetchClient;
   }
 
   /**
@@ -285,6 +297,13 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
           obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
         },
       };
+    },
+    createFetchClient: (auth: C8yAuthOptions, baseUrl: string) => {
+      return new C8yPactFetchClient({
+        cypresspact: Cypress.c8ypact,
+        auth,
+        baseUrl,
+      });
     },
   };
 }

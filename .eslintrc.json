@@ -37,8 +37,8 @@
         "alwaysTryTypes": true,
         "project": [
           "./tsconfig.json",
+          "./src/tsconfig.json",
           "./test/tsconfig.json",
-          "./src/shared/tsconfig.json",
           "./packages/pactrunner/tsconfig.json"
         ]
       },
