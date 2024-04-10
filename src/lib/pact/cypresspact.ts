@@ -386,7 +386,7 @@ async function savePact(
   }
 }
 
-export function save(pact: any, options: C8yPactSaveOptions) {
+function save(pact: any, options: C8yPactSaveOptions) {
   const taskName = "c8ypact:save";
   if (options?.noqueue === true) {
     if (

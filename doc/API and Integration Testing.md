@@ -343,7 +343,7 @@ To enable `cumulocity-cypress` recording capabilities, the c8y plugin needs to b
 
 ```javascript
 const { defineConfig } = require("cypress");
-const { configureC8yPlugin } = require("cumulocity-cypress/lib/plugin/");
+const { configureC8yPlugin } = require("cumulocity-cypress/plugin/");
 
 module.exports = defineConfig({
   e2e: {

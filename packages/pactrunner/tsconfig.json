@@ -1,18 +1,17 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "rootDir": ".",
-    "lib": ["dom", "ES2020"],
-    "types": ["node", "cookie-parser", "cypress"],
+    "target": "ES2020",
+    "lib": ["ES2020", "dom"],
+    "types": ["cypress", "node"],
+    "moduleResolution": "node",
+    "composite": true,
+    "strictNullChecks": true,
+    "strict": true,
     "paths": {
-      "cumulocity-cypress/*": ["./../../src/*"]
-    },
-    "composite": true
+      "cumulocity-cypress/*": ["./../../src/*"],
+      "cumulocity-cypress": ["./../../src"]
+    }
   },
-  "references": [
-    { "path": "./../../src/shared" },
-    { "path": "./../../src/lib" },
-    { "path": "./../../src/plugin" }
-  ]
+  "references": [{ "path": "./../../src" }]
 }

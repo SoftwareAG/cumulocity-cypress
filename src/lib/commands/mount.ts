@@ -8,7 +8,7 @@ import "./oauthlogin";
 import { C8yPactFetchClient } from "../pact/fetchclient";
 import { FetchClient } from "@c8y/client";
 import { getAuthOptionsFromEnv, getBaseUrlFromEnv } from "../utils";
-import { C8yAuthOptions } from "./auth";
+import { C8yAuthOptions } from "../../shared/c8yclient";
 
 declare global {
   namespace Cypress {

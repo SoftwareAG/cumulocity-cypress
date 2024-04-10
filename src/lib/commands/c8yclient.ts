@@ -23,20 +23,8 @@ import {
   C8yClientOptions,
   toCypressResponse,
   wrapFetchRequest,
-  isCypressError,
-  isIResult,
-  isWindowFetchResponse,
 } from "../../shared/c8yclient";
 import { C8yAuthentication, isAuth } from "../../shared/auth";
-
-export {
-  isCypressError,
-  isIResult,
-  isWindowFetchResponse,
-  toCypressResponse,
-  C8yClient,
-  C8yClientOptions,
-};
 
 declare global {
   namespace Cypress {

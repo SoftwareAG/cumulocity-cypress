@@ -1,4 +1,4 @@
-import { C8yDefaultPact } from "cumulocity-cypress/shared/c8ypact";
+import { C8yDefaultPact } from "cumulocity-cypress";
 
 const { _ } = Cypress;
 
