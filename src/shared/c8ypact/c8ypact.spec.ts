@@ -62,7 +62,7 @@ describe("c8ypact", () => {
               isOkStatusCode: true,
             },
             {},
-            {}
+            { user: "test" }
           ),
         ],
         {
