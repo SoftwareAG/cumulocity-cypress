@@ -1,5 +1,5 @@
 import { getAuthOptions, resetClient } from "../utils";
-import { C8yAuthOptions, isAuth } from "./auth";
+import { C8yAuthOptions } from "./auth";
 
 const { _ } = Cypress;
 import { gte } from "semver";
@@ -85,7 +85,7 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
     (auth: C8yAuthOptions) => {
       let options: C8yLoginOptions = {};
       const lastArg: any = args.pop();
-      if (isAuth(lastArg) || !_.isObjectLike(lastArg)) {
+      if (isAuthOptions(lastArg) || !_.isObjectLike(lastArg)) {
         options = defaultLoginOptions();
       } else {
         options = _.defaults(lastArg, defaultLoginOptions());

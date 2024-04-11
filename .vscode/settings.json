@@ -3,5 +3,6 @@
     "activityBar.background": "#182B5C",
     "titleBar.activeBackground": "#223C81",
     "titleBar.activeForeground": "#FCFCFE"
-  }
+  },
+  "jest.jestCommandLine": "npm run jest:run --"
 }

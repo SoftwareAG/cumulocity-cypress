@@ -1,11 +1,7 @@
+/// <reference types="cypress" />
+
 import _ from "lodash";
-import {
-  BasicAuth,
-  CookieAuth,
-  IAuthentication,
-  ICredentials,
-} from "@c8y/client";
-import { getAuthOptions } from "../lib/utils";
+import { IAuthentication, ICredentials } from "@c8y/client";
 
 export interface C8yAuthOptions extends ICredentials {
   sendImmediately?: boolean;
@@ -15,45 +11,45 @@ export interface C8yAuthOptions extends ICredentials {
   xsfrToken?: string;
 }
 
-export type C8yAuthentication = IAuthentication;
-
-export function isAuth(obj: any): obj is C8yAuthOptions {
-  return obj && _.isObjectLike(obj) && obj.user && obj.password;
+export interface C8yPactAuthObject {
+  userAlias?: string;
+  user: string;
+  type?: string;
 }
 
+type C8yPactAuthObjectType = keyof C8yPactAuthObject;
+export const C8yPactAuthObjectKeys: C8yPactAuthObjectType[] = [
+  "userAlias",
+  "user",
+  "type",
+];
+
+export type C8yAuthentication = IAuthentication;
+
 /**
- * Gets and implementation of IAuthentication from the given auth options.
+ * Checks if the given object is a C8yAuthOptions.
+ *
+ * @param obj The object to check.
+ * @param options Options to check for additional properties.
+ * @returns True if the object is a C8yAuthOptions, false otherwise.
  */
-export function getC8yClientAuthentication(
-  auth: C8yAuthOptions | string | IAuthentication | undefined
-): IAuthentication | undefined {
-  let authOptions: C8yAuthOptions | undefined;
-  let result: IAuthentication | undefined;
+export function isAuthOptions(obj: any): obj is C8yAuthOptions {
+  return _.isObjectLike(obj) && "user" in obj && "password" in obj;
+}
 
-  if (auth) {
-    if (_.isString(auth)) {
-      authOptions = getAuthOptions(auth);
-    } else if (_.isObjectLike(auth)) {
-      if ("logout" in auth) {
-        result = auth as IAuthentication;
-      } else {
-        authOptions = auth as C8yAuthOptions;
-      }
-    }
-  }
+export function toPactAuthObject(
+  obj: C8yAuthOptions | IAuthentication | ICredentials
+): C8yPactAuthObject {
+  return _.pick(obj, C8yPactAuthObjectKeys) as C8yPactAuthObject;
+}
 
-  if (!result) {
-    const cookieAuth = new CookieAuth();
-    const token: string = _.get(
-      cookieAuth.getFetchOptions({}),
-      "headers.X-XSRF-TOKEN"
-    );
-    if (token?.trim() && !_.isEmpty(token.trim())) {
-      result = cookieAuth;
-    } else if (authOptions) {
-      result = new BasicAuth(authOptions);
-    }
-  }
-
-  return result;
+export function isPactAuthObject(obj: any): obj is C8yPactAuthObject {
+  return (
+    _.isObjectLike(obj) &&
+    "user" in obj &&
+    ("userAlias" in obj || "type" in obj) &&
+    Object.keys(obj).every((key) =>
+      (C8yPactAuthObjectKeys as string[]).includes(key)
+    )
+  );
 }

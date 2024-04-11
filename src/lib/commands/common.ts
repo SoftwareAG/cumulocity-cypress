@@ -1,6 +1,7 @@
 import { FetchClient } from "@c8y/client";
 import { C8yPact } from "../../shared/c8ypact";
-import { C8yAuthOptions, getC8yClientAuthentication } from "../../shared/auth";
+import { C8yAuthOptions } from "../../shared/auth";
+import { getC8yClientAuthentication } from "../utils";
 
 declare global {
   interface ChainableWithState {

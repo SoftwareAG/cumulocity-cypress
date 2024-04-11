@@ -9,12 +9,12 @@ import {
   toWindowFetchResponse,
   wrapFetchResponse,
 } from "../../shared/c8yclient";
+import { C8yAuthOptions, isAuthOptions } from "../../shared/auth";
 import {
-  C8yAuthOptions,
+  getAuthOptions,
+  getBaseUrlFromEnv,
   getC8yClientAuthentication,
-  isAuth,
-} from "../../shared/auth";
-import { getAuthOptions, getBaseUrlFromEnv } from "../utils";
+} from "../utils";
 
 const { _ } = Cypress;
 
@@ -37,7 +37,7 @@ export class C8yPactFetchClient extends FetchClient {
     let authOptions: C8yAuthOptions | undefined;
     if (_.isString(auth)) {
       authOptions = getAuthOptions(auth);
-    } else if (isAuth(auth)) {
+    } else if (isAuthOptions(auth)) {
       authOptions = auth;
     }
 

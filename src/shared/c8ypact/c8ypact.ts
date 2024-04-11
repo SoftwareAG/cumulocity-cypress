@@ -1,11 +1,20 @@
+/// <reference types="cypress" />
+
 import _ from "lodash";
 import {
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
 } from "./preprocessor";
-import { C8yAuthOptions, C8yClient, C8yClientOptions } from "../c8yclient";
+import { C8yClient, C8yClientOptions } from "../c8yclient";
 import { C8ySchemaGenerator } from "./schema";
 import { isURL, removeBaseUrlFromRequestUrl } from "./url";
+import {
+  C8yAuthOptions,
+  C8yPactAuthObject,
+  toPactAuthObject,
+  isAuthOptions,
+  isPactAuthObject,
+} from "../auth";
 
 /**
  * ID representing a pact object. Should be unique.
@@ -191,7 +200,7 @@ export interface C8yPactRecord {
   /**
    * Auth information used for the request. Can be Basic or Cookie auth. Contains username and possibly alias.
    */
-  auth?: C8yAuthOptions;
+  auth?: C8yPactAuthObject;
   /**
    * Id of an object created by the request. Used for mapping when running the recording.
    */
@@ -260,7 +269,7 @@ export class C8yDefaultPact implements C8yPact {
         toPactRequest(r) || {},
         toPactResponse(r) || {},
         client?._options,
-        client?._auth
+        client?._auth ? toPactAuthObject(client?._auth) : undefined
       );
       removeBaseUrlFromRequestUrl(pactRecord, info.baseUrl);
       return new C8yDefaultPact([pactRecord], info, info.id);
@@ -415,7 +424,7 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   request: C8yPactRequest;
   response: C8yPactResponse<any>;
   options?: C8yClientOptions;
-  auth?: C8yAuthOptions;
+  auth?: C8yPactAuthObject;
   createdObject?: string;
   modifiedResponse?: C8yPactResponse<any>;
 
@@ -423,7 +432,7 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     request: C8yPactRequest,
     response: C8yPactResponse<any>,
     options?: C8yClientOptions,
-    auth?: C8yAuthOptions,
+    auth?: C8yPactAuthObject,
     createdObject?: string,
     modifiedResponse?: C8yPactResponse<any>
   ) {
@@ -470,7 +479,11 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
       toPactRequest(r) || {},
       toPactResponse(r) || {},
       client?._options,
-      isAuthOptions(auth) ? auth : client?._auth
+      isAuthOptions(auth) || isPactAuthObject(auth)
+        ? toPactAuthObject(auth)
+        : client?._auth
+        ? toPactAuthObject(client?._auth)
+        : undefined
     );
   }
 
@@ -541,21 +554,6 @@ export function isPactRecord(obj: any): obj is C8yPactRecord {
     "response" in obj &&
     _.isObjectLike(_.get(obj, "response")) &&
     _.isFunction(_.get(obj, "toCypressResponse"))
-  );
-}
-
-/**
- * Checks if the given object is a C8yAuthOptions and contains at least a user
- * and a type or userAlias property.
- *
- * @param obj The object to check.
- * @returns True if the object is a C8yAuthOptions, false otherwise.
- */
-export function isAuthOptions(obj: any): obj is C8yAuthOptions {
-  return (
-    _.isObjectLike(obj) &&
-    "user" in obj &&
-    ("type" in obj || "userAlias" in obj)
   );
 }
 
@@ -736,7 +734,7 @@ export function createPactRecord(
   }
 
   // only store properties that need to be exposed. do not store password.
-  auth = _.pick(auth, ["user", "userAlias", "type"]);
+  auth = auth ? toPactAuthObject(auth) : auth;
   return C8yDefaultPactRecord.from(response, auth, client);
 }
 
