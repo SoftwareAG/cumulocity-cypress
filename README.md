@@ -360,18 +360,24 @@ For more information see [Debug just like you always do](https://docs.cypress.io
 
 ### Testing
 
-Cypress is used for testing commands. All tests a located in `test/cypress` folder. If needed, add HTML fixtures in `test/cypress/app/` folder.
+Cypress is used for testing commands. All tests are located in `test/cypress` folder. If needed, add HTML fixtures in `test/cypress/app/` folder.
 
 Run tests using
 
 ```bash
-npm run test
+npm run cypress
 ```
 
 or with opening the Cypress console
 
 ```bash
-npm run test:open
+npm run cypress:open
+```
+
+Jest unit tests are located in src/ folder as `*.spec.ts` files. Run jest tests using
+
+```bash
+npm run jest
 ```
 
 #### Test access of DOM elements

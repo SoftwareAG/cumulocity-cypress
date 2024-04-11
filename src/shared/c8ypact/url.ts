@@ -5,9 +5,13 @@ export function isURL(obj: any): obj is URL {
   return obj instanceof URL;
 }
 
-export function relativeURL(url: URL | string): string {
-  const u = isURL(url) ? url : new URL(url);
-  return u.pathname + u.search;
+export function relativeURL(url: URL | string): string | undefined {
+  try {
+    const u = isURL(url) ? url : new URL(url);
+    return u.pathname + u.search;
+  } catch {
+    return undefined;
+  }
 }
 
 export function removeBaseUrlFromString(url: string, baseUrl?: string): string {
@@ -16,7 +20,7 @@ export function removeBaseUrlFromString(url: string, baseUrl?: string): string {
   }
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   let result = url.replace(normalizedBaseUrl, "");
-  if (_.isEmpty(normalizedBaseUrl)) {
+  if (_.isEmpty(result)) {
     result = "/";
   }
   return result;
