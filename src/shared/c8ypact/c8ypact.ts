@@ -547,21 +547,6 @@ export function isPactRecord(obj: any): obj is C8yPactRecord {
 }
 
 /**
- * Checks if the given object is a C8yAuthOptions and contains at least a user
- * and a type or userAlias property.
- *
- * @param obj The object to check.
- * @returns True if the object is a C8yAuthOptions, false otherwise.
- */
-export function isAuthOptions(obj: any): obj is C8yAuthOptions {
-  return (
-    _.isObjectLike(obj) &&
-    "user" in obj &&
-    ("type" in obj || "userAlias" in obj)
-  );
-}
-
-/**
  * Checks if the given object is a Cypress.Response.
  *
  * @param obj The object to check.

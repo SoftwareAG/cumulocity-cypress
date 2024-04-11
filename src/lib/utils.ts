@@ -1,4 +1,7 @@
-import { C8yAuthOptions, isAuth } from "../shared/auth";
+/// <reference types="cypress" />
+
+import { BasicAuth, CookieAuth, IAuthentication } from "@c8y/client";
+import { C8yAuthOptions, isAuthOptions } from "../shared/auth";
 import { C8yClient } from "../shared/c8yclient";
 
 const { _ } = Cypress;
@@ -44,7 +47,7 @@ export function normalizedArgumentsWithAuth(args: any[]) {
   const normalized = normalizedArguments(args);
   if (
     _.isEmpty(normalized) ||
-    (!_.isEmpty(normalized) && !isAuth(normalized[0]))
+    (!_.isEmpty(normalized) && !isAuthOptions(normalized[0]))
   ) {
     const auth = getAuthOptionsFromEnv();
     if (auth) {
@@ -74,14 +77,14 @@ export function getAuthOptionsFromEnv() {
   const authString = win.localStorage.getItem("__auth");
   if (authString && _.isString(authString) && !_.isEmpty(authString)) {
     const authObj = getAuthOptionsFromArgs(JSON.parse(authString));
-    if (isAuth(authObj)) {
+    if (isAuthOptions(authObj)) {
       return authObj;
     }
   }
 
   // check auth options configured via it("...", {auth: {...}}, ...)
   const auth = getAuthOptionsFromArgs(Cypress.config().auth);
-  if (isAuth(auth)) {
+  if (isAuthOptions(auth)) {
     return auth;
   }
   return undefined;
@@ -101,7 +104,7 @@ export function getAuthOptions(...args: any[]): C8yAuthOptions | undefined {
   }
 
   const auth = getAuthOptionsFromArgs(...args);
-  if (isAuth(auth)) {
+  if (isAuthOptions(auth)) {
     return authWithTenant(auth);
   }
 
@@ -127,7 +130,7 @@ function getAuthOptionsFromArgs(...args: any[]): C8yAuthOptions | undefined {
 
   // getAuthOptions({user: "abc", password: "abc"}, ...)
   if (!_.isEmpty(args) && _.isObjectLike(args[0])) {
-    if (isAuth(args[0])) {
+    if (isAuthOptions(args[0])) {
       return authWithTenant(
         _.pick(args[0], ["user", "password", "tenant", "userAlias", "type"])
       );
@@ -172,6 +175,43 @@ function getAuthOptionsFromArgs(...args: any[]): C8yAuthOptions | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Gets and implementation of IAuthentication from the given auth options.
+ */
+export function getC8yClientAuthentication(
+  auth: C8yAuthOptions | string | IAuthentication | undefined
+): IAuthentication | undefined {
+  let authOptions: C8yAuthOptions | undefined;
+  let result: IAuthentication | undefined;
+
+  if (auth) {
+    if (_.isString(auth)) {
+      authOptions = getAuthOptions(auth);
+    } else if (_.isObjectLike(auth)) {
+      if ("logout" in auth) {
+        result = auth as IAuthentication;
+      } else {
+        authOptions = auth as C8yAuthOptions;
+      }
+    }
+  }
+
+  if (!result) {
+    const cookieAuth = new CookieAuth();
+    const token: string = _.get(
+      cookieAuth.getFetchOptions({}),
+      "headers.X-XSRF-TOKEN"
+    );
+    if (token?.trim() && !_.isEmpty(token.trim())) {
+      result = cookieAuth;
+    } else if (authOptions) {
+      result = new BasicAuth(authOptions);
+    }
+  }
+
+  return result;
 }
 
 export function persistAuth(auth: C8yAuthOptions) {

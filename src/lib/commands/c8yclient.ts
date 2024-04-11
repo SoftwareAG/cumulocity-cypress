@@ -24,7 +24,7 @@ import {
   toCypressResponse,
   wrapFetchRequest,
 } from "../../shared/c8yclient";
-import { C8yAuthentication, isAuth } from "../../shared/auth";
+import { C8yAuthentication } from "../../shared/auth";
 
 declare global {
   namespace Cypress {
@@ -226,9 +226,9 @@ globalThis.fetch = async function (
 };
 
 const c8yclientFn = (...args: any[]) => {
-  const prevSubjectIsAuth = args && !_.isEmpty(args) && isAuth(args[0]);
+  const prevSubjectIsAuth = args && !_.isEmpty(args) && isAuthOptions(args[0]);
   const prevSubject: Cypress.Chainable<any> =
-    args && !_.isEmpty(args) && !isAuth(args[0]) ? args[0] : undefined;
+    args && !_.isEmpty(args) && !isAuthOptions(args[0]) ? args[0] : undefined;
   let $args = normalizedArgumentsWithAuth(
     args && prevSubject ? args.slice(1) : args
   );
@@ -236,7 +236,7 @@ const c8yclientFn = (...args: any[]) => {
   let authOptions;
   let basicAuth, cookieAuth;
 
-  if (!isAuth($args[0]) && _.isObject($args[$args.length - 1])) {
+  if (!isAuthOptions($args[0]) && _.isObject($args[$args.length - 1])) {
     $args = [
       $args[$args.length - 1].auth,
       ...($args[0] === undefined ? $args.slice(1) : $args),
@@ -293,7 +293,7 @@ const c8yclientFn = (...args: any[]) => {
 
   // restore client only if client is undefined and no auth is provided as previousSubject
   // previousSubject must have priority
-  if (!options.client && !(args[0] && isAuth(args[0]))) {
+  if (!options.client && !(args[0] && isAuthOptions(args[0]))) {
     c8yclient = restoreClient() || { _client: undefined };
   }
 

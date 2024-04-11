@@ -1,7 +1,7 @@
 import { getAuthOptions, resetClient } from "../utils";
-import { C8yAuthOptions, C8yAuthentication, isAuth } from "../../shared/auth";
+import { C8yAuthOptions, C8yAuthentication } from "../../shared/auth";
 
-export { C8yAuthOptions, C8yAuthentication, isAuth };
+export { C8yAuthOptions, C8yAuthentication };
 
 declare global {
   namespace Cypress {

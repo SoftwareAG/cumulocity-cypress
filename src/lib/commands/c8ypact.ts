@@ -4,6 +4,7 @@ import "../pact/fetchclient";
 
 import * as P from "../../shared/c8ypact";
 import * as C from "../../shared/c8yclient";
+import * as A from "../../shared/auth";
 
 declare global {
   /**
@@ -50,4 +51,4 @@ globalThis.isCypressResponse = P.isCypressResponse;
 globalThis.isPactError = P.isPactError;
 globalThis.isPactRecord = P.isPactRecord;
 globalThis.isPact = P.isPact;
-globalThis.isAuthOptions = P.isAuthOptions;
+globalThis.isAuthOptions = A.isAuthOptions;
