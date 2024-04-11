@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 import _ from "lodash";
 import {
   C8yPactPreprocessor,

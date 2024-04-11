@@ -91,6 +91,26 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.schemaMatcher).to.be.a("object");
     });
 
+    it("isPactRecord is registered globally", function () {
+      expect(globalThis.isPactRecord).to.be.a("function");
+    });
+
+    it("isPact is registered globally", function () {
+      expect(globalThis.isPact).to.be.a("function");
+    });
+
+    it("isCypressResponse is registered globally", function () {
+      expect(globalThis.isCypressResponse).to.be.a("function");
+    });
+
+    it("isPactError is registered globally", function () {
+      expect(globalThis.isPactError).to.be.a("function");
+    });
+
+    it("isAuthOptions is registered globally", function () {
+      expect(globalThis.isAuthOptions).to.be.a("function");
+    });
+
     it(
       "should use ignore annotation configured for the test",
       { c8ypact: { ignore: true } },
@@ -1418,118 +1438,6 @@ describe("c8ypact", () => {
       });
       expect(obj.body.password).to.eq("test");
       expect(obj.requestHeaders?.UseXBasic).to.be.undefined;
-    });
-  });
-
-  context("c8ypact typeguards", function () {
-    it("isPactRecord is registered globally", function () {
-      expect(globalThis.isPactRecord).to.be.a("function");
-    });
-
-    it("isPactRecord validates undefined", function () {
-      expect(isPactRecord(undefined)).to.be.false;
-    });
-
-    it("isPactRecord validates pact object", function () {
-      const pact = {
-        response: {
-          status: 201,
-          isOkStatusCode: true,
-        },
-        request: {
-          url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
-        },
-        toCypressResponse: (obj: any) => {
-          return true;
-        },
-      };
-      expect(isPactRecord(pact)).to.be.true;
-    });
-
-    it("isPactRecord validates C8yDefaultPactRecord", function () {
-      const pact = {
-        response: {
-          status: 201,
-          isOkStatusCode: true,
-        },
-        request: {
-          url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
-        },
-      };
-      const record = new C8yDefaultPactRecord(pact.request, pact.response, {});
-      expect(isPactRecord(record)).to.be.true;
-      expect(record.toCypressResponse()).to.not.be.null;
-    });
-
-    it("isPact validates undefined", function () {
-      expect(isPact(undefined)).to.be.false;
-    });
-
-    it("isPact is registered globally", function () {
-      expect(globalThis.isPact).to.be.a("function");
-    });
-
-    it("isPact validates pact object", function () {
-      const pact: C8yPact = new C8yDefaultPact(
-        [
-          new C8yDefaultPactRecord(
-            {
-              url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
-            },
-            {
-              status: 201,
-              isOkStatusCode: true,
-            },
-            {},
-            {}
-          ),
-        ],
-        {
-          id: "testid",
-          baseUrl: "http://localhost:8080",
-        },
-        "test"
-      );
-      expect(isPact(pact)).to.be.true;
-    });
-
-    it("isPact validates records to be C8yDefaultPactRecord", function () {
-      const pact: C8yPact = new C8yDefaultPact(
-        [
-          // @ts-expect-error
-          {
-            response: {
-              status: 201,
-              isOkStatusCode: true,
-            },
-            request: {
-              url: "http://localhost:8080/inventory/managedObjects/1?withChildren=false",
-            },
-          },
-        ],
-        {
-          baseUrl: "http://localhost:8080",
-        },
-        "test"
-      );
-      expect(isPact(pact)).to.be.false;
-    });
-
-    it("isPactError validates error object with name C8yPactError", function () {
-      const error = new Error("test");
-      error.name = "C8yPactError";
-      expect(isPactError(error)).to.be.true;
-    });
-
-    it("isPactError does not validate error with wrong name", function () {
-      const error = new Error("test");
-      expect(isPactError(error)).to.be.false;
-    });
-
-    it("isPactError does not validate undefined and empty", function () {
-      expect(isPactError(undefined)).to.be.false;
-      expect(isPactError(null)).to.be.false;
-      expect(isPactError({})).to.be.false;
     });
   });
 });
