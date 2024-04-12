@@ -20,6 +20,7 @@ import {
   isWindowFetchResponse,
   toCypressResponse,
   isCypressError,
+  isCypressResponse,
 } from "cumulocity-cypress";
 
 const { _, sinon } = Cypress;

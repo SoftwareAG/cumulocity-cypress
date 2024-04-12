@@ -2,12 +2,15 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "lib": ["ES2020", "dom"],
-    "types": ["cypress", "node"],
+    "rootDir": ".",
+    "lib": ["ES2020"],
+    "types": ["node", "cookie-parser", "lodash"],
     "paths": {
       "cumulocity-cypress/*": ["./../../src/*"],
       "cumulocity-cypress": ["./../../src"]
     }
   },
-  "references": [{ "path": "./../../src" }]
+  "references": [
+    { "path": "./../../src" },
+  ]
 }

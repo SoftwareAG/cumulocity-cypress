@@ -5,7 +5,7 @@ import {
   ICurrentTenant,
   IDeviceCredentials,
 } from "@c8y/client";
-import { C8yAuthOptions } from "./auth";
+import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClientOptions } from "../../shared/c8yclient";
 const { _ } = Cypress;
 

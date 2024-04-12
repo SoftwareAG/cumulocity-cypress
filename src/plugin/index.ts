@@ -5,6 +5,10 @@ import {
   C8yPactFileAdapter,
   C8yPactDefaultFileAdapter,
 } from "../shared/c8ypact/fileadapter";
+import {
+  C8yPactHttpProvider,
+  C8yPactHttpProviderOptions,
+} from "../shared/provider/pactprovider";
 import { C8yPact } from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
 
@@ -50,6 +54,7 @@ export function configureC8yPlugin(
   }
 
   let pacts: { [key: string]: C8yPact } = {};
+  let provider: C8yPactHttpProvider | null = null;
 
   // use C8Y_PLUGIN_LOADED to see if the plugin has been loaded
   config.env.C8Y_PLUGIN_LOADED = "true";
@@ -119,6 +124,25 @@ export function configureC8yPlugin(
     }
   }
 
+  async function startProvider(
+    options: C8yPactHttpProviderOptions
+  ): Promise<C8yPactHttpProvider> {
+    if (provider) {
+      await stopProvider();
+    }
+    provider = new C8yPactHttpProvider(Object.values(pacts), options);
+    await provider.start();
+    return provider;
+  }
+
+  async function stopProvider(): Promise<null> {
+    if (provider) {
+      await provider.stop();
+      provider = null;
+    }
+    return null;
+  }
+
   async function login(options: {
     auth: C8yAuthOptions;
     baseUrl: string;
@@ -132,6 +156,8 @@ export function configureC8yPlugin(
     "c8ypact:load": loadPacts,
     "c8ypact:remove": removePact,
     "c8ypact:clearAll": clearAll,
+    "c8ypact:provider:start": startProvider,
+    "c8ypact:provider:stop": stopProvider,
     "c8ypact:oauthLogin": login,
   });
 }

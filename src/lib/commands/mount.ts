@@ -7,7 +7,7 @@ import "./oauthlogin";
 
 import { FetchClient } from "@c8y/client";
 import { getAuthOptionsFromEnv, getBaseUrlFromEnv } from "../utils";
-import { C8yAuthOptions } from "../../shared/c8yclient";
+import { C8yAuthOptions } from "../../shared/auth";
 
 declare global {
   namespace Cypress {

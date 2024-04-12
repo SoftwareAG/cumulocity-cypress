@@ -18,13 +18,14 @@ import {
   IResult,
   IResultList,
 } from "@c8y/client";
+import { C8yAuthentication, isAuthOptions } from "../../shared/auth";
+
 import {
+  wrapFetchRequest,
   C8yClient,
   C8yClientOptions,
   toCypressResponse,
-  wrapFetchRequest,
 } from "../../shared/c8yclient";
-import { C8yAuthentication } from "../../shared/auth";
 
 declare global {
   namespace Cypress {
