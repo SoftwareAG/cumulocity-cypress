@@ -71,19 +71,38 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {
     this.createFolderRecursive(this.folder, true);
     const file = path.join(this.folder, `${pact.id}.json`);
-    fs.writeFileSync(
-      file,
-      JSON.stringify(
-        {
-          id: pact.id,
-          info: pact.info,
-          records: pact.records,
-        },
-        undefined,
-        2
-      ),
-      "utf-8"
+    try {
+      fs.writeFileSync(
+        file,
+        this.safeStringify(
+          {
+            id: pact.id,
+            info: pact.info,
+            records: pact.records,
+          },
+          2
+        ),
+        "utf-8"
+      );
+    } catch (error) {
+      console.error(`Failed to save pact.`, error);
+    }
+  }
+
+  safeStringify(obj: any, indent = 2) {
+    let cache: any[] = [];
+    const retVal = JSON.stringify(
+      obj,
+      (key, value) =>
+        typeof value === "object" && value !== null
+          ? cache.includes(value)
+            ? undefined
+            : cache.push(value) && value
+          : value,
+      indent
     );
+    cache = [];
+    return retVal;
   }
 
   deletePact(id: string): void {

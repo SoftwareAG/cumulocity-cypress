@@ -1,10 +1,10 @@
 import _ from "lodash";
 
 import {
-  C8yPactHttpProvider,
   C8yPactDefaultFileAdapter,
   C8yAuthOptions,
   oauthLogin,
+  C8yPactHttpProvider,
 } from "cumulocity-cypress/node";
 
 const folder = process.env.C8Y_PACT_FOLDER;
@@ -24,11 +24,11 @@ const staticRoot = process.env.C8Y_STATIC_ROOT;
 console.log(`Using pact folder: ${folder}`);
 
 const adapter = new C8yPactDefaultFileAdapter(folder);
-const pacts = adapter.loadPacts();
-if (!pacts || _.isEmpty(pacts)) {
-  console.error(`No pacts found in folder: ${adapter.getFolder()}`);
-  process.exit(1);
-}
+const pacts = adapter.loadPacts() || [];
+// if (!pacts || _.isEmpty(pacts)) {
+//   console.error(`No pacts found in folder: ${adapter.getFolder()}`);
+//   process.exit(1);
+// }
 
 const auth: C8yAuthOptions | undefined =
   user && password ? { user, password, tenant } : undefined;
@@ -50,6 +50,7 @@ if (staticRoot) {
       tenant,
       staticRoot,
       auth,
+      adapter,
     });
     await provider.start();
 
