@@ -3,15 +3,18 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch Pact Provider",
       "type": "node",
       "request": "launch",
-      "name": "Launch Pact Provider",
-      "runtimeArgs": ["-r", "ts-node/register"],
       "program": "${workspaceFolder}/packages/pactprovider/src/httpprovider.ts",
-      "outFiles": ["${workspaceFolder}/packages/pactprovider/**/*.js"],
-      "sourceMaps": true,
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
       "envFile": "${workspaceFolder}/packages/pactprovider/.env",
-      "console": "integratedTerminal"
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ]
     },
     {
       "name": "Cypress Chrome",
