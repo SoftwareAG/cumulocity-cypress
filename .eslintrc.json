@@ -26,7 +26,8 @@
         "ts-expect-error": "allow-with-description",
         "minimumDescriptionLength": 0
       }
-    ]
+    ],
+    "@typescript-eslint/no-restricted-imports": "error"
   },
   "settings": {
     "import/parsers": {
