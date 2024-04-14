@@ -16,9 +16,14 @@ import cookieParser from "cookie-parser";
 import { C8yAuthOptions } from "../auth";
 import {
   C8yDefaultPact,
+  C8yDefaultPactRecord,
   C8yPact,
   C8yPactInfo,
+  C8yPactPreprocessor,
+  C8yPactRecord,
+  C8yPactRequestMatchingOptions,
   C8yPactSaveKeys,
+  C8ySchemaGenerator,
   isPact,
   toPactSerializableObject,
 } from "../c8ypact";
@@ -32,10 +37,20 @@ export interface C8yPactHttpProviderOptions {
   tenant?: string;
   staticRoot?: string;
   adapter?: C8yPactFileAdapter;
+  preprocessor?: C8yPactPreprocessor;
+  schemaGenerator?: C8ySchemaGenerator;
+  requestMatching?: C8yPactRequestMatchingOptions;
+  strictMocking?: boolean;
+  isRecordingEnabled?: boolean;
+  errorResponseRecord?: C8yPactRecord;
 }
 
+const temp_pact_id = "testid";
+
 export class C8yPactHttpProvider {
-  pacts: { [key: string]: C8yPact };
+  pacts: { [key: string]: C8yDefaultPact };
+  currentPact?: C8yDefaultPact;
+
   currentPacts?: C8yPact[];
   protected port: number;
 
@@ -44,25 +59,38 @@ export class C8yPactHttpProvider {
   protected tenant?: string;
 
   adapter?: C8yPactFileAdapter;
+  protected _isRecordingEnabled: boolean = false;
+  protected _isStrictMocking: boolean = true;
 
   protected auth?: C8yAuthOptions;
   protected app: Express;
   protected server?: Server;
-  protected proxy?: RequestHandler;
+  protected options: C8yPactHttpProviderOptions;
 
   constructor(pacts: C8yPact[], options: C8yPactHttpProviderOptions = {}) {
+    this.options = options;
+    this.adapter = options.adapter;
     this.port = options.port || 3000;
+    this._isRecordingEnabled = options.isRecordingEnabled || false;
+    this._isStrictMocking = options.strictMocking || true;
+
     this._baseUrl = options.baseUrl;
     this._staticRoot = options.staticRoot;
+
     this.pacts = (pacts || []).reduce((acc, p) => {
-      acc[p.info.id] = p;
+      const pact = C8yDefaultPact.from(p);
+      pact.info.requestMatching = options.requestMatching;
+      acc[p.info.id] = pact;
       return acc;
-    }, {} as { [key: string]: C8yPact });
+    }, {} as { [key: string]: C8yDefaultPact });
+    this.currentPact = this.pacts[temp_pact_id];
+
     this.tenant = options.tenant;
-    this.adapter = options.adapter;
+    this.auth = options.auth;
 
     this.app = express();
     this.app.use(cookieParser());
+    // automatically parse request bodies
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -72,50 +100,7 @@ export class C8yPactHttpProvider {
 
     this.auth = options.auth;
     if (this.baseUrl) {
-      this.app.use(
-        "/",
-        createProxyMiddleware({
-          target: this.baseUrl,
-          changeOrigin: true,
-          cookieDomainRewrite: "",
-
-          onProxyReq: (proxyReq) => {
-            // add authorization header
-            const bearer = options.auth?.bearer;
-            if (bearer) {
-              proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
-            }
-            const xsrf = options.auth?.xsrf;
-            if (xsrf) {
-              proxyReq.setHeader("X-XSRF-TOKEN", xsrf);
-            }
-            // remove accept-encoding to avoid gzipped responses
-            proxyReq.removeHeader("Accept-Encoding");
-          },
-
-          onProxyRes: (proxyRes, req, res) => {
-            const body: any[] = [];
-
-            proxyRes.on("data", (chunk) => {
-              body.push(chunk);
-            });
-            proxyRes.on("end", () => {
-              console.log(`${res.statusCode} ${this.baseUrl}${req.url}`);
-              try {
-                const reqBody = req.body;
-                let resBody: any | string | undefined =
-                  Buffer.concat(body).toString("utf8");
-                resBody = JSON.parse(reqBody);
-                this.savePact(
-                  this.toCypressResponse(req, res, { resBody, reqBody })
-                );
-              } catch {
-                // no-op
-              }
-            });
-          },
-        })
-      );
+      this.app.use("/", this.proxyRequestHandler(this.auth));
     }
 
     // // this.registerBaseUrlProxy();
@@ -129,6 +114,15 @@ export class C8yPactHttpProvider {
 
   get staticRoot(): string | undefined {
     return this._staticRoot;
+  }
+
+  isRecordingEnabled(): boolean {
+    return (
+      this._isRecordingEnabled === true &&
+      this.adapter != null &&
+      this.auth != null &&
+      this.baseUrl != null
+    );
   }
 
   async start(): Promise<void> {
@@ -247,23 +241,87 @@ export class C8yPactHttpProvider {
     });
   }
 
-  // protected registerBaseUrlProxy() {
-  //   const createProxy = (target: string) => {
-  //     return createProxyMiddleware({
-  //       target,
-  //       changeOrigin: true,
-  //       onProxyReq: (proxyReq, req, res) => {
-  //         // proxyReq.setHeader("Authorization", authHeader);
-  //         // proxyReq.setHeader("Cookie", `X-XSRF-TOKEN=${authCookie}`);
-  //       },
-  //     });
-  //   };
+  protected proxyRequestHandler(auth?: C8yAuthOptions): RequestHandler {
+    return createProxyMiddleware({
+      target: this.baseUrl,
+      changeOrigin: true,
+      cookieDomainRewrite: "",
 
-  //   this.proxy = createProxy(this.baseUrl);
-  //   this.app.use("/", (req, res, next) => {
-  //     return this.proxy(req, res, next);
-  //   });
-  // }
+      onProxyReq: (proxyReq, req, res) => {
+        // add authorization header
+        const bearer = auth?.bearer;
+        if (bearer) {
+          proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
+        }
+        const xsrf = auth?.xsrf;
+        if (xsrf) {
+          proxyReq.setHeader("X-XSRF-TOKEN", xsrf);
+        }
+        // remove accept-encoding to avoid gzipped responses
+        proxyReq.removeHeader("Accept-Encoding");
+
+        if (this._isRecordingEnabled === true) return;
+        let record = this.currentPact?.nextRecordMatchingRequest(
+          req,
+          this.baseUrl
+        );
+        if (!record) {
+          if (this._isStrictMocking) {
+            if (this.options.errorResponseRecord) {
+              record = this.options.errorResponseRecord;
+            } else {
+              record = C8yDefaultPactRecord.from({
+                status: 404,
+                statusText: "Not Found",
+                body:
+                  `<html>\n<head><title>404 Recording Not Found</title></head>` +
+                  `\n<body bgcolor="white">\n<center><h1>404 Application Not Found</h1>` +
+                  `</center>\n<hr><center>cumulocity-cypress/${this.constructor.name}</center>` +
+                  `\n</body>\n</html>\n`,
+                headers: {
+                  "content-type": "text/html",
+                },
+              });
+            }
+          }
+        }
+        if (!record) return;
+
+        const r = record?.response;
+        res.writeHead(r?.status || 200, r?.headers);
+        res.end(_.isString(r?.body) ? r?.body : JSON.stringify(r?.body));
+      },
+
+      onProxyRes: (proxyRes, req, res) => {
+        console.log(
+          `${res.statusCode} ${this.baseUrl}${
+            req.url
+          } (${this.isRecordingEnabled()})`
+        );
+
+        if (this._isRecordingEnabled === true) {
+          const body: any[] = [];
+          proxyRes.on("data", (chunk) => {
+            body.push(chunk);
+          });
+          proxyRes.on("end", async () => {
+            let reqBody: any | string | undefined;
+            let resBody: any | string | undefined;
+            try {
+              reqBody = req.body;
+              resBody = Buffer.concat(body).toString("utf8");
+              resBody = JSON.parse(resBody);
+            } catch {
+              // no-op : use body as string
+            }
+            await this.savePact(
+              this.toCypressResponse(req, res, { resBody, reqBody })
+            );
+          });
+        }
+      },
+    });
+  }
 
   protected stringifyResponse(obj: any): string {
     return JSON.stringify(obj, undefined, 2);
@@ -308,21 +366,22 @@ export class C8yPactHttpProvider {
   }
 
   async savePact(response: Cypress.Response<any> | C8yPact): Promise<void> {
-    // if (!isEnabled()) return;
-
-    const id = "testid";
+    const id = temp_pact_id;
     try {
       let pact: Pick<C8yPact, C8yPactSaveKeys>;
       if ("records" in response && "info" in response) {
         pact = response;
       } else {
         const info: C8yPactInfo = {
-          id,
+          id: temp_pact_id,
           title: [],
           tenant: this.tenant,
           baseUrl: this.baseUrl || "",
         };
-        pact = await toPactSerializableObject(response, info, {});
+        pact = await toPactSerializableObject(response, info, {
+          preprocessor: this.options.preprocessor,
+          schemaGenerator: this.options.schemaGenerator,
+        });
       }
 
       const { records } = pact;
@@ -338,11 +397,9 @@ export class C8yPactHttpProvider {
         }
       }
       if (!pact) return;
-      console.log("Saving pact", pact);
       this.adapter?.savePact(this.pacts[id] as C8yPact);
     } catch (error) {
       console.log("Failed to save pact.", error);
-      // no-op
     }
   }
 
@@ -354,17 +411,16 @@ export class C8yPactHttpProvider {
       resBody?: string;
     }
   ): Cypress.Response<any> {
-    const isBody = res != null && !("body" in res);
-    const statusCode = isBody ? 200 : res?.statusCode;
+    const statusCode = res?.statusCode || 200;
     const result: Cypress.Response<any> = {
       body: options?.resBody,
       url: req?.url,
       headers: res?.getHeaders() as { [key: string]: string },
-      status: statusCode,
+      status: res?.statusCode,
       duration: 0,
       requestHeaders: req?.headers as { [key: string]: string },
       requestBody: options?.reqBody,
-      statusText: isBody ? "OK" : res?.statusMessage,
+      statusText: res?.statusMessage,
       method: req?.method || "GET",
       isOkStatusCode: statusCode >= 200 && statusCode < 300,
       allRequestResponses: [],

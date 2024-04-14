@@ -316,7 +316,7 @@ export class C8yDefaultPact implements C8yPact {
   }
 
   nextRecordMatchingRequest(
-    request: Partial<Request>,
+    request: Partial<Request> | { url: string; method: string },
     baseUrl?: string
   ): C8yPactRecord | null {
     if (!request?.url) return null;
@@ -682,7 +682,12 @@ export async function toPactSerializableObject(
   try {
     await Promise.all(
       pact.records
-        .filter((record_1: C8yPactRecord) => !record_1.response.$body)
+        .filter(
+          (record_1) =>
+            record_1.response.body &&
+            !record_1.response.$body &&
+            _.isObjectLike(record_1.response.body)
+        )
         .map((record_2) =>
           options?.schemaGenerator
             ?.generate(record_2.response.body, { name: "body" })
