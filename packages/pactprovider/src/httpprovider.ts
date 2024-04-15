@@ -39,7 +39,7 @@ if (staticRoot) {
   try {
     if (auth) {
       const a = await oauthLogin(auth, baseUrl);
-      _.extend(auth, _.pick(a, ["bearer", "xsfrToken"]));
+      _.extend(auth, _.pick(a, ["bearer", "xsrfToken"]));
     }
 
     const provider = new C8yPactHttpProvider({

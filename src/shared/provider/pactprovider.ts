@@ -247,16 +247,28 @@ export class C8yPactHttpProvider {
 
       onProxyReq: (proxyReq, req, res) => {
         // add authorization header
-        const bearer = auth?.bearer;
+        if (
+          !proxyReq.getHeader("Authorization") &&
+          !proxyReq.getHeader("authorization")
+        ) {
+          const { bearer, xsrfToken, user, password } = auth as C8yAuthOptions;
         if (bearer) {
           proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
         }
-        const xsrf = auth?.xsrf;
-        if (xsrf) {
-          proxyReq.setHeader("X-XSRF-TOKEN", xsrf);
+          if (!bearer && user && password) {
+            proxyReq.setHeader(
+              "Authorization",
+              `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`
+            );
+          }
+          if (xsrfToken) {
+            proxyReq.setHeader("X-XSRF-TOKEN", xsrfToken);
         }
+        }
+
         // remove accept-encoding to avoid gzipped responses
         proxyReq.removeHeader("Accept-Encoding");
+        proxyReq.removeHeader("accept-encoding");
 
         if (this._isRecordingEnabled === true) return;
         let record = this.currentPact?.nextRecordMatchingRequest(

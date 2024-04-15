@@ -206,7 +206,7 @@ describe("c8ypact fetchclient", () => {
     it("should record only required auth properties", () => {
       const auth = new BasicAuth(user);
       // @ts-expect-error - additional property should not be stored in auth
-      auth.xsfrToken = "pQWAHZQfh";
+      auth.xsrfToken = "pQWAHZQfh";
       const client = new C8yPactFetchClient({
         cypresspact: Cypress.c8ypact,
         auth,
