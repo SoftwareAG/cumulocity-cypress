@@ -28,11 +28,6 @@ if (!folder) {
   process.exit(1);
 }
 
-console.log(`Using pact folder: ${folder}`);
-
-const adapter = new C8yPactDefaultFileAdapter(folder);
-const pacts = adapter.loadPacts() || [];
-
 const auth: C8yAuthOptions | undefined =
   user && password ? { user, password, tenant } : undefined;
 
@@ -47,13 +42,13 @@ if (staticRoot) {
       _.extend(auth, _.pick(a, ["bearer", "xsfrToken"]));
     }
 
-    const provider = new C8yPactHttpProvider(Object.values(pacts), {
+    const provider = new C8yPactHttpProvider({
       port,
       baseUrl,
       tenant,
       staticRoot,
       auth,
-      adapter,
+      adapter: new C8yPactDefaultFileAdapter(folder),
       schemaGenerator: new C8yQicktypeSchemaGenerator(),
       preprocessor: new C8yDefaultPactPreprocessor({
         obfuscate: ["request.headers.Authorization", "response.body.password"],

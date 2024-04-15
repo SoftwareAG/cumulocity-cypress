@@ -31,6 +31,10 @@ export interface C8yPactFileAdapter {
    * Gets the folder where the pact files are stored.
    */
   getFolder: () => string;
+  /**
+   * Checks if a pact exists for a given id.
+   */
+  pactExists(id: string): boolean;
 }
 
 /**
@@ -66,6 +70,10 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
       return JSON.parse(pact);
     }
     return null;
+  }
+
+  pactExists(id: string): boolean {
+    return fs.existsSync(path.join(this.folder, `${id}.json`));
   }
 
   savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {
