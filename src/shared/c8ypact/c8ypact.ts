@@ -130,6 +130,12 @@ export interface C8yPact {
   [Symbol.iterator](): Iterator<C8yPactRecord | null>;
 }
 
+export interface C8yPactInfoVersion {
+  system?: string;
+  c8ypact?: string;
+  runner?: string;
+}
+
 /**
  * Meta information describing a pact and how it was recorded.
  */
@@ -138,7 +144,7 @@ export interface C8yPactInfo extends C8yPactConfigOptions {
   /**
    * Version information of the system, runner and pact standard used to record the pact.
    */
-  version?: { system?: string; c8ypact?: string; runner?: string };
+  version?: C8yPactInfoVersion;
   /**
    * Title of the pact. Title is an array of suite and test titles.
    */

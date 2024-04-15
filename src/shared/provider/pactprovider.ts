@@ -44,14 +44,10 @@ export interface C8yPactHttpProviderOptions {
   isRecordingEnabled?: boolean;
   errorResponseRecord?: C8yPactRecord;
 }
-
-const temp_pact_id = "testid";
-
 export class C8yPactHttpProvider {
   pacts: { [key: string]: C8yDefaultPact };
   currentPact?: C8yDefaultPact;
 
-  currentPacts?: C8yPact[];
   protected port: number;
 
   _baseUrl?: string;
@@ -83,7 +79,7 @@ export class C8yPactHttpProvider {
       acc[p.info.id] = pact;
       return acc;
     }, {} as { [key: string]: C8yDefaultPact });
-    this.currentPact = this.pacts[temp_pact_id];
+    this.currentPact = undefined;
 
     this.tenant = options.tenant;
     this.auth = options.auth;
@@ -98,14 +94,13 @@ export class C8yPactHttpProvider {
       this.app.use(expressStatic(this.staticRoot));
     }
 
+    this.registerCurrentInterface();
+    this.registerPactInterface();
+
     this.auth = options.auth;
     if (this.baseUrl) {
       this.app.use("/", this.proxyRequestHandler(this.auth));
     }
-
-    // // this.registerBaseUrlProxy();
-    // this.registerPactInterface();
-    // this.registerCurrentInterface();
   }
 
   get baseUrl(): string | undefined {
@@ -141,7 +136,7 @@ export class C8yPactHttpProvider {
 
   protected registerCurrentInterface() {
     this.app.get("/c8ypact/current", (req: Request, res: Response) => {
-      if (!this.currentPacts) {
+      if (!this.currentPact) {
         res
           .status(404)
           .send(
@@ -149,43 +144,54 @@ export class C8yPactHttpProvider {
           );
         return;
       }
-      res.send(JSON.stringify(this.currentPacts, undefined, 2));
+      res.send(this.stringifyResponse(this.currentPact));
     });
     this.app.post("/c8ypact/current", (req: Request, res: Response) => {
-      const { id, producer, tenant, systemVersion } = req.body;
+      const { id } = req.body;
       if (id) {
-        const pact = this.pacts[id];
-        if (!pact) {
+        const current = this.pacts[id];
+        if (!current) {
           res.status(404).send(`Pact with id ${id} not found.`);
-          return;
+        } else {
+          this.currentPact = current;
+          res.status(201).send();
         }
-        this.currentPacts = [pact];
-        return;
+      } else {
+        res.status(400).send("Missing id. Provide a c8ypact id.");
       }
-      if (producer) {
-        this.currentPacts = this.pactsForProducer(producer);
-      }
-      this.currentPacts?.filter((p) => {
-        if (
-          tenant &&
-          !(!_.isUndefined(p.info.tenant) && _.isEqual(p.info.tenant, tenant))
-        ) {
-          return false;
-        }
-        if (
-          systemVersion &&
-          !(
-            !_.isUndefined(p.info.version?.system) &&
-            _.isEqual(p.info.version?.system, systemVersion)
-          )
-        ) {
-          return false;
-        }
-        return true;
-      });
     });
-    this.app.delete("/c8ypact/current", () => {
-      this.currentPacts = undefined;
+    this.app.post("/c8ypact", (req: Request, res: Response) => {
+      const { id } = req.body;
+      if (id) {
+        if (this.pacts[id] != null) {
+          res.status(409).send(`Pact with id ${id} already exists.`);
+        } else {
+          const info: C8yPactInfo = {
+            baseUrl: this.baseUrl || "",
+            requestMatching: this.options.requestMatching,
+            preprocessor: this.options.preprocessor?.options,
+            strictMocking: this._isStrictMocking,
+            ..._.pick(req.body, [
+              "id",
+              "producer",
+              "consumer",
+              "version",
+              "title",
+              "tags",
+              "description",
+            ]),
+          };
+          this.currentPact = new C8yDefaultPact([], info, id);
+          this.pacts[id] = this.currentPact;
+          res.status(201).send(this.stringifyResponse(this.currentPact));
+        }
+      } else {
+        res.status(400).send("Missing id. Provide a c8ypact id.");
+      }
+    });
+    this.app.delete("/c8ypact/current", (req, res) => {
+      this.currentPact = undefined;
+      res.status(204).send();
     });
   }
 
@@ -194,6 +200,26 @@ export class C8yPactHttpProvider {
     this.app.get("/c8ypact", (req: Request, res: Response) => {
       res.send(this.stringifyResponse(this.pacts || {}));
     });
+    // return all unique producers and its versions
+    this.app.get("/c8ypact/producers", (req: Request, res: Response) => {
+      const producers = _.uniq(
+        Object.keys(this.pacts).map((key) =>
+          this.producerForPact(this.pacts[key as keyof typeof this.pacts])
+        )
+      );
+      res.send(this.stringifyResponse(producers || []));
+    });
+    // return all pacts for a given producer with an optional version
+    this.app.get(
+      "/c8ypact/producers/:name/:version",
+      (req: Request, res: Response) => {
+        const result = this.pactsForProducer(
+          req.params.name,
+          req.params.version
+        );
+        res.send(this.stringifyResponse(result || []));
+      }
+    );
     // return pact with the given id
     this.app.get("/c8ypact/:id", (req: Request, res: Response) => {
       const id: string = req.params.id;
@@ -209,22 +235,6 @@ export class C8yPactHttpProvider {
         this.stringifyResponse(this.pacts[id as keyof typeof this.pacts] || {})
       );
     });
-    // return all unique producers and its versions
-    // this.app.get("/c8ypact/producers", (req: Request, res: Response) => {
-    //   const producers = _.uniq(this.pacts.map((p) => this.producerForPact(p)));
-    //   res.send(this.stringifyResponse(producers || []));
-    // });
-    // return all pacts for a given producer with an optional version
-    this.app.get(
-      "/c8ypact/producers/:name/:version",
-      (req: Request, res: Response) => {
-        const result = this.pactsForProducer(
-          req.params.name,
-          req.params.version
-        );
-        res.send(this.stringifyResponse(result || []));
-      }
-    );
     // create a new pact for a given id. replace pact if exists
     this.app.post("/c8ypact/:id", (req: Request, res: Response) => {
       const id = req.params.id;
@@ -237,7 +247,7 @@ export class C8yPactHttpProvider {
         res.status(400).send("Invalid pact. Provide a valid pact.");
         return;
       }
-      // this.pacts[id] = pact;
+      this.pacts[id] = C8yDefaultPact.from(pact);
     });
   }
 
@@ -334,49 +344,39 @@ export class C8yPactHttpProvider {
   }
 
   protected pactsForProducer(
-    ...args:
-      | [producer: string | { name: string; version: string }]
-      | [producer: string, version?: string]
+    producer: string | { name: string; version: string },
+    version?: string
   ): C8yPact[] {
-    return [];
-    // return this.pacts.filter((p) => {
-    //   const producer = args[0];
-    //   const version = args[1];
-
-    //   const n = _.isString(producer) ? producer : producer.name;
-    //   const v = _.isString(producer) ? version : producer.version;
-    //   const pactProducer = this.producerForPact(p);
-    //   if (!_.isUndefined(v) && !_.isEqual(v, pactProducer?.version))
-    //     return false;
-    //   if (!_.isEqual(n, pactProducer?.name)) return false;
-    //   return true;
-    // });
-  }
-
-  protected currentBaseUrl(): string | undefined {
-    if (!this.currentPacts || _.isEmpty(this.currentPacts)) return undefined;
-
-    const baseUrls = this.currentPacts.reduce((acc, pact) => {
-      if (!pact.info?.baseUrl) return acc;
-      if (!acc.includes(pact.info.baseUrl)) acc.push(pact.info.baseUrl);
-      return acc;
-    }, [] as string[]);
-    if (_.isEmpty(baseUrls)) return undefined;
-    return _.first(this.baseUrl);
+    return Object.keys(this.pacts)
+      .filter((key) => {
+        const p = this.pacts[key as keyof typeof this.pacts];
+        const n = _.isString(producer) ? producer : producer.name;
+        const v = _.isString(producer) ? version : producer.version;
+        const pactProducer = this.producerForPact(p);
+        if (!_.isUndefined(v) && !_.isEqual(v, pactProducer?.version))
+          return false;
+        if (!_.isEqual(n, pactProducer?.name)) return false;
+        return true;
+      })
+      .map((key) => this.pacts[key as keyof typeof this.pacts]);
   }
 
   async savePact(response: Cypress.Response<any> | C8yPact): Promise<void> {
-    const id = temp_pact_id;
+    if (!this.currentPact) return;
+    const id = this.currentPact.id;
     try {
       let pact: Pick<C8yPact, C8yPactSaveKeys>;
       if ("records" in response && "info" in response) {
         pact = response;
       } else {
         const info: C8yPactInfo = {
-          id: temp_pact_id,
+          id: this.currentPact.id,
           title: [],
           tenant: this.tenant,
           baseUrl: this.baseUrl || "",
+          preprocessor: this.options.preprocessor?.options,
+          requestMatching: this.options.requestMatching,
+          strictMocking: this._isStrictMocking,
         };
         pact = await toPactSerializableObject(response, info, {
           preprocessor: this.options.preprocessor,

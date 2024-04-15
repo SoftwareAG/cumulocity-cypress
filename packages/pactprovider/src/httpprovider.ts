@@ -68,6 +68,7 @@ if (staticRoot) {
     await provider.start();
 
     console.log(`Listing: http://localhost:${port}`);
+    console.log(`Recording: ${isRecordingEnabled}`);
   } catch (error) {
     console.error("Error starting provider:", error);
   }
