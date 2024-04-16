@@ -302,7 +302,10 @@ export class C8yPactHttpProvider {
 
         const r = record?.response;
         res.writeHead(r?.status || 200, r?.headers);
-        res.end(_.isString(r?.body) ? r?.body : JSON.stringify(r?.body));
+        const responseBody = _.isString(r?.body)
+          ? r?.body
+          : JSON.stringify(r?.body);
+        res.end(responseBody);
       },
 
       onProxyRes: (proxyRes, req, res) => {

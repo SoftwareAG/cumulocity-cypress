@@ -751,48 +751,47 @@ export function createPactRecord(
 
 export function updateURLs(
   value: string,
-  info: C8yPactInfo,
-  options?: { tenantId?: string; baseUrl?: string }
+  from: { baseUrl: string; tenant: string },
+  to: { baseUrl: string; tenant?: string }
 ): string {
-  if (!value || !info) return value;
+  if (!value || !from || !to) return value;
   let result = value;
 
-  const tenantUrl = (baseUrl?: string, tenant?: string): URL | undefined => {
-    if (!baseUrl || !tenant) return undefined;
+  const normalizeUrl = (url?: string): string | undefined => {
+    return url?.replace(/\/$/, "");
+  };
+
+  const tenantUrl = (baseUrl?: string, tenant?: string): string | undefined => {
+    if (!baseUrl) return undefined;
+    if (!tenant) return normalizeUrl(baseUrl);
+
     try {
       const url = new URL(baseUrl);
       const instance = url.host.split(".")?.slice(1)?.join(".");
       url.host = `${tenant}.${instance}`;
-      return url;
+      return normalizeUrl(url.toString());
     } catch {
       // no-op
     }
     return undefined;
   };
 
-  const infoUrl = tenantUrl(info.baseUrl, info.tenant)
-    ?.toString()
-    ?.replace(/\/$/, "");
-  const url =
-    (
-      tenantUrl(options?.baseUrl, options?.tenantId)?.toString() ??
-      options?.baseUrl
-    )?.replace(/\/$/, "") ?? "";
-
-  if (infoUrl && url) {
-    const regexp = new RegExp(`${infoUrl}`, "g");
-    result = result.replace(regexp, url);
+  const fromTenantUrl = tenantUrl(from.baseUrl, from.tenant);
+  const toTenantUrl = tenantUrl(to.baseUrl, to.tenant);
+  if (fromTenantUrl && toTenantUrl) {
+    result = result.replace(new RegExp(fromTenantUrl, "g"), toTenantUrl);
   }
+  if (from.baseUrl && to.baseUrl) {
+    const fromBaseUrl = normalizeUrl(from.baseUrl);
+    const toBaseUrl = normalizeUrl(to.baseUrl);
+    if (fromBaseUrl && toBaseUrl) {
+      result = result.replace(new RegExp(fromBaseUrl, "g"), toBaseUrl);
+    }
 
-  if (options?.baseUrl && info.baseUrl) {
-    const regexp = new RegExp(`${info.baseUrl}`, "g");
-    result = result.replace(regexp, options?.baseUrl);
+    result = result.replace(
+      new RegExp(from.baseUrl.replace(/https?:\/\//i, ""), "g"),
+      to.baseUrl.replace(/https?:\/\//i, "")
+    );
   }
-
-  if (info.tenant && options?.tenantId) {
-    const regexp = new RegExp(`${info.tenant}`, "g");
-    result = result.replace(regexp, options?.tenantId);
-  }
-
   return result;
 }
