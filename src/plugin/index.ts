@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
+import debug from "debug";
 
 import {
   C8yPactFileAdapter,
@@ -30,6 +31,8 @@ export type C8yPluginConfig = {
   pactAdapter?: C8yPactFileAdapter;
 };
 
+const log = debug("c8y:plugin");
+
 /**
  * Configuration options for the Cumulocity Pact plugin. Sets up for example required tasks
  * to save and load pact objects.
@@ -51,6 +54,9 @@ export function configureC8yPlugin(
       // default folder is cypress/fixtures/c8ypact
       path.join(process.cwd(), "cypress", "fixtures", "c8ypact");
     adapter = new C8yPactDefaultFileAdapter(folder);
+    log(`Created C8yPactDefaultFileAdapter with folder ${folder}`);
+  } else {
+    log(`Using adapter from options ${adapter}`);
   }
 
   let pacts: { [key: string]: C8yPact } = {};
@@ -63,6 +69,7 @@ export function configureC8yPlugin(
 
   function savePact(pact: C8yPact): null {
     const { id, info, records } = pact;
+    log(`savePact() - ${pact.id} (${pact.records?.length || 0} records)`);
     validateId(id);
 
     const version = getVersion();
@@ -91,12 +98,14 @@ export function configureC8yPlugin(
   }
 
   function getPact(pact: string): C8yPact | null {
+    log(`getPact() - ${pact}`);
     validateId(pact);
     return pacts[pact] || null;
   }
 
   function loadPacts(): { [key: string]: C8yPact } | undefined {
     const p = adapter?.loadPacts();
+    log(`loadPacts() - loaded ${p?.length}`);
     if (p) {
       pacts = p;
     }
@@ -104,6 +113,7 @@ export function configureC8yPlugin(
   }
 
   function removePact(pact: string): boolean {
+    log(`removePact() - ${pact}`);
     validateId(pact);
 
     if (!pacts[pact]) return false;
@@ -114,12 +124,15 @@ export function configureC8yPlugin(
   }
 
   function clearAll(): { [key: string]: C8yPact } {
+    log(`clearAll()`);
     pacts = {};
     return pacts;
   }
 
   function validateId(id: string): void {
+    log(`validateId() - ${id}`);
     if (!id || typeof id !== "string") {
+      log(`Pact id validation failed, was ${typeof id}`);
       throw new Error(`c8ypact id must be a string, was ${typeof id}`);
     }
   }
@@ -147,6 +160,9 @@ export function configureC8yPlugin(
     auth: C8yAuthOptions;
     baseUrl: string;
   }): Promise<C8yAuthOptions> {
+    log(
+      `login() - ${options?.auth?.user}:${options?.auth?.password} -> ${options?.baseUrl}`
+    );
     return await oauthLogin(options?.auth, options?.baseUrl);
   }
 
