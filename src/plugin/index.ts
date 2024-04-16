@@ -130,7 +130,7 @@ export function configureC8yPlugin(
     if (provider) {
       await stopProvider();
     }
-    provider = new C8yPactHttpProvider(Object.values(pacts), options);
+    provider = new C8yPactHttpProvider(options);
     await provider.start();
     return provider;
   }
