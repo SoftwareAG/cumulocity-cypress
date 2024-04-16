@@ -186,62 +186,6 @@ export class C8yPactHttpProvider {
     });
   }
 
-  // protected registerPactInterface() {
-  //   // return all pacts
-  //   this.app.get("/c8ypact", (req: Request, res: Response) => {
-  //     res.send(this.stringifyResponse(this.pacts || {}));
-  //   });
-  //   // return all unique producers and its versions
-  //   this.app.get("/c8ypact/producers", (req: Request, res: Response) => {
-  //     const producers = _.uniq(
-  //       Object.keys(this.pacts).map((key) =>
-  //         this.producerForPact(this.pacts[key as keyof typeof this.pacts])
-  //       )
-  //     );
-  //     res.send(this.stringifyResponse(producers || []));
-  //   });
-  //   // return all pacts for a given producer with an optional version
-  //   this.app.get(
-  //     "/c8ypact/producers/:name/:version",
-  //     (req: Request, res: Response) => {
-  //       const result = this.pactsForProducer(
-  //         req.params.name,
-  //         req.params.version
-  //       );
-  //       res.send(this.stringifyResponse(result || []));
-  //     }
-  //   );
-  //   // return pact with the given id
-  //   this.app.get("/c8ypact/:id", (req: Request, res: Response) => {
-  //     const id: string = req.params.id;
-  //     if (!id || _.isEmpty(id)) {
-  //       res.status(400).send("Missing id. Provide a c8ypact id.");
-  //       return;
-  //     }
-  //     if (!this.pacts || !this.pacts[id as keyof typeof this.pacts]) {
-  //       res.status(404).send(`Pact with id ${id} not found.`);
-  //       return;
-  //     }
-  //     res.send(
-  //       this.stringifyResponse(this.pacts[id as keyof typeof this.pacts] || {})
-  //     );
-  //   });
-  //   // create a new pact for a given id. replace pact if exists
-  //   this.app.post("/c8ypact/:id", (req: Request, res: Response) => {
-  //     const id = req.params.id;
-  //     if (!id || _.isEmpty(id)) {
-  //       res.status(400).send("Missing id. Provide a c8ypact id.");
-  //       return;
-  //     }
-  //     const pact = req.body;
-  //     if (!pact || !isPact(pact)) {
-  //       res.status(400).send("Invalid pact. Provide a valid pact.");
-  //       return;
-  //     }
-  //     this.pacts[id] = C8yDefaultPact.from(pact);
-  //   });
-  // }
-
   protected proxyRequestHandler(auth?: C8yAuthOptions): RequestHandler {
     return createProxyMiddleware({
       target: this.baseUrl,
@@ -255,9 +199,9 @@ export class C8yPactHttpProvider {
           !proxyReq.getHeader("authorization")
         ) {
           const { bearer, xsrfToken, user, password } = auth as C8yAuthOptions;
-        if (bearer) {
-          proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
-        }
+          if (bearer) {
+            proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
+          }
           if (!bearer && user && password) {
             proxyReq.setHeader(
               "Authorization",
@@ -266,7 +210,7 @@ export class C8yPactHttpProvider {
           }
           if (xsrfToken) {
             proxyReq.setHeader("X-XSRF-TOKEN", xsrfToken);
-        }
+          }
         }
 
         // remove accept-encoding to avoid gzipped responses
