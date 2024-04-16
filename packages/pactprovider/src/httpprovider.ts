@@ -3,7 +3,6 @@ import _ from "lodash";
 import {
   C8yPactDefaultFileAdapter,
   C8yAuthOptions,
-  oauthLogin,
   C8yPactHttpProvider,
   C8yQicktypeSchemaGenerator,
   C8yDefaultPactPreprocessor,
