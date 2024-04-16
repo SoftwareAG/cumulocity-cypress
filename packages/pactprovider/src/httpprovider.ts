@@ -37,11 +37,6 @@ if (staticRoot) {
 
 (async () => {
   try {
-    if (auth) {
-      const a = await oauthLogin(auth, baseUrl);
-      _.extend(auth, _.pick(a, ["bearer", "xsrfToken"]));
-    }
-
     const provider = new C8yPactHttpProvider({
       port,
       baseUrl,

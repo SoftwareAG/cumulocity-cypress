@@ -108,7 +108,6 @@ export class C8yPactHttpProvider {
     return (
       this._isRecordingEnabled === true &&
       this.adapter != null &&
-      this.auth != null &&
       this.baseUrl != null
     );
   }
@@ -118,7 +117,11 @@ export class C8yPactHttpProvider {
       await this.stop();
     }
     if (this.auth) {
-      this.auth = await oauthLogin(this.auth, this.baseUrl);
+      const { user, password, bearer, type } = this.auth;
+      if (!_.isEqual(type, "BasicAuth") && !bearer && user && password) {
+        const a = await oauthLogin(this.auth, this.baseUrl);
+        _.extend(this.auth, _.pick(a, ["bearer", "xsrfToken"]));
+      }
     }
     this.server = await this.app.listen(this.port);
   }
