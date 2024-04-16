@@ -64,6 +64,7 @@
     "@rollup/plugin-json": "^6.1.0",
     "@types/chai": "^4.3.4",
     "@types/cookie-parser": "^1.4.6",
+    "@types/debug": "^4.1.12",
     "@types/glob": "^8.1.0",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.17.0",
