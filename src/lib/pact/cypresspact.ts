@@ -19,6 +19,7 @@ import {
   toPactSerializableObject,
   C8yPactEnv,
   C8yPactSaveKeys,
+  pactId,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
@@ -353,12 +354,12 @@ function isRecordingEnabled(): boolean {
 }
 
 function getCurrentTestId(): C8yPactID {
-  let key = Cypress.currentTest?.titlePath?.join("__");
+  let key = Cypress.currentTest.titlePath;
   if (key == null) {
-    key = Cypress.spec?.relative?.split("/").slice(-2).join("__");
+    key = Cypress.spec?.relative?.split("/").slice(-2);
   }
   const pact = Cypress.config().c8ypact;
-  return (pact && pact.id) || key.replace(/ /g, "_");
+  return (pact && pact.id) || pactId(key);
 }
 
 async function savePact(

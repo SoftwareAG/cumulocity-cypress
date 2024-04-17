@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as glob from "glob";
 import debug from "debug";
-import { C8yPact, C8yPactSaveKeys } from "./c8ypact";
+import { C8yPact, C8yPactSaveKeys, pactId } from "./c8ypact";
 
 /**
  * Using C8yPactFileAdapter you can implement your own adapter to load and save pacts using any format you want.
@@ -71,7 +71,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
       log(`loadPact() - folder ${this.folder} does not exist`);
       return null;
     }
-    const file = path.join(this.folder, `${id}.json`);
+    const file = path.join(this.folder, `${pactId(id)}.json`);
     if (fs.existsSync(file)) {
       const pact = fs.readFileSync(file, "utf-8");
       log(`loadPact() - ${file} loaded`);
@@ -83,13 +83,13 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   }
 
   pactExists(id: string): boolean {
-    return fs.existsSync(path.join(this.folder, `${id}.json`));
+    return fs.existsSync(path.join(this.folder, `${pactId(id)}.json`));
   }
 
   savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {
     this.createFolderRecursive(this.folder, true);
-    const file = path.join(this.folder, `${pact.id}.json`);
-    log(`savePact() - ${file}`);
+    const file = path.join(this.folder, `${pactId(pact.id)}.json`);
+    log(`savePact() - write ${file} (${pact.records?.length || 0} records)`);
 
     try {
       fs.writeFileSync(
@@ -126,7 +126,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   }
 
   deletePact(id: string): void {
-    const filePath = path.join(this.folder, `${id}.json`);
+    const filePath = path.join(this.folder, `${pactId(id)}.json`);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       log(`deletePact() - deletaed ${filePath}`);
@@ -171,7 +171,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   }
 
   protected createFolderRecursive(f: string, absolutePath: boolean) {
-    log(`createFolderRecursive() - ${f}`);
+    log(`createFolderRecursive() - ${f} (absolute: ${absolutePath})`);
     const parts = f?.split(path.sep);
     parts.forEach((part, i) => {
       let currentPath = path.join(...parts.slice(0, i + 1));

@@ -24,6 +24,7 @@ import {
   C8yPactRequestMatchingOptions,
   C8yPactSaveKeys,
   C8ySchemaGenerator,
+  pactId,
   toPactSerializableObject,
 } from "../c8ypact";
 import { oauthLogin } from "../c8yclient";
@@ -143,7 +144,7 @@ export class C8yPactHttpProvider {
       res.send(this.stringifyResponse(this.currentPact));
     });
     this.app.post("/c8ypact/current", (req: Request, res: Response) => {
-      const { id } = req.body;
+      const id = req.body.id || pactId(req.body.title);
       if (id) {
         if (this.currentPact?.id === id) {
           res.status(200).send();

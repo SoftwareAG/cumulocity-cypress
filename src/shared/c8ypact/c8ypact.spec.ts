@@ -8,9 +8,62 @@ import {
   isPactError,
   isPactRecord,
   updateURLs,
+  pactId,
 } from "./c8ypact";
 
 describe("c8ypact", () => {
+  describe("pactId", function () {
+    it("generate id for string", function () {
+      expect(pactId("test")).toBe("test");
+      expect(pactId("test test")).toBe("test_test");
+      expect(pactId("test    test")).toBe("test_test");
+    });
+
+    it("remove special characters", function () {
+      expect(pactId("test@#$%^&*()_+")).toBe("test");
+      expect(pactId("test@#$%^&*()_+ test")).toBe("test_test");
+    });
+
+    it("should not split numbers", function () {
+      expect(pactId("c8ypact")).toBe("c8ypact");
+      expect(pactId("c8ypact test")).toBe("c8ypact_test");
+    });
+
+    it("deburrs string", function () {
+      expect(pactId("tést")).toBe("test");
+      expect(pactId("tést tèst")).toBe("test_test");
+    });
+
+    it("trims id string", function () {
+      expect(pactId(" test ")).toBe("test");
+      expect(pactId(" test test ")).toBe("test_test");
+      expect(pactId(["  test  ", "  test"])).toBe("test__test");
+    });
+
+    it("generate id for array of strings", function () {
+      expect(pactId(["test", "test"])).toBe("test__test");
+      expect(pactId(["test", "test test"])).toBe("test__test_test");
+    });
+
+    it("undefined and null", function () {
+      expect(pactId(undefined as any)).toBe(undefined);
+      expect(pactId(null as any)).toBe(null);
+    });
+
+    it("generate id for object", function () {
+      expect(pactId({ test: "test" } as any)).toBe(undefined);
+      expect(pactId({ test: "test", test2: "test" } as any)).toBe(undefined);
+    });
+
+    it("should not change valid ids", function () {
+      expect(pactId("test")).toBe("test");
+      expect(pactId("test_test")).toBe("test_test");
+      expect(pactId("test__test")).toBe("test__test");
+      const x = "c8ypact__c8ypact_record_and_load__should_record_c8ypacts";
+      expect(pactId(x)).toBe(x);
+    });
+  });
+
   describe("isPactRecord", function () {
     it("isPactRecord validates undefined", function () {
       expect(isPactRecord(undefined)).toBe(false);
