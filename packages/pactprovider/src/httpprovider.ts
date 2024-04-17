@@ -1,63 +1,60 @@
 import _ from "lodash";
-
-import {
-  C8yPactDefaultFileAdapter,
-  C8yAuthOptions,
-  C8yPactHttpProvider,
-  C8yQicktypeSchemaGenerator,
-  C8yDefaultPactPreprocessor,
-} from "cumulocity-cypress/node";
-
+import debug from "debug";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
-const {
-  folder,
-  port,
-  baseUrl,
-  user,
-  password,
-  tenant,
-  staticRoot,
-  isRecordingEnabled,
-} = getArgs();
+import { cosmiconfig } from "cosmiconfig";
+import { TypeScriptLoader } from "cosmiconfig-typescript-loader";
 
-if (!folder) {
-  console.error("No pact folder specified. Please set C8Y_PACT_FOLDER.");
-  process.exit(1);
-}
+import {
+  C8yPactDefaultFileAdapter,
+  C8yPactHttpProvider,
+  C8yDefaultPactPreprocessor,
+  C8yPactHttpProviderOptions,
+  C8yPactHttpProviderConfig,
+} from "cumulocity-cypress/node";
 
-const auth: C8yAuthOptions | undefined =
-  user && password ? { user, password, tenant } : undefined;
-
-if (staticRoot) {
-  console.log(`Using static root: ${staticRoot}`);
-}
+const log = debug("c8y:pactprovider");
 
 (async () => {
+  const config = getConfigFromArgsOrEnvironment();
+  log("config from args or environment: ", config);
+
+  const configLoader = cosmiconfig("cumulocity-cypress", {
+    searchPlaces: [
+      "cumulocity-cypress.config.ts",
+      ".cumulocity-cypressrc.ts",
+      "package.json",
+      "packages/pactprovider/cumulocity-cypress.config.ts",
+      "packages/pactprovider/.cumulocity-cypressrc.ts",
+      "packages/pactprovider/package.json",
+    ],
+    loaders: {
+      ".ts": TypeScriptLoader(),
+    },
+  });
+
+  const result = await configLoader.search(process.cwd());
+  if (result) {
+    log("found config file: ", result.filepath);
+    log("loaded config: ", result.config);
+    _.defaults(config, result.config);
+  }
+
   try {
-    const provider = new C8yPactHttpProvider({
-      port,
-      baseUrl,
-      tenant,
-      staticRoot,
-      auth,
-      adapter: new C8yPactDefaultFileAdapter(folder),
-      schemaGenerator: new C8yQicktypeSchemaGenerator(),
-      preprocessor: new C8yDefaultPactPreprocessor({
-        obfuscate: ["request.headers.Authorization", "response.body.password"],
-      }),
-      strictMocking: false,
-      requestMatching: {
-        ignoreUrlParameters: ["dateFrom", "dateTo", "_", "nocache"],
-        baseUrl: baseUrl,
-      },
-      isRecordingEnabled,
-    });
+    applyConfigDefaults(config);
+
+    const provider = new C8yPactHttpProvider(
+      config as C8yPactHttpProviderOptions
+    );
+    log("starting provider with config: ", config);
     await provider.start();
 
-    console.log(`Listing: http://localhost:${port}`);
-    console.log(`Recording: ${isRecordingEnabled}`);
+    console.log(`Listening: http://localhost:${config.port}`);
+    console.log(`Recording: ${config.isRecordingEnabled}`);
+    if (config?.staticRoot) {
+      console.log(`Using static root: ${config?.staticRoot}`);
+    }
   } catch (error) {
     console.error("Error starting provider:", error);
   }
@@ -71,49 +68,81 @@ function getEnvVar(name: string): string | undefined {
   );
 }
 
-function getArgs() {
-  return yargs(hideBin(process.argv))
+function applyConfigDefaults(config: Partial<C8yPactHttpProviderConfig>) {
+  if (!config) return;
+
+  if (!config?.auth) {
+    const { user, password, tenant } = config;
+    config.auth = user && password ? { user, password, tenant } : undefined;
+  }
+
+  if (!config?.adapter && config?.folder) {
+    config.adapter = new C8yPactDefaultFileAdapter(config.folder);
+  }
+
+  if (!config?.preprocessor) {
+    config.preprocessor = new C8yDefaultPactPreprocessor({
+      obfuscate: ["request.headers.Authorization", "response.body.password"],
+    });
+  }
+
+  if (!config.requestMatching) {
+    config.requestMatching = {
+      ignoreUrlParameters: ["dateFrom", "dateTo", "_", "nocache"],
+      baseUrl: config.baseUrl,
+    };
+  }
+}
+
+function getConfigFromArgsOrEnvironment(): Partial<C8yPactHttpProviderConfig> {
+  const result = yargs(hideBin(process.argv))
     .option("folder", {
       type: "string",
       description: "Folder recordings are loaded from and saved to.",
-      default: getEnvVar("C8Y_PACT_FOLDER"),
     })
     .option("port", {
       type: "number",
       description: "HTTP port the provider listens on.",
-      default: +(getEnvVar("C8Y_HTTP_PORT") || 3000),
     })
     .option("baseUrl", {
       type: "string",
       description:
         "The Cumulocity URL REST requests are proxied and recorded from.",
-      default: getEnvVar("C8Y_BASE_URL"),
     })
     .option("user", {
       type: "string",
       description: "Set the username to login at baseUrl.",
-      default: getEnvVar("C8Y_BASE_USERNAME"),
     })
     .option("password", {
       type: "string",
       description: "Set the password to login at baseUrl.",
-      default: getEnvVar("C8Y_BASE_PASSWORD"),
     })
     .option("tenant", {
       type: "string",
       description: "Set the tenant of baseUrl.",
-      default: getEnvVar("C8Y_BASE_TENANT"),
     })
     .option("staticRoot", {
       type: "string",
       description: "Set the static root to serve static files from.",
-      default: getEnvVar("C8Y_STATIC_ROOT"),
     })
-    .option("isRecordingEnabled", {
+    .option("recording", {
       type: "boolean",
       description: "Enable or disable recording",
-      default: getEnvVar("C8Y_PACT_MODE") === "recording",
     })
     .help()
     .parseSync();
+
+  // pick only the options that are set and apply defaults
+  // yargs creates properties we do not want, this way we can filter them out
+  return {
+    folder: result.folder || getEnvVar("C8Y_PACT_FOLDER"),
+    port: result.port || +(getEnvVar("C8Y_HTTP_PORT") || 3000),
+    baseUrl: result.baseUrl || getEnvVar("C8Y_BASE_URL"),
+    user: result.user || getEnvVar("C8Y_BASE_USERNAME"),
+    password: result.password || getEnvVar("C8Y_BASE_PASSWORD"),
+    tenant: result.tenant || getEnvVar("C8Y_BASE_TENANT"),
+    staticRoot: result.staticRoot || getEnvVar("C8Y_STATIC_ROOT"),
+    isRecordingEnabled:
+      result.recording || getEnvVar("C8Y_PACT_MODE") === "recording",
+  };
 }

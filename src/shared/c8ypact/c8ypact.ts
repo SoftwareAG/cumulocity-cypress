@@ -250,6 +250,16 @@ export class C8yDefaultPact implements C8yPact {
   }
 
   /**
+   * Resets the pact to the initial state. Clears all records and resets all indexes.
+   */
+  reset() {
+    this.records = [];
+    this.recordIndex = 0;
+    this.iteratorIndex = 0;
+    this.requestIndexMap = {};
+  }
+
+  /**
    * Creates a C8yPact from a Cypress.Response object, a serialized pact as string
    * or an object containing the pact records and info object. Throws an error if
    * the input can not be converted to a C8yPact.

@@ -42,8 +42,17 @@ export interface C8yPactHttpProviderOptions {
   requestMatching?: C8yPactRequestMatchingOptions;
   strictMocking?: boolean;
   isRecordingEnabled?: boolean;
-  errorResponseRecord?: C8yPactRecord;
+  errorResponseRecord?:
+    | C8yPactRecord
+    | ((url?: string, contentType?: string) => C8yPactRecord);
 }
+
+export interface C8yPactHttpProviderConfig extends C8yPactHttpProviderOptions {
+  folder?: string;
+  user?: string;
+  password?: string;
+}
+
 export class C8yPactHttpProvider {
   // pacts: { [key: string]: C8yDefaultPact };
   currentPact?: C8yDefaultPact;
@@ -58,10 +67,12 @@ export class C8yPactHttpProvider {
   protected _isRecordingEnabled: boolean = false;
   protected _isStrictMocking: boolean = true;
 
-  protected auth?: C8yAuthOptions;
+  protected authOptions?: C8yAuthOptions;
   protected app: Express;
   protected server?: Server;
   protected options: C8yPactHttpProviderOptions;
+
+  protected proxyHandler?: RequestHandler;
 
   constructor(options: C8yPactHttpProviderOptions) {
     this.options = options;
@@ -74,9 +85,7 @@ export class C8yPactHttpProvider {
     this._staticRoot = options.staticRoot;
 
     this.currentPact = undefined;
-
     this.tenant = options.tenant;
-    this.auth = options.auth;
 
     this.app = express();
     this.app.use(cookieParser());
@@ -91,10 +100,7 @@ export class C8yPactHttpProvider {
     this.registerCurrentInterface();
     // this.registerPactInterface();
 
-    this.auth = options.auth;
-    if (this.baseUrl) {
-      this.app.use("/", this.proxyRequestHandler(this.auth));
-    }
+    this.authOptions = options.auth;
   }
 
   get baseUrl(): string | undefined {
@@ -117,13 +123,21 @@ export class C8yPactHttpProvider {
     if (this.server) {
       await this.stop();
     }
-    if (this.auth) {
-      const { user, password, bearer, type } = this.auth;
+    if (this.authOptions) {
+      const { user, password, bearer, type } = this.authOptions;
       if (!_.isEqual(type, "BasicAuth") && !bearer && user && password) {
-        const a = await oauthLogin(this.auth, this.baseUrl);
-        _.extend(this.auth, _.pick(a, ["bearer", "xsrfToken"]));
+        const a = await oauthLogin(this.authOptions, this.baseUrl);
+        _.extend(this.authOptions, _.pick(a, ["bearer", "xsrfToken"]));
       }
     }
+
+    if (this.baseUrl && !this.proxyHandler) {
+      this.proxyHandler = this.app.use(
+        "/",
+        this.proxyRequestHandler(this.authOptions)
+      );
+    }
+
     this.server = await this.app.listen(this.port);
   }
 
@@ -143,43 +157,79 @@ export class C8yPactHttpProvider {
       }
       res.send(this.stringifyResponse(this.currentPact));
     });
-    this.app.post("/c8ypact/current", (req: Request, res: Response) => {
+    this.app.post("/c8ypact/current", async (req: Request, res: Response) => {
       const id = req.body.id || pactId(req.body.title);
-      if (id) {
-        if (this.currentPact?.id === id) {
-          res.status(200).send();
+      if (!id) {
+        res.status(200).send("Reset current pact.");
+        this.currentPact = undefined;
+        return;
+      }
+
+      const { recording, clear } = req.query;
+      if (recording && _.isString(recording)) {
+        if (recording.toLocaleLowerCase() === "true") {
+          this._isRecordingEnabled = true;
+        } else if (recording.toLocaleLowerCase() === "false") {
+          this._isRecordingEnabled = false;
+        }
+      }
+      if (
+        _.isString(clear) &&
+        (_.isEmpty(clear) || clear === "true") &&
+        this.currentPact
+      ) {
+        this.currentPact.reset();
+        await this.savePact(this.currentPact);
+      }
+
+      if (this.currentPact?.id === id) {
+        res.status(200);
+      } else {
+        if (this.isRecordingEnabled()) {
+          const info: C8yPactInfo = {
+            baseUrl: this.baseUrl || "",
+            requestMatching: this.options.requestMatching,
+            preprocessor: this.options.preprocessor?.options,
+            strictMocking: this._isStrictMocking,
+            ..._.pick(req.body, [
+              "id",
+              "producer",
+              "consumer",
+              "version",
+              "title",
+              "tags",
+              "description",
+            ]),
+          };
+          this.currentPact = new C8yDefaultPact([], info, id);
+          res.status(201);
         } else {
-          if (this.isRecordingEnabled()) {
-            const info: C8yPactInfo = {
-              baseUrl: this.baseUrl || "",
-              requestMatching: this.options.requestMatching,
-              preprocessor: this.options.preprocessor?.options,
-              strictMocking: this._isStrictMocking,
-              ..._.pick(req.body, [
-                "id",
-                "producer",
-                "consumer",
-                "version",
-                "title",
-                "tags",
-                "description",
-              ]),
-            };
-            this.currentPact = new C8yDefaultPact([], info, id);
-            res.status(201).send();
+          const current = this.adapter?.loadPact(id);
+          if (!current) {
+            res
+              .status(404)
+              .send(
+                `Pact with id ${id} not found. Enable recording to create a new pact.`
+              );
+            return;
           } else {
-            const current = this.adapter?.loadPact(id);
-            if (!current) {
-              res.status(404).send(`Pact with id ${id} not found.`);
-            } else {
-              this.currentPact = C8yDefaultPact.from(current);
-              res.status(201).send();
-            }
+            this.currentPact = C8yDefaultPact.from(current);
+            res.status(200);
           }
         }
-      } else {
-        res.status(400).send("Missing id. Provide a c8ypact id.");
       }
+
+      res.send(
+        this.stringifyResponse(
+          _.pick(
+            {
+              ...this.currentPact,
+              records: this.currentPact?.records?.length || 0,
+            },
+            ["id", "info", "records"]
+          )
+        )
+      );
     });
     this.app.delete("/c8ypact/current", (req, res) => {
       this.currentPact = undefined;
@@ -196,6 +246,7 @@ export class C8yPactHttpProvider {
       onProxyReq: (proxyReq, req, res) => {
         // add authorization header
         if (
+          auth &&
           !proxyReq.getHeader("Authorization") &&
           !proxyReq.getHeader("authorization")
         ) {
@@ -219,6 +270,7 @@ export class C8yPactHttpProvider {
         proxyReq.removeHeader("accept-encoding");
 
         if (this._isRecordingEnabled === true) return;
+
         let record = this.currentPact?.nextRecordMatchingRequest(
           req,
           this.baseUrl
@@ -226,7 +278,10 @@ export class C8yPactHttpProvider {
         if (!record) {
           if (this._isStrictMocking) {
             if (this.options.errorResponseRecord) {
-              record = this.options.errorResponseRecord;
+              const r = this.options.errorResponseRecord;
+              record = _.isFunction(r)
+                ? r(req.url, req.get("content-type"))
+                : r;
             } else {
               record = C8yDefaultPactRecord.from({
                 status: 404,
@@ -280,6 +335,10 @@ export class C8yPactHttpProvider {
             );
           });
         }
+      },
+
+      onError: (err) => {
+        console.error(err);
       },
     });
   }
