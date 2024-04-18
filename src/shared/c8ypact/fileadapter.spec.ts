@@ -40,7 +40,7 @@ describe("C8yPactDefaultFileAdapter", () => {
       expect(adapter.getFolder()).toBe(CWD);
     });
 
-    it("should create make absolute path for folder", () => {
+    it("should make folder an absolute path", () => {
       const adapter = new C8yPactDefaultFileAdapter("cypress/test/c8ypact");
       expect(adapter.getFolder()).toBe(`${CWD}/cypress/test/c8ypact`);
     });
