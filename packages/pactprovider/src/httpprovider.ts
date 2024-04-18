@@ -18,7 +18,6 @@ const log = debug("c8y:pactprovider");
 
 (async () => {
   const config = getConfigFromArgsOrEnvironment();
-  log("config from args or environment: ", config);
 
   const configLoader = cosmiconfig("cumulocity-cypress", {
     searchPlaces: [
@@ -46,10 +45,6 @@ const log = debug("c8y:pactprovider");
     const provider = new C8yPactHttpProvider(
       config as C8yPactHttpProviderOptions
     );
-    log("starting provider with config: ", {
-      ...config,
-      ...{ password: "*****" },
-    });
     await provider.start();
 
     console.log(`Listening: http://localhost:${config.port}`);

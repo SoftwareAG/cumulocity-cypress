@@ -155,7 +155,7 @@ export class C8yPactHttpProvider {
           );
         return;
       }
-      res.send(this.stringifyResponse(this.currentPact));
+      res.send(this.stringifyPact(this.currentPact));
     });
     this.app.post("/c8ypact/current", async (req: Request, res: Response) => {
       const id = req.body.id || pactId(req.body.title);
@@ -218,15 +218,10 @@ export class C8yPactHttpProvider {
       }
 
       res.send(
-        this.stringifyResponse(
-          _.pick(
-            {
-              ...this.currentPact,
-              records: this.currentPact?.records?.length || 0,
-            },
-            ["id", "info", "records"]
-          )
-        )
+        this.stringifyPact({
+          ...this.currentPact,
+          records: (this.currentPact?.records?.length || 0) as any,
+        })
       );
     });
     this.app.delete("/c8ypact/current", (req, res) => {
@@ -341,8 +336,12 @@ export class C8yPactHttpProvider {
     });
   }
 
-  protected stringifyResponse(obj: any): string {
-    return JSON.stringify(obj, undefined, 2);
+  protected stringifyPact(record: C8yDefaultPact | C8yPact | any): string {
+    return JSON.stringify(
+      _.pick(record, ["id", "info", "records"]),
+      undefined,
+      2
+    );
   }
 
   protected producerForPact(pact: C8yPact) {
