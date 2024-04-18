@@ -4,6 +4,10 @@ import * as glob from "glob";
 import debug from "debug";
 import { C8yPact, C8yPactSaveKeys } from "./c8ypact";
 
+import lodash1 from "lodash";
+import * as lodash2 from "lodash";
+const _ = lodash1 || lodash2;
+
 /**
  * Using C8yPactFileAdapter you can implement your own adapter to load and save pacts using any format you want.
  * This allows loading pact objects from different sources, such as HAR files, pact.io, etc.
@@ -43,7 +47,9 @@ const log = debug("c8y:plugin:fileadapter");
 export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   folder: string;
   constructor(folder: string) {
-    this.folder = folder;
+    this.folder = path.isAbsolute(folder)
+      ? folder
+      : this.toAbsolutePath(folder);
   }
 
   getFolder(): string {
@@ -79,7 +85,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   }
 
   savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {
-    this.createFolderRecursive(this.folder, true);
+    this.createFolderRecursive(this.folder);
     const file = path.join(this.folder, `${pact.id}.json`);
     log(`savePact() - ${file}`);
     fs.writeFileSync(
@@ -101,7 +107,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     const filePath = path.join(this.folder, `${id}.json`);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-      log(`deletePact() - deletaed ${filePath}`);
+      log(`deletePact() - deleted ${filePath}`);
     } else {
       log(`deletePact() - ${filePath} does not exist`);
     }
@@ -142,19 +148,26 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     return pacts.map((pact) => JSON.parse(pact));
   }
 
-  protected createFolderRecursive(f: string, absolutePath: boolean) {
+  protected createFolderRecursive(f: string) {
     log(`createFolderRecursive() - ${f}`);
-    const parts = f?.split(path.sep);
-    parts.forEach((part, i) => {
-      let currentPath = path.join(...parts.slice(0, i + 1));
-      if (absolutePath) {
-        currentPath = path.join(path.sep, currentPath);
-      }
-      if (!fs.existsSync(currentPath)) {
-        log(`createFolderRecursive() - creating ${currentPath}`);
-        fs.mkdirSync(currentPath);
-      }
-    });
+    if (!f || !_.isString(f)) return undefined;
+
+    const absolutePath = !path.isAbsolute(f) ? this.toAbsolutePath(f) : f;
+    if (f !== absolutePath) {
+      log(`createFolderRecursive() - resolved ${f} to ${absolutePath}`);
+    }
+
+    if (fs.existsSync(f)) return undefined;
+
+    const result = fs.mkdirSync(absolutePath, { recursive: true });
+    if (result) {
+      log(`createFolderRecursive() - created ${absolutePath}`);
+    }
+    return result;
+  }
+
+  protected toAbsolutePath(f: string) {
+    return path.isAbsolute(f) ? f : path.resolve(process.cwd(), f);
   }
 
   protected isNodeError<T extends new (...args: any) => Error>(
