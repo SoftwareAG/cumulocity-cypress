@@ -47,6 +47,8 @@ export function configureC8yPlugin(
     const folder =
       options.pactFolder ||
       options.pactAdapter?.getFolder() ||
+      process.env.C8Y_PACT_FOLDER ||
+      process.env.CYPRESS_C8Y_PACT_FOLDER ||
       // default folder is cypress/fixtures/c8ypact
       path.join(process.cwd(), "cypress", "fixtures", "c8ypact");
     adapter = new C8yPactDefaultFileAdapter(folder);
@@ -139,14 +141,16 @@ export function configureC8yPlugin(
     return await oauthLogin(options?.auth, options?.baseUrl);
   }
 
-  on("task", {
-    "c8ypact:save": savePact,
-    "c8ypact:get": getPact,
-    "c8ypact:load": loadPacts,
-    "c8ypact:remove": removePact,
-    "c8ypact:clearAll": clearAll,
-    "c8ypact:oauthLogin": login,
-  });
+  if (on) {
+    on("task", {
+      "c8ypact:save": savePact,
+      "c8ypact:get": getPact,
+      "c8ypact:load": loadPacts,
+      "c8ypact:remove": removePact,
+      "c8ypact:clearAll": clearAll,
+      "c8ypact:oauthLogin": login,
+    });
+  }
 }
 
 function getVersion() {

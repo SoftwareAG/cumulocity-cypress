@@ -55,6 +55,7 @@
     "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
     "http-server": "^14.1.1",
+    "memfs": "^4.8.2",
     "rimraf": "^5.0.1",
     "start-server-and-test": "^2.0.0",
     "typescript": "^5.0.2",
