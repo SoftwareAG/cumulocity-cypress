@@ -208,9 +208,7 @@ export class C8yPactHttpProvider {
           if (!current) {
             res
               .status(404)
-              .send(
-                `Pact with id ${id} not found. Enable recording to create a new pact.`
-              );
+              .send(`Not found. Enable recording to create a new pact.`);
             return;
           } else {
             this.currentPact = C8yDefaultPact.from(current);

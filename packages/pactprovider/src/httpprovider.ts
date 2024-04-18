@@ -36,8 +36,7 @@ const log = debug("c8y:pactprovider");
 
   const result = await configLoader.search(process.cwd());
   if (result) {
-    log("found config file: ", result.filepath);
-    log("loaded config: ", result.config);
+    log("loaded config file: ", result.filepath);
     _.defaults(config, result.config);
   }
 
@@ -47,7 +46,10 @@ const log = debug("c8y:pactprovider");
     const provider = new C8yPactHttpProvider(
       config as C8yPactHttpProviderOptions
     );
-    log("starting provider with config: ", config);
+    log("starting provider with config: ", {
+      ...config,
+      ...{ password: "*****" },
+    });
     await provider.start();
 
     console.log(`Listening: http://localhost:${config.port}`);
