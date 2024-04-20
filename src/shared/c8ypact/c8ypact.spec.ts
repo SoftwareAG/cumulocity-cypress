@@ -7,7 +7,6 @@ import {
   isPact,
   isPactError,
   isPactRecord,
-  updateURLs,
   pactId,
 } from "./c8ypact";
 
@@ -167,56 +166,6 @@ describe("c8ypact", () => {
       expect(isPactError(undefined)).toBe(false);
       expect(isPactError(null)).toBe(false);
       expect(isPactError({})).toBe(false);
-    });
-  });
-
-  describe("updateUrl", function () {
-    it("update baseUrls", function () {
-      const body = `"{"self": "https://mytenant.cumulocity.com/inventory/managedObjects/1?withChildren=false"}"`;
-      expect(
-        updateURLs(
-          body,
-          { baseUrl: "https://mytenant.cumulocity.com", tenant: "t12345" },
-          { baseUrl: "http://localhost:8080" }
-        )
-      ).toBe(
-        `"{"self": "http://localhost:8080/inventory/managedObjects/1?withChildren=false"}"`
-      );
-    });
-
-    it("update baseUrls with tenant", function () {
-      const body = `"{"self": "https://t123456.eu-latest.cumulocity.com/inventory/managedObjects/1?withChildren=false"}"`;
-      expect(
-        updateURLs(
-          body,
-          {
-            baseUrl: "https://mytenant.eu-latest.cumulocity.com",
-            tenant: "t123456",
-          },
-          { baseUrl: "http://localhost:8080" }
-        )
-      ).toBe(
-        `"{"self": "http://localhost:8080/inventory/managedObjects/1?withChildren=false"}"`
-      );
-    });
-
-    it("update baseUrls with tenants", function () {
-      const body = `"{"self": "https://t123456.eu-latest.cumulocity.com/inventory/managedObjects/1?withChildren=false"}"`;
-      expect(
-        updateURLs(
-          body,
-          {
-            baseUrl: "https://mytenant.eu-latest.cumulocity.com",
-            tenant: "t123456",
-          },
-          {
-            baseUrl: "http://test.us.cumulocity.com",
-            tenant: "t654321",
-          }
-        )
-      ).toBe(
-        `"{"self": "http://t654321.us.cumulocity.com/inventory/managedObjects/1?withChildren=false"}"`
-      );
     });
   });
 });

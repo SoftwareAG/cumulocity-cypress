@@ -35,3 +35,64 @@ export function removeBaseUrlFromRequestUrl(
   }
   record.request.url = removeBaseUrlFromString(record.request.url, baseUrl);
 }
+
+function normalizeUrl(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+export function tenantUrl(
+  baseUrl?: string,
+  tenant?: string
+): string | undefined {
+  if (!baseUrl || !tenant) return undefined;
+
+  try {
+    const url = new URL(baseUrl);
+    const hostComponents = url.host.split(".");
+    if (hostComponents.length <= 2) {
+      url.host = `${tenant}.${hostComponents.join(".")}`;
+    } else {
+      const instance = url.host.split(".")?.slice(1)?.join(".");
+      url.host = `${tenant}.${instance}`;
+    }
+    return normalizeUrl(url.toString());
+  } catch {
+    // no-op
+  }
+  return undefined;
+}
+
+export function updateURLs(
+  value: string,
+  from: { baseUrl: string; tenant?: string },
+  to: { baseUrl: string; tenant?: string }
+): string {
+  if (!value || !from || !to) return value;
+  let result = value;
+
+  const fromTenantUrl = tenantUrl(from.baseUrl, from.tenant);
+  const toTenantUrl = tenantUrl(to.baseUrl, to.tenant);
+  if (fromTenantUrl && toTenantUrl) {
+    result = result.replace(new RegExp(fromTenantUrl, "g"), toTenantUrl);
+  }
+  if (from.baseUrl && to.baseUrl) {
+    const fromBaseUrl = normalizeUrl(from.baseUrl);
+    const toBaseUrl = normalizeUrl(to.baseUrl);
+    if (fromBaseUrl && toBaseUrl) {
+      result = result.replace(new RegExp(fromBaseUrl, "g"), toBaseUrl);
+    }
+
+    result = result.replace(
+      new RegExp(from.baseUrl.replace(/https?:\/\//i, ""), "g"),
+      to.baseUrl.replace(/https?:\/\//i, "")
+    );
+
+    if (fromTenantUrl) {
+      result = result.replace(
+        new RegExp(fromTenantUrl, "g"),
+        toTenantUrl || toBaseUrl
+      );
+    }
+  }
+  return result;
+}
