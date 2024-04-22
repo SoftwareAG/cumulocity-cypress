@@ -210,20 +210,21 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
   const $args = normalizedArgumentsWithAuth(args);
   const [auth, userOptions, permissions, applications, clientOptions] = $args;
 
-  const consoleProps = {
-    auth,
-    userOptions,
-    permissions,
-    applications,
-    clientOptions,
+  const consoleProps: any = {
+    auth: auth || null,
+    userOptions: userOptions || null,
+    permissions: permissions || null,
+    applications: applications || null,
+    clientOptions: clientOptions || null,
   };
 
-  Cypress.log({
+  const logger = Cypress.log({
     name: "createUser",
-    message: userOptions.userName,
+    message: userOptions?.userName || null,
     consoleProps: () => consoleProps,
   });
 
+  logger.end();
   if (!userOptions) {
     throw new Error("Missing argument. Requiring user options argument.");
   }
@@ -237,6 +238,7 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
       const userId = userResponse.body.id;
       expect(userId).to.not.be.undefined;
       if (permissions && !_.isEmpty(permissions)) {
+        consoleProps.permissions = permissions;
         cy.wrap(permissions, { log: false }).each((permission) => {
           cy.wrap(auth, { log: false }).c8yclient(
             [
@@ -260,6 +262,7 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
         });
       }
       if (applications && !_.isEmpty(applications)) {
+        consoleProps.applications = applications;
         cy.wrap(applications, { log: false }).each((appName) => {
           cy.wrap(auth, { log: false }).c8yclient(
             [
@@ -300,6 +303,7 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
           );
         });
       }
+      logger.end();
       return cy.wrap(userResponse);
     });
 });
@@ -310,15 +314,20 @@ Cypress.Commands.add("deleteUser", { prevSubject: "optional" }, (...args) => {
 
   const options = { ...clientOptions, ...{ failOnStatusCode: false } };
   const consoleProps = {
-    auth: auth,
+    auth: auth || null,
     clientOptions: options,
+    user: user || null,
   };
-  Cypress.log({
+
+  const message = _.isObjectLike(user) && user.userName ? user.userName : user;
+  const logger = Cypress.log({
     name: "deleteUser",
-    message: _.isObjectLike(user) ? user.userName : user,
+    message,
     consoleProps: () => consoleProps,
+    autoEnd: false,
   });
 
+  logger.end();
   if (!user || (_.isObjectLike(user) && !user.userName)) {
     return throwError(
       "Missing argument. Requiring IUser object with userName or username argument."
@@ -345,15 +354,19 @@ Cypress.Commands.add(
     const [auth, user, clientOptions] = $args;
 
     const options = { ...clientOptions };
-    const consoleProps = {
-      auth: auth,
+    const consoleProps: any = {
+      auth: auth || null,
       clientOptions: options,
+      user: user || null,
     };
 
-    Cypress.log({
+    const userIdentifier =
+      _.isObjectLike(user) && user.userName ? user.userName : user;
+    const logger = Cypress.log({
       name: "clearUserRoles",
-      message: _.isObjectLike(user) ? user.userName : user,
+      message: userIdentifier,
       consoleProps: () => consoleProps,
+      autoEnd: false,
     });
 
     if (!user || (_.isObjectLike(user) && !user.userName)) {
@@ -362,13 +375,12 @@ Cypress.Commands.add(
       );
     }
 
-    const userIdentifier = _.isObjectLike(user) ? user.userName : user;
-
     return cy
       .wrap(auth, { log: false })
       .c8yclient((client) => client.user.detail(userIdentifier), options)
       .then((response) => {
         const assignedRoles: any = response.body.groups.references;
+        consoleProps.assignedRoles = assignedRoles;
         if (!assignedRoles || assignedRoles.length === 0) {
           return cy.wrap<C8yAuthOptions>(auth, { log: false });
         }
@@ -384,6 +396,7 @@ Cypress.Commands.add(
           );
         });
 
+        logger.end();
         return cy.wrap<C8yAuthOptions>(auth, { log: false });
       });
   }
@@ -398,16 +411,23 @@ Cypress.Commands.add(
 
     const options = { ...clientOptions };
     const consoleProps = {
-      auth: auth,
+      auth: auth || null,
+      user: user || null,
+      roles: roles || null,
       clientOptions: options,
     };
 
-    Cypress.log({
+    const userIdentifier =
+      _.isObjectLike(user) && user?.userName ? user?.userName : user;
+
+    const logger = Cypress.log({
       name: "assignUserRoles",
-      message: _.isObjectLike(user) ? user.userName : user,
+      message: userIdentifier,
       consoleProps: () => consoleProps,
+      autoEnd: false,
     });
 
+    logger.end();
     if (!user || (_.isObjectLike(user) && !user.userName)) {
       return throwError(
         "Missing argument. Requiring IUser object with userName or username argument."
@@ -419,8 +439,6 @@ Cypress.Commands.add(
         "Missing argument. Requiring an string array with roles."
       );
     }
-
-    const userIdentifier = _.isObjectLike(user) ? user.userName : user;
 
     return cy
       .wrap(auth, { log: false })
