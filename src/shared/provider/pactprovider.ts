@@ -12,6 +12,7 @@ import {
   responseInterceptor,
 } from "http-proxy-middleware";
 import bodyParser from "body-parser";
+import morgan from "morgan";
 
 import { IncomingMessage, Server, ServerResponse } from "http";
 
@@ -76,7 +77,10 @@ export class C8yPactHttpProvider {
   protected server?: Server;
   protected options: C8yPactHttpProviderOptions;
 
+  protected mockHandler?: RequestHandler;
   protected proxyHandler?: RequestHandler;
+
+  protected logger = morgan("short");
 
   constructor(options: C8yPactHttpProviderOptions) {
     this.options = options;
@@ -93,18 +97,12 @@ export class C8yPactHttpProvider {
     this.tenant = options.tenant;
 
     this.app = express();
+    this.app.use(this.logger);
     this.app.use(cookieParser());
-    // automatically parse request bodies
-    this.app.use(bodyParser.json());
-    this.app.use(bodyParser.urlencoded({ extended: true }));
 
     if (this.staticRoot) {
       this.app.use(expressStatic(this.staticRoot));
     }
-
-    this.registerCurrentInterface();
-    // this.registerPactInterface();
-
     this.authOptions = options.auth;
   }
 
@@ -136,11 +134,34 @@ export class C8yPactHttpProvider {
       }
     }
 
-    if (this.baseUrl && !this.proxyHandler) {
-      this.proxyHandler = this.app.use(
-        "/",
-        this.proxyRequestHandler(this.authOptions)
-      );
+    if (this.baseUrl) {
+      // register proxy handler first requires to make the proxy ignore certain paths
+      // this is needed as bodyParser will break post requests in the proxy handler but
+      // is needed before any other handlers dealing with request bodies
+      const ignoredPaths = ["/c8ypact/current"];
+
+      if (!this.mockHandler) {
+        this.mockHandler = this.app.use(
+          this.wrapPathIgnoreHandler(
+            this.createMockRequestHandler(),
+            ignoredPaths
+          )
+        );
+      }
+
+      if (!this.proxyHandler) {
+        this.proxyHandler = this.app.use(
+          this.wrapPathIgnoreHandler(
+            this.proxyRequestHandler(this.authOptions),
+            ignoredPaths
+          )
+        );
+      }
+
+      // automatically parse request bodies - must come after proxy handler
+      this.app.use(bodyParser.json());
+      this.app.use(bodyParser.urlencoded({ extended: true }));
+      this.registerCurrentInterface();
     }
 
     this.server = await this.app.listen(this.port);
@@ -148,6 +169,30 @@ export class C8yPactHttpProvider {
 
   async stop(): Promise<void> {
     await this.server?.close();
+  }
+
+  /**
+   * Wraps a RequestHandler to ignore certain paths. For paths matching the ignoredPaths
+   * the next handler is called, skipping the wrapped handler.
+   * @param handler The RequestHandler to wrap
+   * @param ignoredPaths The paths to ignore using exact match
+   * @returns The RequestHandler wrapper
+   */
+  protected wrapPathIgnoreHandler(
+    handler: RequestHandler,
+    ignoredPaths: string[]
+  ): RequestHandler {
+    return (req, res, next) => {
+      if (ignoredPaths.includes(req.path)) {
+        next();
+      } else {
+        new Promise((resolve, reject) => {
+          handler(req, res, (err) => (err ? reject(err) : resolve(null)));
+        })
+          .then(() => next())
+          .catch(next);
+      }
+    };
   }
 
   protected registerCurrentInterface() {
@@ -163,7 +208,7 @@ export class C8yPactHttpProvider {
       res.send(this.stringifyPact(this.currentPact));
     });
     this.app.post("/c8ypact/current", async (req: Request, res: Response) => {
-      const id = req.body.id || pactId(req.body.title);
+      const id = req.body?.id || pactId(req.body?.title);
       if (!id) {
         res.status(200).send("Reset current pact.");
         this.currentPact = undefined;
@@ -235,116 +280,109 @@ export class C8yPactHttpProvider {
     });
   }
 
-  protected proxyRequestHandler(auth?: C8yAuthOptions): RequestHandler[] {
-    return [
-      (req, res, next) => {
-        if (this._isRecordingEnabled === true) {
-          next();
-        } else {
-          let record = this.currentPact?.nextRecordMatchingRequest(
-            req,
-            this.baseUrl
-          );
-          if (!record) {
-            if (this._isStrictMocking) {
-              if (this.options.errorResponseRecord) {
-                const r = this.options.errorResponseRecord;
-                record = _.isFunction(r)
-                  ? r(req.url, req.get("content-type"))
-                  : r;
-              } else {
-                record = C8yDefaultPactRecord.from({
-                  status: 404,
-                  statusText: "Not Found",
-                  body:
-                    `<html>\n<head><title>404 Recording Not Found</title></head>` +
-                    `\n<body bgcolor="white">\n<center><h1>404 Application Not Found</h1>` +
-                    `</center>\n<hr><center>cumulocity-cypress/${this.constructor.name}</center>` +
-                    `\n</body>\n</html>\n`,
-                  headers: {
-                    "content-type": "text/html",
-                  },
-                });
-              }
-            }
+  // mock handler - returns recorded response.
+  // register before proxy handler
+  protected createMockRequestHandler(): RequestHandler {
+    return (req, res, next) => {
+      if (this._isRecordingEnabled === true) {
+        return next();
+      }
+
+      let record = this.currentPact?.nextRecordMatchingRequest(
+        req,
+        this.baseUrl
+      );
+      if (!record) {
+        if (this._isStrictMocking) {
+          if (this.options.errorResponseRecord) {
+            const r = this.options.errorResponseRecord;
+            record = _.isFunction(r) ? r(req.url, req.get("content-type")) : r;
+          } else {
+            record = C8yDefaultPactRecord.from({
+              status: 404,
+              statusText: "Not Found",
+              body:
+                `<html>\n<head><title>404 Recording Not Found</title></head>` +
+                `\n<body bgcolor="white">\n<center><h1>404 Application Not Found</h1>` +
+                `</center>\n<hr><center>cumulocity-cypress/${this.constructor.name}</center>` +
+                `\n</body>\n</html>\n`,
+              headers: {
+                "content-type": "text/html",
+              },
+            });
           }
-          console.log(
-            `${res.statusCode} ${req.method} ${this.baseUrl}${
-              req.url
-            } (${this.isRecordingEnabled()} - 1)`
-          );
-          if (!record) next();
+        }
+      }
+      if (!record) {
+        return next();
+      }
 
-          const r = record?.response;
-          const responseBody = _.isString(r?.body)
-            ? r?.body
-            : this.stringify(r?.body);
+      const r = record?.response;
+      const responseBody = _.isString(r?.body)
+        ? r?.body
+        : this.stringify(r?.body);
 
-          res.setHeader("content-length", Buffer.byteLength(responseBody));
-          res.writeHead(r?.status || 200, _.pick(r?.headers, ["content-type"]));
-          res.end(responseBody);
+      res.setHeader("content-length", Buffer.byteLength(responseBody));
+      res.writeHead(r?.status || 200, _.pick(r?.headers, ["content-type"]));
+      res.end(responseBody);
+    };
+  }
+
+  // proxy handler - forwards request to target server
+  protected proxyRequestHandler(auth?: C8yAuthOptions): RequestHandler {
+    return createProxyMiddleware({
+      target: this.baseUrl,
+      changeOrigin: true,
+      cookieDomainRewrite: "",
+      selfHandleResponse: true,
+
+      onProxyReq: (proxyReq) => {
+        // add authorization header
+        if (
+          this._isRecordingEnabled === true &&
+          auth &&
+          !proxyReq.getHeader("Authorization") &&
+          !proxyReq.getHeader("authorization")
+        ) {
+          const { bearer, xsrfToken, user, password } = auth as C8yAuthOptions;
+          if (bearer) {
+            proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
+          }
+          if (!bearer && user && password) {
+            proxyReq.setHeader(
+              "Authorization",
+              `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`
+            );
+          }
+          if (xsrfToken) {
+            proxyReq.setHeader("X-XSRF-TOKEN", xsrfToken);
+          }
         }
       },
-      createProxyMiddleware({
-        target: this.baseUrl,
-        changeOrigin: true,
-        cookieDomainRewrite: "",
-        selfHandleResponse: true,
 
-        onProxyReq: (proxyReq) => {
-          // add authorization header
-          if (
-            this._isRecordingEnabled === true &&
-            auth &&
-            !proxyReq.getHeader("Authorization") &&
-            !proxyReq.getHeader("authorization")
-          ) {
-            const { bearer, xsrfToken, user, password } =
-              auth as C8yAuthOptions;
-            if (bearer) {
-              proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
+      onProxyRes: responseInterceptor(
+        async (responseBuffer, proxyRes, req, res) => {
+          let resBody = responseBuffer.toString("utf8");
+          if (this._isRecordingEnabled === true) {
+            const reqBody = (req as any).body;
+            try {
+              resBody = JSON.parse(resBody);
+            } catch {
+              // no-op : use body as string
             }
-            if (!bearer && user && password) {
-              proxyReq.setHeader(
-                "Authorization",
-                `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`
-              );
-            }
-            if (xsrfToken) {
-              proxyReq.setHeader("X-XSRF-TOKEN", xsrfToken);
-            }
-          }
-        },
-
-        onProxyRes: responseInterceptor(
-          async (responseBuffer, proxyRes, req, res) => {
-            console.log(
-              `${res.statusCode} ${req.method} ${this.baseUrl}${
-                req.url
-              } (${this.isRecordingEnabled()} - 2)`
+            await this.savePact(
+              this.toCypressResponse(req, res, { resBody, reqBody })
             );
-
-            let resBody = responseBuffer.toString("utf8");
-            if (this._isRecordingEnabled === true) {
-              const reqBody = (req as any).body;
-              try {
-                resBody = JSON.parse(resBody);
-              } catch {
-                // no-op : use body as string
-              }
-              await this.savePact(
-                this.toCypressResponse(req, res, { resBody, reqBody })
-              );
-            }
-            return responseBuffer;
           }
-        ),
+          return responseBuffer;
+        }
+      ),
 
-        onError: (err) => {
-          console.error(err);
-        },
-      }),
-    ];
+      // onError: (err) => {
+
+      //   console.error(err);
+      // },
+    });
   }
 
   stringifyReplacer = (key: string, value: any) => {
