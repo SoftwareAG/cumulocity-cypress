@@ -1,3 +1,4 @@
+/* eslint-disable import/no-named-as-default-member */
 import _ from "lodash";
 
 import express, {
@@ -12,7 +13,9 @@ import {
   responseInterceptor,
 } from "http-proxy-middleware";
 import bodyParser from "body-parser";
-import morgan from "morgan";
+
+import morgan, { FormatFn } from "morgan";
+import winston from "winston";
 
 import { IncomingMessage, Server, ServerResponse } from "http";
 
@@ -34,6 +37,15 @@ import {
 import { oauthLogin } from "../c8yclient";
 import { C8yPactFileAdapter } from "../c8ypact/fileadapter";
 
+type LogFormat =
+  | "json"
+  | "simple"
+  | "combined"
+  | "short"
+  | "dev"
+  | "tiny"
+  | "common";
+
 export interface C8yPactHttpProviderOptions {
   baseUrl?: string;
   auth?: C8yAuthOptions;
@@ -50,6 +62,12 @@ export interface C8yPactHttpProviderOptions {
   errorResponseRecord?:
     | C8yPactRecord
     | ((url?: string, contentType?: string) => C8yPactRecord);
+  logger?: winston.Logger;
+  logLevel?: "info" | "debug" | "warn" | "error";
+  logFormat?:
+    | LogFormat
+    | string
+    | FormatFn<IncomingMessage, ServerResponse<IncomingMessage>>;
 }
 
 export interface C8yPactHttpProviderConfig extends C8yPactHttpProviderOptions {
@@ -77,10 +95,10 @@ export class C8yPactHttpProvider {
   protected server?: Server;
   protected options: C8yPactHttpProviderOptions;
 
+  protected logger: winston.Logger;
+
   protected mockHandler?: RequestHandler;
   protected proxyHandler?: RequestHandler;
-
-  protected logger = morgan("short");
 
   constructor(options: C8yPactHttpProviderOptions) {
     this.options = options;
@@ -96,12 +114,27 @@ export class C8yPactHttpProvider {
     this.currentPact = undefined;
     this.tenant = options.tenant;
 
+    this.logger =
+      this.options.logger ||
+      winston.createLogger({
+        format: winston.format.simple(),
+        transports: [new winston.transports.Console()],
+      });
+    this.logger.level = options.logLevel || "info";
+
+    const stream = {
+      write: (message: string) => {
+        this.logger.info(message.trim());
+      },
+    };
+
     this.app = express();
-    this.app.use(this.logger);
+    this.app.use(morgan((options.logFormat || "short") as any, { stream }));
     this.app.use(cookieParser());
 
     if (this.staticRoot) {
       this.app.use(expressStatic(this.staticRoot));
+      this.logger.info(`Static files local root: ${this.staticRoot}`);
     }
     this.authOptions = options.auth;
   }
@@ -129,8 +162,13 @@ export class C8yPactHttpProvider {
     if (this.authOptions) {
       const { user, password, bearer, type } = this.authOptions;
       if (!_.isEqual(type, "BasicAuth") && !bearer && user && password) {
-        const a = await oauthLogin(this.authOptions, this.baseUrl);
-        _.extend(this.authOptions, _.pick(a, ["bearer", "xsrfToken"]));
+        try {
+          const a = await oauthLogin(this.authOptions, this.baseUrl);
+          this.logger.info(`Login -> ${this.baseUrl} (${a.user})`);
+          _.extend(this.authOptions, _.pick(a, ["bearer", "xsrfToken"]));
+        } catch (error) {
+          this.logger.error(`Login failed ${this.baseUrl} (${user})`, error);
+        }
       }
     }
 
@@ -164,11 +202,20 @@ export class C8yPactHttpProvider {
       this.registerCurrentInterface();
     }
 
-    this.server = await this.app.listen(this.port);
+    try {
+      this.server = await this.app.listen(this.port);
+      this.logger.info(
+        `Started server: ${this.hostname}:${this.port} (recording: ${this._isRecordingEnabled})`
+      );
+    } catch (error) {
+      this.logger.error("Error starting server:", error);
+      throw error;
+    }
   }
 
   async stop(): Promise<void> {
     await this.server?.close();
+    this.logger.info("Stopped server");
   }
 
   /**
@@ -183,7 +230,7 @@ export class C8yPactHttpProvider {
     ignoredPaths: string[]
   ): RequestHandler {
     return (req, res, next) => {
-      if (ignoredPaths.includes(req.path)) {
+      if (ignoredPaths.filter((p) => req.path.startsWith(p)).length > 0) {
         next();
       } else {
         new Promise((resolve, reject) => {
@@ -335,53 +382,52 @@ export class C8yPactHttpProvider {
       changeOrigin: true,
       cookieDomainRewrite: "",
       selfHandleResponse: true,
+      logger: this.logger,
 
-      onProxyReq: (proxyReq) => {
-        // add authorization header
-        if (
-          this._isRecordingEnabled === true &&
-          auth &&
-          !proxyReq.getHeader("Authorization") &&
-          !proxyReq.getHeader("authorization")
-        ) {
-          const { bearer, xsrfToken, user, password } = auth as C8yAuthOptions;
-          if (bearer) {
-            proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
-          }
-          if (!bearer && user && password) {
-            proxyReq.setHeader(
-              "Authorization",
-              `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`
-            );
-          }
-          if (xsrfToken) {
-            proxyReq.setHeader("X-XSRF-TOKEN", xsrfToken);
-          }
-        }
-      },
-
-      onProxyRes: responseInterceptor(
-        async (responseBuffer, proxyRes, req, res) => {
-          let resBody = responseBuffer.toString("utf8");
-          if (this._isRecordingEnabled === true) {
-            const reqBody = (req as any).body;
-            try {
-              resBody = JSON.parse(resBody);
-            } catch {
-              // no-op : use body as string
+      on: {
+        proxyReq: (proxyReq) => {
+          // add authorization header
+          if (
+            this._isRecordingEnabled === true &&
+            auth &&
+            !proxyReq.getHeader("Authorization") &&
+            !proxyReq.getHeader("authorization")
+          ) {
+            const { bearer, xsrfToken, user, password } =
+              auth as C8yAuthOptions;
+            if (bearer) {
+              proxyReq.setHeader("Authorization", `Bearer ${bearer}`);
             }
-            await this.savePact(
-              this.toCypressResponse(req, res, { resBody, reqBody })
-            );
+            if (!bearer && user && password) {
+              proxyReq.setHeader(
+                "Authorization",
+                `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`
+              );
+            }
+            if (xsrfToken) {
+              proxyReq.setHeader("X-XSRF-TOKEN", xsrfToken);
+            }
           }
-          return responseBuffer;
-        }
-      ),
+        },
 
-      // onError: (err) => {
-
-      //   console.error(err);
-      // },
+        proxyRes: responseInterceptor(
+          async (responseBuffer, proxyRes, req, res) => {
+            let resBody = responseBuffer.toString("utf8");
+            if (this._isRecordingEnabled === true) {
+              const reqBody = (req as any).body;
+              try {
+                resBody = JSON.parse(resBody);
+              } catch {
+                // no-op : use body as string
+              }
+              await this.savePact(
+                this.toCypressResponse(req, res, { resBody, reqBody })
+              );
+            }
+            return responseBuffer;
+          }
+        ),
+      },
     });
   }
 

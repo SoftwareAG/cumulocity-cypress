@@ -46,12 +46,6 @@ const log = debug("c8y:pactprovider");
       config as C8yPactHttpProviderOptions
     );
     await provider.start();
-
-    console.log(`Listening: http://localhost:${config.port}`);
-    console.log(`Recording: ${config.isRecordingEnabled}`);
-    if (config?.staticRoot) {
-      console.log(`Using static root: ${config?.staticRoot}`);
-    }
   } catch (error) {
     console.error("Error starting provider:", error);
   }
