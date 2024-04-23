@@ -8,25 +8,27 @@ import { TypeScriptLoader } from "cosmiconfig-typescript-loader";
 
 import {
   C8yPactDefaultFileAdapter,
-  C8yPactHttpProvider,
+  C8yPactHttpController,
   C8yDefaultPactPreprocessor,
-  C8yPactHttpProviderOptions,
-  C8yPactHttpProviderConfig,
+  C8yPactHttpControllerOptions,
+  C8yPactHttpControllerConfig,
 } from "cumulocity-cypress/node";
 
-const log = debug("c8y:pactprovider");
+const log = debug("c8y:pact:httpcontroller");
 
 (async () => {
   const config = getConfigFromArgsOrEnvironment();
 
   const configLoader = cosmiconfig("cumulocity-cypress", {
     searchPlaces: [
+      "http-controller.config.ts",
+      "http.config.js",
       "cumulocity-cypress.config.ts",
       ".cumulocity-cypressrc.ts",
       "package.json",
-      "packages/pactprovider/cumulocity-cypress.config.ts",
-      "packages/pactprovider/.cumulocity-cypressrc.ts",
-      "packages/pactprovider/package.json",
+      "packages/pact-http-controller/cumulocity-cypress.config.ts",
+      "packages/pact-http-controller/.cumulocity-cypressrc.ts",
+      "packages/pact-http-controller/package.json",
     ],
     loaders: {
       ".ts": TypeScriptLoader(),
@@ -42,12 +44,12 @@ const log = debug("c8y:pactprovider");
   try {
     applyConfigDefaults(config);
 
-    const provider = new C8yPactHttpProvider(
-      config as C8yPactHttpProviderOptions
+    const controller = new C8yPactHttpController(
+      config as C8yPactHttpControllerOptions
     );
-    await provider.start();
+    await controller.start();
   } catch (error) {
-    console.error("Error starting provider:", error);
+    console.error("Error starting HTTP controller:", error);
   }
 })();
 
@@ -59,7 +61,7 @@ function getEnvVar(name: string): string | undefined {
   );
 }
 
-function applyConfigDefaults(config: Partial<C8yPactHttpProviderConfig>) {
+function applyConfigDefaults(config: Partial<C8yPactHttpControllerConfig>) {
   if (!config) return;
 
   if (!config?.auth) {
@@ -85,7 +87,7 @@ function applyConfigDefaults(config: Partial<C8yPactHttpProviderConfig>) {
   }
 }
 
-function getConfigFromArgsOrEnvironment(): Partial<C8yPactHttpProviderConfig> {
+function getConfigFromArgsOrEnvironment(): Partial<C8yPactHttpControllerConfig> {
   const result = yargs(hideBin(process.argv))
     .option("folder", {
       type: "string",
@@ -93,7 +95,7 @@ function getConfigFromArgsOrEnvironment(): Partial<C8yPactHttpProviderConfig> {
     })
     .option("port", {
       type: "number",
-      description: "HTTP port the provider listens on.",
+      description: "HTTP port the controller listens on.",
     })
     .option("baseUrl", {
       type: "string",

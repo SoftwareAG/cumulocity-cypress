@@ -3,14 +3,14 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Pact Provider",
+      "name": "Launch HTTP Controller",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/packages/pactprovider/src/httpprovider.ts",
+      "program": "${workspaceFolder}/packages/pact-http-controller/src/httpcontroller.ts",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "envFile": "${workspaceFolder}/packages/pactprovider/.env",
+      "envFile": "${workspaceFolder}/packages/pact-http-controller/.env",
       "skipFiles": [
         "<node_internals>/**",
         "${workspaceFolder}/node_modules/**"

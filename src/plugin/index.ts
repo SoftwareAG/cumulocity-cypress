@@ -7,9 +7,9 @@ import {
   C8yPactDefaultFileAdapter,
 } from "../shared/c8ypact/fileadapter";
 import {
-  C8yPactHttpProvider,
-  C8yPactHttpProviderOptions,
-} from "../shared/provider/pactprovider";
+  C8yPactHttpController,
+  C8yPactHttpControllerOptions,
+} from "../shared/controller/httpcontroller";
 import { C8yPact } from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
 
@@ -62,7 +62,7 @@ export function configureC8yPlugin(
   }
 
   let pacts: { [key: string]: C8yPact } = {};
-  let provider: C8yPactHttpProvider | null = null;
+  let http: C8yPactHttpController | null = null;
 
   // use C8Y_PLUGIN_LOADED to see if the plugin has been loaded
   config.env.C8Y_PLUGIN_LOADED = "true";
@@ -139,21 +139,21 @@ export function configureC8yPlugin(
     }
   }
 
-  async function startProvider(
-    options: C8yPactHttpProviderOptions
-  ): Promise<C8yPactHttpProvider> {
-    if (provider) {
-      await stopProvider();
+  async function startHttpController(
+    options: C8yPactHttpControllerOptions
+  ): Promise<C8yPactHttpController> {
+    if (http) {
+      await stopHttpController();
     }
-    provider = new C8yPactHttpProvider(options);
-    await provider.start();
-    return provider;
+    http = new C8yPactHttpController(options);
+    await http.start();
+    return http;
   }
 
-  async function stopProvider(): Promise<null> {
-    if (provider) {
-      await provider.stop();
-      provider = null;
+  async function stopHttpController(): Promise<null> {
+    if (http) {
+      await http.stop();
+      http = null;
     }
     return null;
   }
@@ -175,8 +175,8 @@ export function configureC8yPlugin(
       "c8ypact:load": loadPacts,
       "c8ypact:remove": removePact,
       "c8ypact:clearAll": clearAll,
-      "c8ypact:provider:start": startProvider,
-      "c8ypact:provider:stop": stopProvider,
+      "c8ypact:http:start": startHttpController,
+      "c8ypact:http:stop": stopHttpController,
       "c8ypact:oauthLogin": login,
     });
   }

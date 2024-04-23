@@ -46,7 +46,7 @@ type LogFormat =
   | "tiny"
   | "common";
 
-export interface C8yPactHttpProviderOptions {
+export interface C8yPactHttpControllerOptions {
   /**
    * Base URL of the target server to proxy requests to.
    */
@@ -122,14 +122,23 @@ export interface C8yPactHttpProviderOptions {
   stringifyReplacer?: (key: string, value: any) => any;
 }
 
-export interface C8yPactHttpProviderConfig extends C8yPactHttpProviderOptions {
+export interface C8yPactHttpControllerConfig
+  extends C8yPactHttpControllerOptions {
   /**
    * Folder to load and save pact files from and to.
    */
   folder?: string;
+  /**
+   * User to login to the target server.
+   */
+  user?: string;
+  /**
+   * Password to login to the target server.
+   */
+  password?: string;
 }
 
-export class C8yPactHttpProvider {
+export class C8yPactHttpController {
   currentPact?: C8yDefaultPact;
 
   protected port: number;
@@ -146,14 +155,14 @@ export class C8yPactHttpProvider {
   protected authOptions?: C8yAuthOptions;
   protected app: Express;
   protected server?: Server;
-  protected options: C8yPactHttpProviderOptions;
+  protected options: C8yPactHttpControllerOptions;
 
   protected logger: winston.Logger;
 
   protected mockHandler?: RequestHandler;
   protected proxyHandler?: RequestHandler;
 
-  constructor(options: C8yPactHttpProviderOptions) {
+  constructor(options: C8yPactHttpControllerOptions) {
     this.options = options;
     this.adapter = options.adapter;
     this.port = options.port || 3000;

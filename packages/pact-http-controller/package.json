@@ -1,9 +1,9 @@
 {
-  "name": "cumulocity-cypress-pactprovider",
+  "name": "cumulocity-cypress-httpcpntroller",
   "version": "0.3.2",
-  "description": "Provider for Cumulocity pact recordings",
+  "description": "HTTP controller for Cumulocity pact recordings",
   "scripts": {
-    "start": "npx tsx --env-file=.env src/httpprovider.ts"
+    "start": "npx tsx --env-file=.env src/httpcontroller.ts"
   },
   "repository": {
     "type": "git",

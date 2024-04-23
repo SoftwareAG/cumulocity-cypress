@@ -1,7 +1,7 @@
 import {
   C8yDefaultPactRecord,
   C8yPactDefaultFileAdapter,
-  C8yPactHttpProviderOptions,
+  C8yPactHttpControllerOptions,
 } from "cumulocity-cypress/node";
 import _ from "lodash";
 
@@ -12,7 +12,7 @@ import { default as transportsDirect } from "winston/lib/winston/transports/";
 
 const safeTransports = !_.isEmpty(transports) ? transports : transportsDirect;
 
-const config: C8yPactHttpProviderOptions = {
+const config: C8yPactHttpControllerOptions = {
   adapter: new C8yPactDefaultFileAdapter(
     "/Users/twi/Projects/cumulocity-cypress/test/cypress/fixtures/c8ypact"
   ),

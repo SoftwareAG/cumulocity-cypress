@@ -40,7 +40,8 @@
           "./tsconfig.json",
           "./src/tsconfig.json",
           "./test/tsconfig.json",
-          "./packages/pactrunner/tsconfig.json"
+          "./packages/pact-runner/tsconfig.json",
+          "./packages/pact-http-controller/tsconfig.json"
         ]
       },
       "node": {

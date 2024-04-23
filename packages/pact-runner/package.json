@@ -1,5 +1,5 @@
 {
-  "name": "cumulocity-cypress-pactrunner",
+  "name": "cumulocity-cypress-pact-runner",
   "version": "0.3.2",
   "description": "Cypress runner for Cumulocity pact recordings",
   "scripts": {
