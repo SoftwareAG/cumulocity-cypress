@@ -47,33 +47,86 @@ type LogFormat =
   | "common";
 
 export interface C8yPactHttpProviderOptions {
+  /**
+   * Base URL of the target server to proxy requests to.
+   */
   baseUrl?: string;
+  /**
+   * Authentication options to use for authenticating against the target server.
+   */
   auth?: C8yAuthOptions;
+  /**
+   * Hostname to listen on. Default is localhost.
+   */
   hostname?: string;
+  /**
+   * Port to listen on. Default is 3000.
+   */
   port?: number;
+  /**
+   * Tenant id of the target server to proxy requests to.
+   */
   tenant?: string;
+  /**
+   * Root folder for static files to serve.
+   */
   staticRoot?: string;
+  /**
+   * Adapter to use for loading and saving pact files.
+   */
   adapter: C8yPactFileAdapter;
+  /**
+   * Preprocessor to use for modifying requests and responses.
+   */
   preprocessor?: C8yPactPreprocessor;
+  /**
+   * Schema generator to use for generating schemas for response bodies. If not set, no schema is generated.
+   */
   schemaGenerator?: C8ySchemaGenerator;
+  /**
+   * Request matching options to use for matching requests to recorded responses.
+   */
   requestMatching?: C8yPactRequestMatchingOptions;
+  /**
+   * Enable strict mocking. If true, only recorded responses are returned.
+   */
   strictMocking?: boolean;
+  /**
+   * Enable recording of requests and responses.
+   */
   isRecordingEnabled?: boolean;
+  /**
+   * Record to use for error responses when no mock is found.
+   */
   errorResponseRecord?:
     | C8yPactRecord
     | ((url?: string, contentType?: string) => C8yPactRecord);
+  /**
+   * Logger to use for logging. Currently only winston is supported.
+   */
   logger?: winston.Logger;
+  /**
+   * Log level to use for logging. Default is info.
+   */
   logLevel?: "info" | "debug" | "warn" | "error";
+  /**
+   * Log format to use for logging.
+   */
   logFormat?:
     | LogFormat
     | string
     | FormatFn<IncomingMessage, ServerResponse<IncomingMessage>>;
+  /**
+   * Custom replacer function to use for JSON.stringify. Use for customization of JSON output.
+   */
+  stringifyReplacer?: (key: string, value: any) => any;
 }
 
 export interface C8yPactHttpProviderConfig extends C8yPactHttpProviderOptions {
+  /**
+   * Folder to load and save pact files from and to.
+   */
   folder?: string;
-  user?: string;
-  password?: string;
 }
 
 export class C8yPactHttpProvider {
@@ -155,6 +208,12 @@ export class C8yPactHttpProvider {
     );
   }
 
+  /**
+   * Starts the server. When started, the server listens on the configured port and hostname. If required,
+   * the server will try to login to the target server using the provided credentials. If authOptions have
+   * a bearer token, the server will use this token for authentication. To enforce BasicAuth, set the type
+   * property of the authOptions to "BasicAuth".
+   */
   async start(): Promise<void> {
     if (this.server) {
       await this.stop();
@@ -164,7 +223,7 @@ export class C8yPactHttpProvider {
       if (!_.isEqual(type, "BasicAuth") && !bearer && user && password) {
         try {
           const a = await oauthLogin(this.authOptions, this.baseUrl);
-          this.logger.info(`Login -> ${this.baseUrl} (${a.user})`);
+          this.logger.info(`oauthLogin -> ${this.baseUrl} (${a.user})`);
           _.extend(this.authOptions, _.pick(a, ["bearer", "xsrfToken"]));
         } catch (error) {
           this.logger.error(`Login failed ${this.baseUrl} (${user})`, error);
@@ -180,10 +239,7 @@ export class C8yPactHttpProvider {
 
       if (!this.mockHandler) {
         this.mockHandler = this.app.use(
-          this.wrapPathIgnoreHandler(
-            this.createMockRequestHandler(),
-            ignoredPaths
-          )
+          this.wrapPathIgnoreHandler(this.mockRequestHandler, ignoredPaths)
         );
       }
 
@@ -213,6 +269,9 @@ export class C8yPactHttpProvider {
     }
   }
 
+  /**
+   * Stops the server.
+   */
   async stop(): Promise<void> {
     await this.server?.close();
     this.logger.info("Stopped server");
@@ -329,51 +388,46 @@ export class C8yPactHttpProvider {
 
   // mock handler - returns recorded response.
   // register before proxy handler
-  protected createMockRequestHandler(): RequestHandler {
-    return (req, res, next) => {
-      if (this._isRecordingEnabled === true) {
-        return next();
-      }
+  protected mockRequestHandler: RequestHandler = (req, res, next) => {
+    if (this._isRecordingEnabled === true) {
+      return next();
+    }
 
-      let record = this.currentPact?.nextRecordMatchingRequest(
-        req,
-        this.baseUrl
-      );
-      if (!record) {
-        if (this._isStrictMocking) {
-          if (this.options.errorResponseRecord) {
-            const r = this.options.errorResponseRecord;
-            record = _.isFunction(r) ? r(req.url, req.get("content-type")) : r;
-          } else {
-            record = C8yDefaultPactRecord.from({
-              status: 404,
-              statusText: "Not Found",
-              body:
-                `<html>\n<head><title>404 Recording Not Found</title></head>` +
-                `\n<body bgcolor="white">\n<center><h1>404 Application Not Found</h1>` +
-                `</center>\n<hr><center>cumulocity-cypress/${this.constructor.name}</center>` +
-                `\n</body>\n</html>\n`,
-              headers: {
-                "content-type": "text/html",
-              },
-            });
-          }
+    let record = this.currentPact?.nextRecordMatchingRequest(req, this.baseUrl);
+    if (!record) {
+      if (this._isStrictMocking) {
+        if (this.options.errorResponseRecord) {
+          const r = this.options.errorResponseRecord;
+          record = _.isFunction(r) ? r(req.url, req.get("content-type")) : r;
+        } else {
+          record = C8yDefaultPactRecord.from({
+            status: 404,
+            statusText: "Not Found",
+            body:
+              `<html>\n<head><title>404 Recording Not Found</title></head>` +
+              `\n<body bgcolor="white">\n<center><h1>404 Application Not Found</h1>` +
+              `</center>\n<hr><center>cumulocity-cypress/${this.constructor.name}</center>` +
+              `\n</body>\n</html>\n`,
+            headers: {
+              "content-type": "text/html",
+            },
+          });
         }
       }
-      if (!record) {
-        return next();
-      }
+    }
+    if (!record) {
+      return next();
+    }
 
-      const r = record?.response;
-      const responseBody = _.isString(r?.body)
-        ? r?.body
-        : this.stringify(r?.body);
+    const r = record?.response;
+    const responseBody = _.isString(r?.body)
+      ? r?.body
+      : this.stringify(r?.body);
 
-      res.setHeader("content-length", Buffer.byteLength(responseBody));
-      res.writeHead(r?.status || 200, _.pick(r?.headers, ["content-type"]));
-      res.end(responseBody);
-    };
-  }
+    res.setHeader("content-length", Buffer.byteLength(responseBody));
+    res.writeHead(r?.status || 200, _.pick(r?.headers, ["content-type"]));
+    res.end(responseBody);
+  };
 
   // proxy handler - forwards request to target server
   protected proxyRequestHandler(auth?: C8yAuthOptions): RequestHandler {
@@ -442,9 +496,16 @@ export class C8yPactHttpProvider {
     return value;
   };
 
+  getStringifyReplacer(): (key: string, value: any) => any {
+    const configReplacer = this.options.stringifyReplacer;
+    return configReplacer && _.isFunction(configReplacer)
+      ? configReplacer
+      : this.stringifyReplacer;
+  }
+
   protected stringify(obj?: any): string {
     if (!obj) return "";
-    return JSON.stringify(obj, this.stringifyReplacer, 2);
+    return JSON.stringify(obj, this.getStringifyReplacer(), 2);
   }
 
   protected stringifyPact(pact: C8yDefaultPact | C8yPact | any): string {
@@ -516,7 +577,7 @@ export class C8yPactHttpProvider {
       if (!pact) return;
       this.adapter?.savePact(this.currentPact);
     } catch (error) {
-      console.log("Failed to save pact.", error);
+      this.logger.error(`Failed to save pact`, error);
     }
   }
 

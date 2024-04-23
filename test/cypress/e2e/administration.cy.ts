@@ -92,8 +92,7 @@ describe("administration", () => {
         done();
       });
 
-      //@ts-expect-error
-      cy.deleteUser({ user: "test" });
+      cy.deleteUser({ user: "test" } as any);
     });
   });
 
