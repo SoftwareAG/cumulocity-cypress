@@ -23,6 +23,8 @@ import { createLogger, format, transports } from "winston";
 // use following import if transports is empty
 import { default as transportsDirect } from "winston/lib/winston/transports/";
 
+export * from "cumulocity-cypress/node";
+
 const safeTransports = !_.isEmpty(transports) ? transports : transportsDirect;
 const log = debug("c8y:pact:httpcontroller");
 

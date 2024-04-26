@@ -1,5 +1,6 @@
-import resolve from "rollup-plugin-node-resolve";
-import commonjs from "rollup-plugin-commonjs";
+import dts from "rollup-plugin-dts";
+import resolve from "@rollup/plugin-node-resolve";
+import commonjs from "@rollup/plugin-commonjs";
 import alias from "@rollup/plugin-alias";
 import json from "@rollup/plugin-json";
 import path, { dirname } from "path";
@@ -22,13 +23,31 @@ let includePathOptions = {
   extensions: [".js"],
 };
 
+const aliasConfig = {
+  entries: [
+    {
+      find: "cumulocity-cypress",
+      replacement: ccPath,
+    },
+  ],
+};
+
+function removeShebang() {
+  return {
+    name: "remove-shebang",
+    renderChunk(code) {
+      return code.replace("#!/usr/bin/env node\n", "");
+    },
+  };
+}
+
 export default [
   {
     input: "dist/packages/pact-http-controller/src/startup.js",
     output: [
       {
         name: "c8yctrl",
-        file: "dist/ctrl/startup.js",
+        file: "dist/ctrl/index.js",
         format: "cjs",
       },
     ],
@@ -38,18 +57,16 @@ export default [
         extensions: [".js"],
         preferBuiltins: true,
         mainFields: ["main", "module"],
-        only: ["./dist/**"],
+        resolveOnly: ["./dist/**"],
       }),
-      alias({
-        entries: [
-          {
-            find: "cumulocity-cypress",
-            replacement: ccPath,
-          },
-        ],
-      }),
+      alias(aliasConfig),
       commonjs(),
       json(),
     ],
+  },
+  {
+    input: "dist/packages/pact-http-controller/src/startup.d.ts",
+    output: [{ file: "dist/ctrl/index.d.ts", format: "es", sourcemap: true }],
+    plugins: [dts(), alias(aliasConfig), removeShebang()],
   },
 ];

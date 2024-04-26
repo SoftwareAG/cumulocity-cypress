@@ -60,7 +60,7 @@ npx c8yctrl --config /path/to/my/c8yctrl.config.ts
 ```
 
 ```typescript
-import { C8yPactHttpControllerConfig } from 'cumulocity-cypress/node';
+import { C8yPactHttpControllerConfig } from 'cumulocity-cypress-ctrl';
 import _ from 'lodash';
 
 import { createLogger, format, transports } from 'winston';
@@ -81,8 +81,6 @@ export default (config: Partial<C8yPactHttpControllerConfig>) => {
       })
     ]
   });
-
-  return config;
 };
 ```
 

@@ -2,15 +2,15 @@
   "name": "cumulocity-cypress-ctrl",
   "version": "0.3.2",
   "description": "HTTP controller for Cumulocity pact recordings",
-  "main": "ctrl/startup.js",
+  "main": "ctrl/index.js",
   "bin": {
-    "c8yctrl": "ctrl/startup.js"
+    "c8yctrl": "ctrl/index.js"
   },
   "scripts": {
     "start": "npx tsx --env-file=.env src/startup.ts --config config.ts",
     "clean": "rimraf ./dist/",
     "package": "npm run build && npm run copy-files && npm run clean-package-json",
-    "build": "npm run clean && tsc --project tsconfig.package.json && rollup -c rollup.config.mjs && rimraf ./dist/packages && rimraf ./dist/src && chmod +x dist/ctrl/startup.js",
+    "build": "npm run clean && tsc --project tsconfig.package.json && rollup -c rollup.config.mjs && rimraf ./dist/packages && rimraf ./dist/src && chmod +x dist/ctrl/index.js",
     "copy-files": "copyfiles package.json dist/",
     "clean-package-json": "cd dist/ && npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },

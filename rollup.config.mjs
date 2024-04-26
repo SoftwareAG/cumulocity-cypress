@@ -16,7 +16,7 @@ export default [
     ],
     plugins: [
       resolve({
-        only: ["./src/**"],
+        resolveOnly: ["./src/**"],
       }),
       commonjs(),
       json(),
