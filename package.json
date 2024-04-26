@@ -13,7 +13,8 @@
     "jest:run": "jest --config jest.config.js",
     "clean": "rimraf dist/ && rimraf packages/*/dist/ && rimraf packages/*/.yalc && rimraf packages/*/yalc.lock",
     "copy-files": "copyfiles --up 1 src/lib/**/*.*js src/lib/*.*js src/lib/**/*.d.ts dist/ && copyfiles README.md package.json dist/",
-    "build": "npm run clean && npm run copy-files && tsc -b -v src/ && npm run build:plugin && cd dist/ && npm run clean-package-json",
+    "package": "npm run build && cd dist/ && npm run clean-package-json",
+    "build": "npm run clean && npm run copy-files && tsc -b -v src/ && npm run build:plugin",
     "build:plugin": "rollup -c rollup.config.mjs",
     "yalc:runner": "npm run yalc:publish && cd packages/pact-runner && yalc add cumulocity-cypress",
     "yalc:controller": "npm run yalc:publish && cd packages/pact-http-controller && yalc add cumulocity-cypress",
@@ -44,6 +45,10 @@
       "types": "./plugin/index.d.ts",
       "default": "./plugin/index.js"
     },
+    "./node": {
+      "types": "./node.d.ts",
+      "default": "./node.js"
+    },
     "./lib/commands/*": "./lib/commands/*",
     "./lib/locale/*": null,
     "./lib/pact/*": null,
@@ -68,6 +73,7 @@
     "winston": "^3.13.0"
   },
   "devDependencies": {
+    "@rollup/plugin-alias": "^5.1.0",
     "@rollup/plugin-json": "^6.1.0",
     "@types/chai": "^4.3.4",
     "@types/cookie-parser": "^1.4.6",
@@ -96,6 +102,7 @@
     "rollup": "^4.14.1",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-dts": "^6.1.0",
+    "rollup-plugin-includepaths": "^0.2.4",
     "rollup-plugin-node-resolve": "^5.2.0",
     "start-server-and-test": "^2.0.0",
     "ts-jest": "^29.1.2",

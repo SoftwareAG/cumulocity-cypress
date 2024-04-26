@@ -1,13 +1,7 @@
 /* eslint-disable import/no-named-as-default-member */
 import _ from "lodash";
 
-import express, {
-  static as expressStatic,
-  Express,
-  Request,
-  RequestHandler,
-  Response,
-} from "express";
+import express, { Express, Request, RequestHandler, Response } from "express";
 import {
   createProxyMiddleware,
   responseInterceptor,
@@ -129,6 +123,14 @@ export interface C8yPactHttpControllerConfig
    */
   folder?: string;
   /**
+   * Folder to save log files to.
+   */
+  logFolder?: string;
+  /**
+   * Log file name to use for logging.
+   */
+  logFilename?: string;
+  /**
    * User to login to the target server.
    */
   user?: string;
@@ -190,13 +192,17 @@ export class C8yPactHttpController {
       },
     };
 
+    if (this.adapter) {
+      this.logger.info(`Adapter: ${this.adapter.description()}`);
+    }
+
     this.app = express();
     this.app.use(morgan((options.logFormat || "short") as any, { stream }));
     this.app.use(cookieParser());
 
     if (this.staticRoot) {
-      this.app.use(expressStatic(this.staticRoot));
-      this.logger.info(`Static files local root: ${this.staticRoot}`);
+      this.app.use(express.static(this.staticRoot));
+      this.logger.info(`Static Root: ${this.staticRoot}`);
     }
     this.authOptions = options.auth;
   }
@@ -270,7 +276,7 @@ export class C8yPactHttpController {
     try {
       this.server = await this.app.listen(this.port);
       this.logger.info(
-        `Started server: ${this.hostname}:${this.port} (recording: ${this._isRecordingEnabled})`
+        `Started: ${this.hostname}:${this.port} (recording: ${this._isRecordingEnabled})`
       );
     } catch (error) {
       this.logger.error("Error starting server:", error);

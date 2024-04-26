@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "rootDir": "../..",
+    "outDir": "dist/",
+    "lib": ["dom", "dom.iterable", "ES2020"],
+    "types": ["cypress", "node", "semver", "cookie-parser", "debug", "cosmiconfig"],
+    "target": "es2020",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "declaration": true,
+    "declarationMap": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "strictNullChecks": true,
+    "paths": {
+      "cumulocity-cypress/*": ["./src/*"],
+      "cumulocity-cypress": ["./src"]
+    }
+  },
+  "exclude": ["src/**/*.spec.ts", "**/c8yclient.ts"],
+  "include": ["src/**/*.ts", "packages/pact-http-controller/**/*.ts"],
+}

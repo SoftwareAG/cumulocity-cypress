@@ -40,6 +40,10 @@ export interface C8yPactFileAdapter {
    * Checks if a pact exists for a given id.
    */
   pactExists(id: string): boolean;
+  /**
+   * Provides some custom description of the adapter.
+   */
+  description(): string;
 }
 
 const log = debug("c8y:plugin:fileadapter");
@@ -54,6 +58,10 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     this.folder = path.isAbsolute(folder)
       ? folder
       : this.toAbsolutePath(folder);
+  }
+
+  description(): string {
+    return `C8yPactDefaultFileAdapter: ${this.folder}`;
   }
 
   getFolder(): string {
