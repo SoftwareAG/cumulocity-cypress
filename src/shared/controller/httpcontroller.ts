@@ -8,6 +8,9 @@ import {
 } from "http-proxy-middleware";
 import bodyParser from "body-parser";
 
+import * as setCookieParser from "set-cookie-parser";
+import * as libCookie from "cookie";
+
 import morgan, { FormatFn } from "morgan";
 import winston from "winston";
 
@@ -114,6 +117,11 @@ export interface C8yPactHttpControllerOptions {
    * Custom replacer function to use for JSON.stringify. Use for customization of JSON output.
    */
   stringifyReplacer?: (key: string, value: any) => any;
+  /**
+   * The headers to forward from the recorded response to the mock response. Only the
+   * headers listed here will be forwarded. Default is content-type and set-cookie.
+   */
+  mockHeaderFromRecord?: (record: C8yPactRecord) => string[];
 }
 
 export interface C8yPactHttpControllerConfig
@@ -445,7 +453,11 @@ export class C8yPactHttpController {
       : this.stringify(r?.body);
 
     res.setHeader("content-length", Buffer.byteLength(responseBody));
-    res.writeHead(r?.status || 200, _.pick(r?.headers, ["content-type"]));
+
+    const mockHeader = _.isFunction(this.options.mockHeaderFromRecord)
+      ? this.options.mockHeaderFromRecord(record)
+      : ["content-type", "set-cookie"];
+    res.writeHead(r?.status || 200, _.pick(r?.headers, mockHeader));
     res.end(responseBody);
   };
 
@@ -493,6 +505,24 @@ export class C8yPactHttpController {
                 resBody = JSON.parse(resBody);
               } catch {
                 // no-op : use body as string
+              }
+              const setCookieHeader = res.getHeader("set-cookie") as string[];
+              const cookies = setCookieParser.parse(setCookieHeader, {
+                decodeValues: false,
+              });
+              if (cookies.length) {
+                res.setHeader(
+                  "set-cookie",
+                  cookies.map(function (cookie) {
+                    delete cookie.domain;
+                    delete cookie.secure;
+                    return libCookie.serialize(
+                      cookie.name,
+                      cookie.value,
+                      cookie as libCookie.CookieSerializeOptions
+                    );
+                  })
+                );
               }
               await this.savePact(
                 this.toCypressResponse(req, res, { resBody, reqBody })
