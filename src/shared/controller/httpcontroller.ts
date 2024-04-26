@@ -233,7 +233,8 @@ export class C8yPactHttpController {
     if (this.server) {
       await this.stop();
     }
-    if (this.authOptions) {
+
+    if (this.authOptions && this.baseUrl) {
       const { user, password, bearer, type } = this.authOptions;
       if (!_.isEqual(type, "BasicAuth") && !bearer && user && password) {
         try {
@@ -245,8 +246,12 @@ export class C8yPactHttpController {
         }
       }
     }
+    if (!this.authOptions) {
+      this.logger.warn(`No auth options provided. Not logging in.`);
+    }
 
     if (this.baseUrl) {
+      this.logger.info(`BaseURL: ${this.baseUrl}`);
       // register proxy handler first requires to make the proxy ignore certain paths
       // this is needed as bodyParser will break post requests in the proxy handler but
       // is needed before any other handlers dealing with request bodies
@@ -266,12 +271,12 @@ export class C8yPactHttpController {
           )
         );
       }
-
-      // automatically parse request bodies - must come after proxy handler
-      this.app.use(bodyParser.json());
-      this.app.use(bodyParser.urlencoded({ extended: true }));
-      this.registerCurrentInterface();
     }
+
+    // automatically parse request bodies - must come after proxy handler
+    this.app.use(bodyParser.json());
+    this.app.use(bodyParser.urlencoded({ extended: true }));
+    this.registerCurrentInterface();
 
     try {
       this.server = await this.app.listen(this.port);
