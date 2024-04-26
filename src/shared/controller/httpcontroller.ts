@@ -357,14 +357,6 @@ export class C8yPactHttpController {
           this._isRecordingEnabled = false;
         }
       }
-      if (
-        _.isString(clear) &&
-        (_.isEmpty(clear) || clear === "true") &&
-        this.currentPact
-      ) {
-        this.currentPact.reset();
-        await this.savePact(this.currentPact);
-      }
 
       if (this.currentPact?.id === id) {
         res.status(200);
@@ -398,6 +390,15 @@ export class C8yPactHttpController {
             this.currentPact = C8yDefaultPact.from(current);
             res.status(200);
           }
+        }
+
+        if (
+          _.isString(clear) &&
+          (_.isEmpty(clear) || clear === "true") &&
+          this.currentPact
+        ) {
+          this.currentPact.reset();
+          await this.savePact(this.currentPact);
         }
       }
 
