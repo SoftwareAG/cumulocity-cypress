@@ -282,7 +282,7 @@ export class C8yPactHttpController {
       // register proxy handler first requires to make the proxy ignore certain paths
       // this is needed as bodyParser will break post requests in the proxy handler but
       // is needed before any other handlers dealing with request bodies
-      const ignoredPaths = ["/c8ypact"];
+      const ignoredPaths = ["/c8yctrl"];
 
       if (!this.mockHandler) {
         this.mockHandler = this.app.use(
@@ -349,18 +349,18 @@ export class C8yPactHttpController {
   }
 
   protected registerC8yctrlInterface() {
-    this.app.get("/c8ypact/current", (req, res) => {
+    this.app.get("/c8yctrl/current", (req, res) => {
       if (!this.currentPact) {
         res
           .status(404)
           .send(
-            "No current pact set. Set current pact using POST /c8ypact/current."
+            "No current pact set. Set current pact using POST /c8yctrl/current."
           );
         return;
       }
       res.send(this.stringifyPact(this.currentPact));
     });
-    this.app.post("/c8ypact/current", async (req, res) => {
+    this.app.post("/c8yctrl/current", async (req, res) => {
       const id = req.body?.id || pactId(req.body?.title) || req.query.id;
       if (!id) {
         res.status(200).send("Missing pact id. Reset current pact.");
@@ -424,11 +424,11 @@ export class C8yPactHttpController {
         })
       );
     });
-    this.app.delete("/c8ypact/current", (req, res) => {
+    this.app.delete("/c8yctrl/current", (req, res) => {
       this.currentPact = undefined;
       res.status(204).send();
     });
-    this.app.post("/c8ypact/log", (req, res) => {
+    this.app.post("/c8yctrl/log", (req, res) => {
       const { message, level } = req.body;
       if (message) {
         this.logger.log(level || "info", message);
