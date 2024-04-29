@@ -103,6 +103,12 @@ export interface C8yPactHttpControllerOptions {
    */
   logger?: winston.Logger;
   /**
+   * RequestHandler to use for logging requests. Default is morgan.
+   */
+  requestLogger?:
+    | RequestHandler[]
+    | ((logger?: winston.Logger) => RequestHandler[]);
+  /**
    * Log level to use for logging. Default is info.
    */
   logLevel?: "info" | "debug" | "warn" | "error";
@@ -205,7 +211,20 @@ export class C8yPactHttpController {
     }
 
     this.app = express();
-    this.app.use(morgan((options.logFormat || "short") as any, { stream }));
+
+    if (this.options.requestLogger) {
+      let rls = this.options.requestLogger;
+      if (_.isFunction(rls)) {
+        rls = rls(this.logger);
+      }
+      if (!_.isArrayLike(rls)) {
+        rls = [rls];
+      }
+      rls.forEach((h) => this.app.use(h));
+    } else {
+      this.app.use(morgan((options.logFormat || "short") as any, { stream }));
+    }
+
     this.app.use(cookieParser());
 
     if (this.staticRoot) {
@@ -263,7 +282,7 @@ export class C8yPactHttpController {
       // register proxy handler first requires to make the proxy ignore certain paths
       // this is needed as bodyParser will break post requests in the proxy handler but
       // is needed before any other handlers dealing with request bodies
-      const ignoredPaths = ["/c8ypact/current"];
+      const ignoredPaths = ["/c8ypact"];
 
       if (!this.mockHandler) {
         this.mockHandler = this.app.use(
@@ -284,7 +303,7 @@ export class C8yPactHttpController {
     // automatically parse request bodies - must come after proxy handler
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
-    this.registerCurrentInterface();
+    this.registerC8yctrlInterface();
 
     try {
       this.server = await this.app.listen(this.port);
@@ -329,8 +348,8 @@ export class C8yPactHttpController {
     };
   }
 
-  protected registerCurrentInterface() {
-    this.app.get("/c8ypact/current", (req: Request, res: Response) => {
+  protected registerC8yctrlInterface() {
+    this.app.get("/c8ypact/current", (req, res) => {
       if (!this.currentPact) {
         res
           .status(404)
@@ -341,22 +360,18 @@ export class C8yPactHttpController {
       }
       res.send(this.stringifyPact(this.currentPact));
     });
-    this.app.post("/c8ypact/current", async (req: Request, res: Response) => {
-      const id = req.body?.id || pactId(req.body?.title);
+    this.app.post("/c8ypact/current", async (req, res) => {
+      const id = req.body?.id || pactId(req.body?.title) || req.query.id;
       if (!id) {
-        res.status(200).send("Reset current pact.");
+        res.status(200).send("Missing pact id. Reset current pact.");
         this.currentPact = undefined;
         return;
       }
 
-      const { recording, clear } = req.query;
-      if (recording && _.isString(recording)) {
-        if (recording.toLocaleLowerCase() === "true") {
-          this._isRecordingEnabled = true;
-        } else if (recording.toLocaleLowerCase() === "false") {
-          this._isRecordingEnabled = false;
-        }
-      }
+      const parameters = { ...req.body, ...req.query };
+      const { recording, clear, strictMocking } = parameters;
+      this._isRecordingEnabled = toBoolean(recording, this._isRecordingEnabled);
+      this._isStrictMocking = toBoolean(strictMocking, this._isStrictMocking);
 
       if (this.currentPact?.id === id) {
         res.status(200);
@@ -394,7 +409,7 @@ export class C8yPactHttpController {
 
         if (
           _.isString(clear) &&
-          (_.isEmpty(clear) || clear === "true") &&
+          (_.isEmpty(clear) || clear.toLowerCase() === "true") &&
           this.currentPact
         ) {
           this.currentPact.reset();
@@ -412,6 +427,13 @@ export class C8yPactHttpController {
     this.app.delete("/c8ypact/current", (req, res) => {
       this.currentPact = undefined;
       res.status(204).send();
+    });
+    this.app.post("/c8ypact/log", (req, res) => {
+      const { message, level } = req.body;
+      if (message) {
+        this.logger.log(level || "info", message);
+      }
+      res.status(200).send();
     });
   }
 
@@ -625,7 +647,7 @@ export class C8yPactHttpController {
           this.currentPact.records.push(records);
         }
       }
-      if (!pact) return;
+      if (!pact || _.isEmpty(this.currentPact.records)) return;
       this.adapter?.savePact(this.currentPact);
     } catch (error) {
       this.logger.error(`Failed to save pact`, error);
@@ -668,4 +690,12 @@ export class C8yPactHttpController {
     }
     return result;
   }
+}
+
+function toBoolean(input: string, defaultValue: boolean): boolean {
+  if (input == null || !_.isString(input)) return defaultValue;
+  const booleanString = input.toString().toLowerCase();
+  if (booleanString == "true") return true;
+  if (booleanString == "false") return false;
+  return defaultValue;
 }
