@@ -12,6 +12,11 @@
   - [Command Line Arguments](#command-line-arguments)
   - [Configuration File](#configuration-file)
 - [Rest Interface](#rest-interface)
+- [Usage](#usage)
+  - [Using c8yctrl with cumulocity-cypress](#using-c8yctrl-with-cumulocity-cypress)
+  - [From Cypress tests](#from-cypress-tests)
+  - [For microservices](#for-microservices)
+- [Todo](#todo)
 
 ## Installation
 
@@ -59,6 +64,8 @@ npx c8yctrl --pact-folder /path/to/my/recordings \
 npx c8yctrl --config /path/to/my/c8yctrl.config.ts
 ```
 
+Sample `c8yctrl.config.ts` registering a file logger with custom log format and log level. The config argument is optional and is only required if a different config file than `c8yctrl.config.ts` is used. 
+
 ```typescript
 import { C8yPactHttpControllerConfig } from 'cumulocity-cypress-ctrl';
 import _ from 'lodash';
@@ -88,3 +95,89 @@ For more details on available configuration options, see `C8yPactHttpControllerC
 
 ## Rest Interface
 
+`c8yctrl` provides a REST interface to interact with the HTTP controller. The interface is available via `/c8yctrl` and provides endpoints .
+
+## Usage
+
+
+### Using c8yctrl with cumulocity-cypress
+
+### From Cypress tests
+
+To use `c8yctrl` from Cypress tests without or an older version of  `cumulocity-cypress`, it is needed to configure `c8yctrl` directly using its REST interface. 
+
+Example:
+
+```typescript
+before(() => {
+  // required if requests need to be recorded in global before () hook
+  cy.wrap(c8yctrl('global before hook')).then((response: Response) => {
+    // run requests from here as for example
+    cy.getAuth('admin').getCurrentTenant();
+  });
+
+  // create recording for all suite start events. without, requests might be
+  // recorded for the previous (currently active) test case.
+  // this will ensure for every suite start a new recording is created
+  const runner = Cypress.mocha.getRunner();
+  runner.on('suite', (suite) => c8yctrl(getSuiteTitles(suite)));
+});
+
+// create recording for each test. name for the recording will be the test title
+// including all suites it its hierarchy
+beforeEach(() => {
+  cy.wrap(c8yctrl(), { log: false });
+});
+
+function getSuiteTitles(suite) {
+  if (suite.parent && !_.isEmpty(suite.parent.title)) {
+    return [...getSuiteTitles(suite.parent), suite.title];
+  } else {
+    return [suite.title];
+  }
+}
+
+// sample wrapper for c8yctrl REST interface. extend as needed.
+function c8yctrl(title: string | string[] = Cypress.currentTest.titlePath) {
+  const recording = Cypress.env('C8Y_PACT_MODE') === 'recording';
+  const parameter: string = recording ? '?recording=true&clear' : '?recording=false';
+
+  return (cy.state('window') as Cypress.AUTWindow).fetch(
+    `${Cypress.config().baseUrl}/c8yctrl/current${parameter}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title,
+      }),
+    }
+  );
+}
+```
+
+### For microservices
+
+## Todo
+
+- [X] document recording for before() hooks from your tests
+- [X] document recording tests suite for a separate id
+- [X] save pact file only when first record is added - no file for empty suites
+- [X] allow multiple request logger
+- [ ] allow adding custom request handlers (maybe for logging or other purposes)
+- [ ] new C8Y_PACT_MODE to enable testing without recording or mocking
+- [ ] avoid recording of requests that are already recorded (configurable)
+- [ ] join pact ids with suite ids
+- [ ] pass C8yPactConfigOptions and TestConfigOverrides to store in pact file
+- [ ] store tags from test cases in recording
+- [ ] rename interface to /c8yctrl/current
+- [ ] add support for recording realtime notifications API
+- [ ] automatically reduce timeouts when mocking, e.g. in visitAndWaitForSelector
+- [ ] pass auth user and alias to store in record
+- [ ] allow mocking configurable requests or cypress hooks
+- [X] allow passing strictMocking as parameter to /c8yctrl/current
+- [X] add logging from via c8yctrl from cypress tests 
+- [ ] disable login via cy.session when recording
+- [X] read parameters for c8yctrl from query and body
+- [X] add sample config file to contributions folder
