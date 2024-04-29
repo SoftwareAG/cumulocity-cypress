@@ -494,7 +494,11 @@ export class C8yPactHttpController {
       logger: this.logger,
 
       on: {
-        proxyReq: (proxyReq) => {
+        proxyReq: (proxyReq, req) => {
+          if (this.currentPact?.id) {
+            (req as any).c8yctrlId = this.currentPact?.id;
+          }
+
           // add authorization header
           if (
             this._isRecordingEnabled === true &&
@@ -522,6 +526,8 @@ export class C8yPactHttpController {
         proxyRes: responseInterceptor(
           async (responseBuffer, proxyRes, req, res) => {
             let resBody = responseBuffer.toString("utf8");
+            const c8yctrlId = (req as any).c8yctrlId;
+
             if (this._isRecordingEnabled === true) {
               const reqBody = (req as any).body;
               try {
@@ -548,7 +554,8 @@ export class C8yPactHttpController {
                 );
               }
               await this.savePact(
-                this.toCypressResponse(req, res, { resBody, reqBody })
+                this.toCypressResponse(req, res, { resBody, reqBody }),
+                c8yctrlId
               );
             }
             return responseBuffer;
@@ -612,16 +619,29 @@ export class C8yPactHttpController {
       .map((key) => pacts[key as keyof typeof pacts]);
   }
 
-  async savePact(response: Cypress.Response<any> | C8yPact): Promise<void> {
-    if (!this.currentPact) return;
-    const id = this.currentPact.id;
+  async savePact(
+    response: Cypress.Response<any> | C8yPact,
+    c8ycltrlId?: string
+  ): Promise<void> {
+    let pactForId = this.currentPact;
+    if (c8ycltrlId && !_.isEqual(this.currentPact?.id, c8ycltrlId)) {
+      const p = this.adapter?.loadPact(c8ycltrlId);
+      pactForId = p ? C8yDefaultPact.from(p) : undefined;
+      this.logger.warn(
+        `Request for ${c8ycltrlId} received for current pact with different id.`
+      );
+    }
+
+    if (!pactForId) return;
+
+    const id = pactForId.id;
     try {
       let pact: Pick<C8yPact, C8yPactSaveKeys>;
       if ("records" in response && "info" in response) {
         pact = response;
       } else {
         const info: C8yPactInfo = {
-          id: this.currentPact.id,
+          id: pactForId?.id,
           title: [],
           tenant: this.tenant,
           baseUrl: this.baseUrl || "",
@@ -636,19 +656,22 @@ export class C8yPactHttpController {
       }
 
       const { records } = pact;
-      if (!this.currentPact) {
-        this.currentPact = new C8yDefaultPact(records, pact.info, id);
+      if (!pactForId) {
+        pactForId = new C8yDefaultPact(records, pact.info, id);
+        this.currentPact = pactForId;
       } else {
-        if (!this.currentPact.records) {
-          this.currentPact.records = records;
+        if (!pactForId.records) {
+          pactForId.records = records;
         } else if (Array.isArray(records)) {
-          Array.prototype.push.apply(this.currentPact.records, records);
+          Array.prototype.push.apply(pactForId.records, records);
         } else {
-          this.currentPact.records.push(records);
+          pactForId.records.push(records);
         }
       }
-      if (!pact || _.isEmpty(this.currentPact.records)) return;
-      this.adapter?.savePact(this.currentPact);
+      if (!pact || _.isEmpty(pactForId.records)) return;
+
+      this.adapter?.savePact(pactForId);
+      this.logger.debug(`Saved ${pactForId.id}`);
     } catch (error) {
       this.logger.error(`Failed to save pact`, error);
     }
