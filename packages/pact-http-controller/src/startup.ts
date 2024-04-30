@@ -29,6 +29,18 @@ const safeTransports = !_.isEmpty(transports) ? transports : transportsDirect;
 const log = debug("c8y:pact:httpcontroller");
 
 /**
+ * Default logger for the HTTP controller. It logs to the console with colors and simple format.
+ * This needs to be passed to the config, so it must be created before applying the default config.
+ */
+const defaultLogger = createLogger({
+  transports: [
+    new safeTransports.Console({
+      format: format.combine(format.simple()),
+    }),
+  ],
+});
+
+/**
  * Default config object for the HTTP controller. It takes a configuration object and
  * adds required defaults, as for example the adapter, an error response record or the logger.
  *
@@ -54,24 +66,7 @@ const applyDefaultConfig = (config: Partial<C8yPactHttpControllerConfig>) => {
     };
   }
   if (!("logger" in config)) {
-    config.logger = createLogger({
-      transports: [
-        new safeTransports.Console({
-          format: format.combine(
-            format.colorize({
-              all: true,
-              colors: {
-                info: "green",
-                error: "red",
-                warn: "yellow",
-                debug: "white",
-              },
-            }),
-            format.simple()
-          ),
-        }),
-      ],
-    });
+    config.logger = defaultLogger;
   }
   if (!("requestMatching" in config)) {
     config.requestMatching = {
@@ -109,11 +104,17 @@ const applyDefaultConfig = (config: Partial<C8yPactHttpControllerConfig>) => {
       log("loaded config: ", result.filepath);
       if (_.isFunction(result.config)) {
         log("config exported a function");
-        _.defaults(config, result.config(config));
+        const configClone = _.cloneDeep(config);
+        // assign logger after deep cloning: https://github.com/winstonjs/winston/issues/1730
+        configClone.logger = defaultLogger;
+        const c = result.config(configClone);
+        _.defaults(config, c || configClone);
       } else {
         log("config exported an object");
+        config.logger = defaultLogger;
         _.defaults(config, result.config);
       }
+      config.logger?.info("Config: " + result.filepath);
     }
   }
 
@@ -141,7 +142,9 @@ function getEnvVar(name: string): string | undefined {
   return (
     process.env[name] ||
     process.env[_.camelCase(name)] ||
-    process.env[`CYPRESS_${name}`]
+    process.env[name.replace(/^C8Y_/i, "")] ||
+    process.env[_.camelCase(`CYPRESS_${name}`)] ||
+    process.env[`CYPRESS_${_.camelCase(name.replace(/^C8Y_/i, ""))}`]
   );
 }
 
@@ -151,6 +154,7 @@ function getConfigFromArgsOrEnvironment(): [
 ] {
   const result = yargs(hideBin(process.argv))
     .option("folder", {
+      alias: "pactFolder",
       type: "string",
       description: "Folder recordings are loaded from and saved to.",
     })
@@ -164,6 +168,7 @@ function getConfigFromArgsOrEnvironment(): [
         "The Cumulocity URL REST requests are proxied and recorded from.",
     })
     .option("user", {
+      alias: "username",
       type: "string",
       description: "Set the username to login at baseUrl.",
     })
