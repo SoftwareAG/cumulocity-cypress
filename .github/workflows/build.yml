@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  prepare:
+  build-cumulocity-cypress:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,19 +21,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-  build-cumulocity-cypress:
-    needs: prepare
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: build cumulocity-cypress
+      - name: Build
         run: npm run build
 
   build-c8yctrl:
-    needs: prepare
     runs-on: ubuntu-latest
 
     steps:
-      - name: build pact-http-controller
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
         run: npm run build
         working-directory: packages/pact-http-controller
