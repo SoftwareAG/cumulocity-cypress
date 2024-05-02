@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress-ctrl",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "HTTP controller for Cumulocity pact recordings",
   "main": "ctrl/index.js",
   "bin": {
@@ -10,8 +10,8 @@
     "start": "npx tsx --env-file=.env src/startup.ts --config config.ts",
     "clean": "rimraf ./dist/",
     "package": "npm run build && npm run copy-files && npm run clean-package-json",
-    "build": "npm run clean && tsc --project tsconfig.package.json && rollup -c rollup.config.mjs && rimraf ./dist/packages && rimraf ./dist/src && chmod +x dist/ctrl/index.js",
-    "copy-files": "copyfiles package.json dist/",
+    "build": "npm run clean && tsc --project tsconfig.package.json && rollup -c rollup.config.mjs && rimraf ./dist/packages && rimraf ./dist/src && rimraf ./dist/*/*.ts.map && chmod +x dist/ctrl/index.js",
+    "copy-files": "copyfiles package.json README.md dist/",
     "clean-package-json": "cd dist/ && npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
   },
   "repository": {
@@ -46,6 +46,7 @@
     "morgan": "^1.10.0",
     "quicktype": "^23.0.81",
     "set-cookie-parser": "^2.6.0",
+    "tslib": "^2.6.2",
     "winston": "^3.13.0",
     "yargs": "^17.7.2"
   },
@@ -57,7 +58,6 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.10.6",
     "@types/set-cookie-parser": "^2.4.7",
-    "tslib": "^2.6.2",
     "tsx": "^4.7.2",
     "typescript": "^5.0.2"
   }
