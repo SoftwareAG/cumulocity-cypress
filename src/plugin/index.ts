@@ -9,7 +9,7 @@ import {
 import {
   C8yPactHttpController,
   C8yPactHttpControllerOptions,
-} from "../shared/controller/httpcontroller";
+} from "../shared/c8yctrl/httpcontroller";
 import { C8yPact } from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
 

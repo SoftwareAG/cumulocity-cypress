@@ -19,7 +19,6 @@ import cookieParser from "cookie-parser";
 import { C8yAuthOptions } from "../auth";
 import {
   C8yDefaultPact,
-  C8yDefaultPactRecord,
   C8yPact,
   C8yPactInfo,
   C8yPactSaveKeys,
