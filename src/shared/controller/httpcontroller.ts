@@ -11,7 +11,6 @@ import bodyParser from "body-parser";
 import * as setCookieParser from "set-cookie-parser";
 import * as libCookie from "cookie";
 
-import morgan, { FormatFn } from "morgan";
 import winston from "winston";
 
 import { IncomingMessage, Server, ServerResponse } from "http";
@@ -23,136 +22,19 @@ import {
   C8yDefaultPactRecord,
   C8yPact,
   C8yPactInfo,
-  C8yPactPreprocessor,
-  C8yPactRecord,
-  C8yPactRequestMatchingOptions,
   C8yPactSaveKeys,
-  C8ySchemaGenerator,
   pactId,
   toPactSerializableObject,
 } from "../c8ypact";
 import { oauthLogin } from "../c8yclient";
 import { C8yPactFileAdapter } from "../c8ypact/fileadapter";
+import {
+  C8yPactHttpControllerOptions,
+  C8yPactHttpResponse,
+} from "./httpcontroller-options";
+import morgan from "morgan";
 
-type LogFormat =
-  | "json"
-  | "simple"
-  | "combined"
-  | "short"
-  | "dev"
-  | "tiny"
-  | "common";
-
-export interface C8yPactHttpControllerOptions {
-  /**
-   * Base URL of the target server to proxy requests to.
-   */
-  baseUrl?: string;
-  /**
-   * Authentication options to use for authenticating against the target server.
-   */
-  auth?: C8yAuthOptions;
-  /**
-   * Hostname to listen on. Default is localhost.
-   */
-  hostname?: string;
-  /**
-   * Port to listen on. Default is 3000.
-   */
-  port?: number;
-  /**
-   * Tenant id of the target server to proxy requests to.
-   */
-  tenant?: string;
-  /**
-   * Root folder for static files to serve.
-   */
-  staticRoot?: string;
-  /**
-   * Adapter to use for loading and saving pact files.
-   */
-  adapter: C8yPactFileAdapter;
-  /**
-   * Preprocessor to use for modifying requests and responses.
-   */
-  preprocessor?: C8yPactPreprocessor;
-  /**
-   * Schema generator to use for generating schemas for response bodies. If not set, no schema is generated.
-   */
-  schemaGenerator?: C8ySchemaGenerator;
-  /**
-   * Request matching options to use for matching requests to recorded responses.
-   */
-  requestMatching?: C8yPactRequestMatchingOptions;
-  /**
-   * Enable strict mocking. If true, only recorded responses are returned.
-   */
-  strictMocking?: boolean;
-  /**
-   * Enable recording of requests and responses.
-   */
-  isRecordingEnabled?: boolean;
-  /**
-   * Record to use for error responses when no mock is found.
-   */
-  errorResponseRecord?:
-    | C8yPactRecord
-    | ((url?: string, contentType?: string) => C8yPactRecord);
-  /**
-   * Logger to use for logging. Currently only winston is supported.
-   */
-  logger?: winston.Logger;
-  /**
-   * RequestHandler to use for logging requests. Default is morgan.
-   */
-  requestLogger?:
-    | RequestHandler[]
-    | ((logger?: winston.Logger) => RequestHandler[]);
-  /**
-   * Log level to use for logging. Default is info.
-   */
-  logLevel?: "info" | "debug" | "warn" | "error";
-  /**
-   * Log format to use for logging.
-   */
-  logFormat?:
-    | LogFormat
-    | string
-    | FormatFn<IncomingMessage, ServerResponse<IncomingMessage>>;
-  /**
-   * Custom replacer function to use for JSON.stringify. Use for customization of JSON output.
-   */
-  stringifyReplacer?: (key: string, value: any) => any;
-  /**
-   * The headers to forward from the recorded response to the mock response. Only the
-   * headers listed here will be forwarded. Default is content-type and set-cookie.
-   */
-  mockHeaderFromRecord?: (record: C8yPactRecord) => string[];
-}
-
-export interface C8yPactHttpControllerConfig
-  extends C8yPactHttpControllerOptions {
-  /**
-   * Folder to load and save pact files from and to.
-   */
-  folder?: string;
-  /**
-   * Folder to save log files to.
-   */
-  logFolder?: string;
-  /**
-   * Log file name to use for logging.
-   */
-  logFilename?: string;
-  /**
-   * User to login to the target server.
-   */
-  user?: string;
-  /**
-   * Password to login to the target server.
-   */
-  password?: string;
-}
+export * from "./httpcontroller-options";
 
 export class C8yPactHttpController {
   currentPact?: C8yDefaultPact;
@@ -444,43 +326,62 @@ export class C8yPactHttpController {
       return next();
     }
 
+    let response: C8yPactHttpResponse | undefined | null = undefined;
     let record = this.currentPact?.nextRecordMatchingRequest(req, this.baseUrl);
+    if (_.isFunction(this.options.onMockRequest)) {
+      response = this.options.onMockRequest(this, req, record);
+      if (!response) {
+        this.logger.debug(`Not mocking ${req.url}. Filtered by configuration.`);
+        return next();
+      }
+    }
+
+    if (response) {
+      record = C8yDefaultPactRecord.from(
+        _.defaults(response, record?.response || {})
+      );
+    }
+
     if (!record) {
       if (this._isStrictMocking) {
-        if (this.options.errorResponseRecord) {
-          const r = this.options.errorResponseRecord;
-          record = _.isFunction(r) ? r(req.url, req.get("content-type")) : r;
+        if (this.options.mockNotFoundResponse) {
+          const r = this.options.mockNotFoundResponse;
+          response = _.isFunction(r) ? r(req) : r;
         } else {
-          record = C8yDefaultPactRecord.from({
+          response = {
             status: 404,
             statusText: "Not Found",
             body:
               `<html>\n<head><title>404 Recording Not Found</title></head>` +
-              `\n<body bgcolor="white">\n<center><h1>404 Application Not Found</h1>` +
-              `</center>\n<hr><center>cumulocity-cypress/${this.constructor.name}</center>` +
+              `\n<body bgcolor="white">\n<center><h1>404 Recording Not Found</h1>` +
+              `</center>\n<hr><center>cumulocity-cypress-ctrl/${this.constructor.name}</center>` +
               `\n</body>\n</html>\n`,
             headers: {
               "content-type": "text/html",
             },
-          });
+          };
         }
+        record = C8yDefaultPactRecord.from(response);
       }
+    } else {
+      response = record?.response;
     }
-    if (!record) {
+
+    if (!record || !response) {
       return next();
     }
 
-    const r = record?.response;
-    const responseBody = _.isString(r?.body)
-      ? r?.body
-      : this.stringify(r?.body);
-
+    const responseBody = _.isString(response?.body)
+      ? response?.body
+      : this.stringify(response?.body);
     res.setHeader("content-length", Buffer.byteLength(responseBody));
 
-    const mockHeader = _.isFunction(this.options.mockHeaderFromRecord)
-      ? this.options.mockHeaderFromRecord(record)
-      : ["content-type", "set-cookie"];
-    res.writeHead(r?.status || 200, _.pick(r?.headers, mockHeader));
+    response.headers = _.defaults(
+      response?.headers,
+      _.pick(response?.headers, ["content-type", "set-cookie"])
+    );
+
+    res.writeHead(response?.status || 200, response?.headers);
     res.end(responseBody);
   };
 
@@ -494,7 +395,7 @@ export class C8yPactHttpController {
       logger: this.logger,
 
       on: {
-        proxyReq: (proxyReq, req) => {
+        proxyReq: (proxyReq, req, res) => {
           if (this.currentPact?.id) {
             (req as any).c8yctrlId = this.currentPact?.id;
           }
@@ -521,12 +422,33 @@ export class C8yPactHttpController {
               proxyReq.setHeader("X-XSRF-TOKEN", xsrfToken);
             }
           }
+
+          if (_.isFunction(this.options.onProxyRequest)) {
+            const r = this.options.onProxyRequest(this, proxyReq, req);
+            if (r) {
+              this.writeResponse(res, r);
+            }
+          }
         },
 
         proxyRes: responseInterceptor(
           async (responseBuffer, proxyRes, req, res) => {
             let resBody = responseBuffer.toString("utf8");
             const c8yctrlId = (req as any).c8yctrlId;
+
+            if (_.isFunction(this.options.onProxyResponse)) {
+              const shouldContinue = this.options.onProxyResponse(
+                this,
+                req,
+                this.toC8yPactResponse(res, resBody)
+              );
+              if (!shouldContinue) {
+                this.logger.debug(
+                  `Not processing ${req.url}. Filtered by configuration.`
+                );
+                return responseBuffer;
+              }
+            }
 
             if (this._isRecordingEnabled === true) {
               const reqBody = (req as any).body;
@@ -670,11 +592,32 @@ export class C8yPactHttpController {
       }
       if (!pact || _.isEmpty(pactForId.records)) return;
 
+      if (_.isFunction(this.options.onSavePact)) {
+        const shouldSave = this.options.onSavePact(this, pactForId);
+        if (!shouldSave) {
+          this.logger.debug(
+            `Not saving pact with id ${pactForId.id}. Disabled by configuration.`
+          );
+          return;
+        }
+      }
       this.adapter?.savePact(pactForId);
       this.logger.debug(`Saved ${pactForId.id}`);
     } catch (error) {
       this.logger.error(`Failed to save pact`, error);
     }
+  }
+
+  protected toC8yPactResponse(
+    res: Response<any, any>,
+    body: any
+  ): C8yPactHttpResponse {
+    return {
+      headers: res?.getHeaders() as { [key: string]: string },
+      status: res?.statusCode,
+      statusText: res?.statusMessage,
+      body,
+    };
   }
 
   protected toCypressResponse(
@@ -712,6 +655,24 @@ export class C8yPactHttpController {
       delete result.requestHeaders["authentication"];
     }
     return result;
+  }
+
+  protected writeResponse(
+    targetResponse: Response<any, any>,
+    response: C8yPactHttpResponse
+  ) {
+    const responseBody = _.isString(response?.body)
+      ? response?.body
+      : this.stringify(response?.body);
+    targetResponse.setHeader("content-length", Buffer.byteLength(responseBody));
+
+    response.headers = _.defaults(
+      response?.headers,
+      _.pick(response?.headers, ["content-type", "set-cookie"])
+    );
+
+    targetResponse.writeHead(response?.status || 200, response?.headers);
+    targetResponse.end(responseBody);
   }
 }
 

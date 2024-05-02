@@ -12,7 +12,6 @@ import {
   C8yDefaultPactPreprocessor,
   C8yPactHttpControllerOptions,
   C8yPactHttpControllerConfig,
-  C8yDefaultPactRecord,
 } from "cumulocity-cypress/node";
 
 import { cosmiconfig } from "cosmiconfig";
@@ -54,15 +53,15 @@ const applyDefaultConfig = (config: Partial<C8yPactHttpControllerConfig>) => {
     );
   }
   if (!("errorResponseRecord" in config)) {
-    config.errorResponseRecord = (url) => {
-      return C8yDefaultPactRecord.from({
+    config.mockNotFoundResponse = (url) => {
+      return {
         status: 404,
         statusText: "Not Found",
         body: `Not Found: ${url}`,
         headers: {
           "content-type": "application/text",
         },
-      });
+      };
     };
   }
   if (!("logger" in config)) {
