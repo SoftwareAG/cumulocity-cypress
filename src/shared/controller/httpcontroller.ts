@@ -327,22 +327,29 @@ export class C8yPactHttpController {
     }
 
     let response: C8yPactHttpResponse | undefined | null = undefined;
-    let record = this.currentPact?.nextRecordMatchingRequest(req, this.baseUrl);
+
+    const record = this.currentPact?.nextRecordMatchingRequest(
+      req,
+      this.baseUrl
+    );
     if (_.isFunction(this.options.onMockRequest)) {
       response = this.options.onMockRequest(this, req, record);
-      if (!response) {
+      if (!response && record) {
         this.logger.debug(`Not mocking ${req.url}. Filtered by configuration.`);
         return next();
       }
-    }
-
-    if (response) {
-      record = C8yDefaultPactRecord.from(
-        _.defaults(response, record?.response || {})
+      response = _.defaults(response, record?.response || {});
+      this.logger.debug(
+        `Mock customized ${req.method?.toLocaleUpperCase()} ${req.url}`
       );
+    } else {
+      response = record?.response;
+      if (response) {
+        this.logger.debug(`Mock ${req.method?.toLocaleUpperCase()} ${req.url}`);
+      }
     }
 
-    if (!record) {
+    if (!record && !response) {
       if (this._isStrictMocking) {
         if (this.options.mockNotFoundResponse) {
           const r = this.options.mockNotFoundResponse;
@@ -361,13 +368,15 @@ export class C8yPactHttpController {
             },
           };
         }
-        record = C8yDefaultPactRecord.from(response);
+        if (response) {
+          this.logger.debug(
+            `Mock error ${req.method?.toLocaleUpperCase()} ${req.url}`
+          );
+        }
       }
-    } else {
-      response = record?.response;
     }
 
-    if (!record || !response) {
+    if (!response) {
       return next();
     }
 
@@ -380,8 +389,10 @@ export class C8yPactHttpController {
       response?.headers,
       _.pick(response?.headers, ["content-type", "set-cookie"])
     );
-
-    res.writeHead(response?.status || 200, response?.headers);
+    res.writeHead(
+      response?.status || 200,
+      _.omit(response?.headers || {}, "content-length", "date", "connection")
+    );
     res.end(responseBody);
   };
 
