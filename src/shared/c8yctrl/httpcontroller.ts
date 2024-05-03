@@ -309,6 +309,38 @@ export class C8yPactHttpController {
       this.currentPact = undefined;
       res.status(204).send();
     });
+    this.app.get("/c8yctrl/current/request", (req, res) => {
+      if (!this.currentPact) {
+        res
+          .status(404)
+          .send(
+            "No current pact set. Set current pact using POST /c8yctrl/current."
+          );
+        return;
+      }
+      const result: any = this.currentPact?.records.map((r) => {
+        const x: any = _.pick(r.request, Object.keys(req.query));
+        if ("size" in req.query) {
+          x.size = this.stringify(r).length;
+        }
+        return x;
+      });
+      res.status(200).send(JSON.stringify(result, null, 2));
+    });
+    this.app.get("/c8yctrl/current/response", (req, res) => {
+      if (!this.currentPact) {
+        res
+          .status(404)
+          .send(
+            "No current pact set. Set current pact using POST /c8yctrl/current."
+          );
+        return;
+      }
+      const result = this.currentPact?.records.map((r) => {
+        return _.pick(r.response, Object.keys(req.query));
+      });
+      res.status(200).send(JSON.stringify(result, null, 2));
+    });
     this.app.post("/c8yctrl/log", (req, res) => {
       const { message, level } = req.body;
       if (message) {
@@ -329,7 +361,7 @@ export class C8yPactHttpController {
       value: string,
       response?: C8yPactHttpResponse | null
     ) => {
-      if (response) {
+      if (response && !_.get(response.headers, "x-c8yctrl-type")) {
         response.headers = response?.headers || {};
         response.headers["x-c8yctrl-type"] = value;
       }
@@ -343,7 +375,9 @@ export class C8yPactHttpController {
     if (_.isFunction(this.options.onMockRequest)) {
       response = this.options.onMockRequest(this, req, record);
       if (!response && record) {
-        res.setHeader("x-c8yctrl-type", "mock-skipped");
+        if (!res.getHeader("x-c8yctrl-type")) {
+          res.setHeader("x-c8yctrl-type", "mock-skipped");
+        }
         return next();
       }
       addC8yCtrlHeader("mocked-custom", response);
@@ -447,15 +481,32 @@ export class C8yPactHttpController {
             let resBody = responseBuffer.toString("utf8");
             const c8yctrlId = (req as any).c8yctrlId;
 
+            const pactResponse = this.toC8yPactResponse(res, resBody);
             if (_.isFunction(this.options.onProxyResponse)) {
               const shouldContinue = this.options.onProxyResponse(
                 this,
                 req,
-                this.toC8yPactResponse(res, resBody)
+                pactResponse
               );
+
+              // pass objects from response returned by onProxyResponse to res
+              res.statusCode = pactResponse.status || res.statusCode;
+              for (const [key, value] of Object.entries(
+                pactResponse.headers || {}
+              )) {
+                res.setHeader(key, value as any);
+              }
+              if (pactResponse.body) {
+                resBody = _.isString(pactResponse.body)
+                  ? pactResponse.body
+                  : this.stringify(pactResponse.body);
+              }
+
               if (!shouldContinue) {
-                res.setHeader("x-c8yctrl-type", "resp-skipped");
-                return responseBuffer;
+                if (!res.getHeader("x-c8yctrl-type")) {
+                  res.setHeader("x-c8yctrl-type", "skipped");
+                }
+                return resBody;
               }
             }
 
@@ -498,7 +549,9 @@ export class C8yPactHttpController {
                 if (_.isFunction(this.options.onSavePact)) {
                   const shouldSave = this.options.onSavePact(this, pact);
                   if (!shouldSave) {
-                    res.setHeader("x-c8yctrl-type", "not-recorded");
+                    if (!res.getHeader("x-c8yctrl-type")) {
+                      res.setHeader("x-c8yctrl-type", "not-recorded");
+                    }
                     return responseBuffer;
                   }
                 }
@@ -509,7 +562,9 @@ export class C8yPactHttpController {
                     pact
                   );
                 }
-                res.setHeader("x-c8yctrl-type", "recorded");
+                if (!res.getHeader("x-c8yctrl-type")) {
+                  res.setHeader("x-c8yctrl-type", "recorded");
+                }
               }
             }
             return responseBuffer;
