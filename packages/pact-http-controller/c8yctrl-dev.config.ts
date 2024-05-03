@@ -34,8 +34,21 @@ export default (config: Partial<C8yPactHttpControllerConfig>) => {
     ],
   });
 
-  config.requestLogger = () => [
-    morgan(":method :url :status :res[content-length] - :response-time ms", {
+  // morgan must not log with opts.immediate enabled
+  const requestLogFormat =
+    ":method :url :status :res[content-length] - :response-time ms";
+  config.requestLogger = [
+    morgan(`[:res[x-c8yctrl-type]] ${requestLogFormat}`, {
+      skip: (req, res) => {
+        return res.getHeader("x-c8yctrl-type") === undefined;
+      },
+      stream: {
+        write: (message: string) => {
+          config.logger?.debug(message.trim());
+        },
+      },
+    }),
+    morgan(`[c8yctrl] ${requestLogFormat}`, {
       skip: (req) => {
         return (
           !req.url.startsWith("/c8yctrl") || req.url.startsWith("/c8yctrl/log")

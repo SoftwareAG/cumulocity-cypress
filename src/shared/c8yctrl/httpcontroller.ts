@@ -325,8 +325,17 @@ export class C8yPactHttpController {
       return next();
     }
 
-    let response: C8yPactHttpResponse | undefined | null = undefined;
+    const addC8yCtrlHeader = (
+      value: string,
+      response?: C8yPactHttpResponse | null
+    ) => {
+      if (response) {
+        response.headers = response?.headers || {};
+        response.headers["x-c8yctrl-type"] = value;
+      }
+    };
 
+    let response: C8yPactHttpResponse | undefined | null = undefined;
     const record = this.currentPact?.nextRecordMatchingRequest(
       req,
       this.baseUrl
@@ -334,18 +343,13 @@ export class C8yPactHttpController {
     if (_.isFunction(this.options.onMockRequest)) {
       response = this.options.onMockRequest(this, req, record);
       if (!response && record) {
-        this.logger.debug(`Not mocking ${req.url}. Filtered by configuration.`);
+        res.setHeader("x-c8yctrl-type", "mock-skipped");
         return next();
       }
-      response = _.defaults(response, record?.response || {});
-      this.logger.debug(
-        `Mock customized ${req.method?.toLocaleUpperCase()} ${req.url}`
-      );
+      addC8yCtrlHeader("mocked-custom", response);
     } else {
       response = record?.response;
-      if (response) {
-        this.logger.debug(`Mock ${req.method?.toLocaleUpperCase()} ${req.url}`);
-      }
+      addC8yCtrlHeader("mocked", response);
     }
 
     if (!record && !response) {
@@ -367,15 +371,12 @@ export class C8yPactHttpController {
             },
           };
         }
-        if (response) {
-          this.logger.debug(
-            `Mock error ${req.method?.toLocaleUpperCase()} ${req.url}`
-          );
-        }
+        addC8yCtrlHeader("mock-not-found", response);
       }
     }
 
     if (!response) {
+      this.logger.error(`No response for ${req.method} ${req.url}`);
       return next();
     }
 
@@ -453,9 +454,7 @@ export class C8yPactHttpController {
                 this.toC8yPactResponse(res, resBody)
               );
               if (!shouldContinue) {
-                this.logger.debug(
-                  `Not processing ${req.url}. Filtered by configuration.`
-                );
+                res.setHeader("x-c8yctrl-type", "resp-skipped");
                 return responseBuffer;
               }
             }
@@ -485,10 +484,33 @@ export class C8yPactHttpController {
                   })
                 );
               }
-              await this.savePact(
-                this.toCypressResponse(req, res, { resBody, reqBody }),
-                c8yctrlId
-              );
+
+              let pact = this.currentPact;
+              if (c8yctrlId && !_.isEqual(this.currentPact?.id, c8yctrlId)) {
+                const p = this.adapter?.loadPact(c8yctrlId);
+                pact = p ? C8yDefaultPact.from(p) : undefined;
+                this.logger.warn(
+                  `Request for ${c8yctrlId} received for pact with different id.`
+                );
+              }
+
+              if (pact) {
+                if (_.isFunction(this.options.onSavePact)) {
+                  const shouldSave = this.options.onSavePact(this, pact);
+                  if (!shouldSave) {
+                    res.setHeader("x-c8yctrl-type", "not-recorded");
+                    return responseBuffer;
+                  }
+                }
+
+                if (pact) {
+                  await this.savePact(
+                    this.toCypressResponse(req, res, { resBody, reqBody }),
+                    pact
+                  );
+                }
+                res.setHeader("x-c8yctrl-type", "recorded");
+              }
             }
             return responseBuffer;
           }
@@ -553,17 +575,8 @@ export class C8yPactHttpController {
 
   async savePact(
     response: Cypress.Response<any> | C8yPact,
-    c8ycltrlId?: string
+    pactForId?: C8yPact
   ): Promise<void> {
-    let pactForId = this.currentPact;
-    if (c8ycltrlId && !_.isEqual(this.currentPact?.id, c8ycltrlId)) {
-      const p = this.adapter?.loadPact(c8ycltrlId);
-      pactForId = p ? C8yDefaultPact.from(p) : undefined;
-      this.logger.warn(
-        `Request for ${c8ycltrlId} received for current pact with different id.`
-      );
-    }
-
     if (!pactForId) return;
 
     const id = pactForId.id;
@@ -590,7 +603,7 @@ export class C8yPactHttpController {
       const { records } = pact;
       if (!pactForId) {
         pactForId = new C8yDefaultPact(records, pact.info, id);
-        this.currentPact = pactForId;
+        this.currentPact = pactForId as C8yDefaultPact;
       } else {
         if (!pactForId.records) {
           pactForId.records = records;
@@ -600,19 +613,9 @@ export class C8yPactHttpController {
           pactForId.records.push(records);
         }
       }
+      // records might be empty when if a new pact without having received a request
       if (!pact || _.isEmpty(pactForId.records)) return;
-
-      if (_.isFunction(this.options.onSavePact)) {
-        const shouldSave = this.options.onSavePact(this, pactForId);
-        if (!shouldSave) {
-          this.logger.debug(
-            `Not saving pact with id ${pactForId.id}. Disabled by configuration.`
-          );
-          return;
-        }
-      }
       this.adapter?.savePact(pactForId);
-      this.logger.debug(`Saved ${pactForId.id}`);
     } catch (error) {
       this.logger.error(`Failed to save pact`, error);
     }
