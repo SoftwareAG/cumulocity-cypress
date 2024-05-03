@@ -2,7 +2,13 @@ import _ from "lodash";
 import fs from "fs";
 import path from "path";
 
-import { C8yPactHttpControllerConfig } from "cumulocity-cypress/node";
+import {
+  C8yPactHttpController,
+  C8yPactHttpControllerConfig,
+  C8yPactHttpResponse,
+} from "cumulocity-cypress/node";
+
+import { Request } from "express";
 
 import { createLogger, format, transports } from "winston";
 // https://github.com/winstonjs/winston/issues/2430
@@ -78,4 +84,20 @@ export default (config: Partial<C8yPactHttpControllerConfig>) => {
       }),
     }),
   ];
+
+  config.onProxyResponse = (
+    ctrl: C8yPactHttpController,
+    req: Request,
+    res: C8yPactHttpResponse
+  ) => {
+    const record = ctrl.currentPact?.nextRecordMatchingRequest(
+      req,
+      config.baseUrl
+    );
+    if (record) {
+      res.headers = res.headers || {};
+      res.headers["x-c8yctrl-type"] = "duplicate";
+    }
+    return record == null;
+  };
 };
