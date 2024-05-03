@@ -7,7 +7,7 @@
     "c8yctrl": "ctrl/index.js"
   },
   "scripts": {
-    "start": "npx tsx --env-file=.env src/startup.ts --config config.ts",
+    "start": "npx tsx --env-file=.env src/startup.ts --config c8yctrl-dev.config.ts",
     "clean": "rimraf ./dist/",
     "package": "npm run build && npm run copy-files && npm run clean-package-json",
     "build": "npm run clean && tsc --project tsconfig.package.json && rollup -c rollup.config.mjs && rimraf ./dist/packages && rimraf ./dist/src && rimraf ./dist/*/*.ts.map && chmod +x dist/ctrl/index.js",
