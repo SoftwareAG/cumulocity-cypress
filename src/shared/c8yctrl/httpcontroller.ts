@@ -349,6 +349,20 @@ export class C8yPactHttpController {
       }
       res.status(200).send();
     });
+    this.app.put("/c8yctrl/log", (req, res) => {
+      const parameters = { ...req.body, ...req.query };
+      const { level } = parameters;
+      if (
+        _.isString(level) &&
+        (_.isEqual(level, "debug") ||
+          _.isEqual(level, "info") ||
+          _.isEqual(level, "warn") ||
+          _.isEqual(level, "error"))
+      ) {
+        this.logger.level = level;
+      }
+      res.status(204).send();
+    });
   }
 
   // mock handler - returns recorded response.

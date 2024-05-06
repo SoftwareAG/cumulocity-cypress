@@ -263,8 +263,17 @@ Sends a log message to the controller. The log message is forwarded to the logge
 }
 ```
 
-This is useful for logging from your tests or other services that are connected to the controller. 
+### PUT /c8yctrl/log
 
+Update logger configuration. Supports config parameters via body or query.
+
+```json
+{
+  "level": "debug",
+}
+```
+
+The body of the request should be a JSON object. Only property currently supported is `level`. Possible values are `debug`, `info`, `warn`, `error`.
 
 ### Using c8yctrl with cumulocity-cypress
 

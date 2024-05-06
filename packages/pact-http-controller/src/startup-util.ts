@@ -155,16 +155,14 @@ export const applyDefaultConfig = (
   }
 
   if (!("on" in config)) {
-    log(
-      "no callbacks provided, creating empty object for 'on' property of config."
-    );
+    log("configuring empty object callback 'on' property of config.");
     config.on = {};
   }
 
   // check all default properties as _.defaults seems to still overwrite in some cases
   if (!("adapter" in config)) {
     log(
-      `no adapter provided, using default file adapter for folder ${
+      `configuring default file adapter for folder ${
         config.folder || "./c8ypact"
       }.`
     );
@@ -173,7 +171,7 @@ export const applyDefaultConfig = (
     );
   }
   if (!("mockNotFoundResponse" in config)) {
-    log("no mockNotFoundResponse provided, using default 404 text response.");
+    log("configuring default 404 text mockNotFoundResponse.");
     config.mockNotFoundResponse = (url) => {
       return {
         status: 404,
@@ -186,18 +184,18 @@ export const applyDefaultConfig = (
     };
   }
   if (!("logger" in config)) {
-    log("no logger provided, using default logger.");
+    log("configuring default logger.");
     config.logger = defaultLogger;
   }
   if (!("requestMatching" in config)) {
-    log("no requestMatching provided, using default requestMatching.");
+    log("configuring default requestMatching.");
     config.requestMatching = {
       ignoreUrlParameters: ["dateFrom", "dateTo", "_", "nocache"],
       baseUrl: config.baseUrl,
     };
   }
   if (!("preprocessor" in config)) {
-    log("no preprocessor provided, using default preprocessor.");
+    log("configuring default preprocessor.");
     config.preprocessor = new C8yDefaultPactPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
     });

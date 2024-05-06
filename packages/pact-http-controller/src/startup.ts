@@ -51,12 +51,12 @@ const log = debug("c8y:ctrl:startup");
         // assign logger after deep cloning: https://github.com/winstonjs/winston/issues/1730
         configClone.logger = defaultLogger;
         const c = result.config(configClone);
-        _.defaults(config, c || configClone);
+        _.assignIn(config, c || configClone);
       } else {
         log("config exported an object");
-        config.logger = defaultLogger;
-        _.defaults(config, result.config);
+        _.assignIn(config, result.config);
       }
+
       config.logger?.info("Config: " + result.filepath);
     }
   }
