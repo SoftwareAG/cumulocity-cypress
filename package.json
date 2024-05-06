@@ -10,7 +10,7 @@
     "cypress:open": "cross-env TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 cypress:debug",
     "cypress:debug": "cross-env CYPRESS_REMOTE_DEBUGGING_PORT=9222 cypress open --project test",
     "jest": "npm run jest:run",
-    "jest:run": "jest --config jest.config.js",
+    "jest:run": "cross-env NODE_NO_WARNINGS=1 jest --config jest.config.js",
     "clean": "rimraf dist/ && rimraf packages/*/dist/ && rimraf packages/*/.yalc && rimraf packages/*/yalc.lock",
     "copy-files": "copyfiles --up 1 src/lib/**/*.*js src/lib/*.*js src/lib/**/*.d.ts dist/ && copyfiles README.md package.json dist/",
     "package": "npm run build && cd dist/ && npm run clean-package-json",
