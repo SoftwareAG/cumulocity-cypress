@@ -1,17 +1,18 @@
 import { C8yPactHttpController } from "./httpcontroller";
-import { C8yAuthOptions } from "../auth";
 import {
+  C8yAuthOptions,
   C8yPact,
   C8yPactPreprocessor,
   C8yPactRecord,
   C8yPactRequestMatchingOptions,
   C8yPactResponse,
   C8ySchemaGenerator,
-} from "../c8ypact";
-import { C8yPactFileAdapter } from "../c8ypact/fileadapter";
+  C8yPactFileAdapter,
+} from "cumulocity-cypress/node";
 
 import { Request, RequestHandler } from "express";
 import { ClientRequest, IncomingMessage, ServerResponse } from "http";
+
 import { FormatFn } from "morgan";
 import winston from "winston";
 

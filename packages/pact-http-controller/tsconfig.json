@@ -12,5 +12,6 @@
   },
   "references": [
     { "path": "./../../src" },
-  ]
+  ],
+  "exclude": ["**/*.spec.ts", "**/*.spec.tsx"],
 }

@@ -6,32 +6,33 @@ import {
   createProxyMiddleware,
   responseInterceptor,
 } from "http-proxy-middleware";
-import bodyParser from "body-parser";
 
+import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
 import * as setCookieParser from "set-cookie-parser";
 import * as libCookie from "cookie";
 
 import winston from "winston";
+import morgan from "morgan";
 
 import { IncomingMessage, Server, ServerResponse } from "http";
 
-import cookieParser from "cookie-parser";
-import { C8yAuthOptions } from "../auth";
 import {
+  C8yAuthOptions,
   C8yDefaultPact,
   C8yPact,
   C8yPactInfo,
   C8yPactSaveKeys,
   pactId,
   toPactSerializableObject,
-} from "../c8ypact";
-import { oauthLogin } from "../c8yclient";
-import { C8yPactFileAdapter } from "../c8ypact/fileadapter";
+  oauthLogin,
+  C8yPactFileAdapter,
+} from "cumulocity-cypress/node";
+
 import {
   C8yPactHttpControllerOptions,
   C8yPactHttpResponse,
 } from "./httpcontroller-options";
-import morgan from "morgan";
 
 export * from "./httpcontroller-options";
 
