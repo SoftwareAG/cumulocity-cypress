@@ -249,6 +249,19 @@ describe("startup util tests", () => {
       expect(config.adapter.getFolder()).toBe("/my/folder");
     });
 
+    test("should create C8yAuthOptions if not provided", () => {
+      const config: any = {
+        user: "user",
+        password: "password",
+        tenant: "tenant",
+      };
+      applyDefaultConfig(config);
+      expect(config.auth).toBeDefined();
+      expect(config.auth.user).toBe("user");
+      expect(config.auth.password).toBe("password");
+      expect(config.auth.tenant).toBe("tenant");
+    });
+
     test("lodash isFunction should return false for undefined", () => {
       expect(_.isFunction(undefined)).toBeFalsy();
     });

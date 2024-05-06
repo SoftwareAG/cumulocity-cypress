@@ -14,6 +14,9 @@ import {
   C8yPactHttpControllerConfig,
 } from "cumulocity-cypress/node";
 
+import debug from "debug";
+const log = debug("c8y:ctrl:startup");
+
 export function getEnvVar(name: string): string | undefined {
   return (
     process.env[name] ||
@@ -145,17 +148,32 @@ export const defaultLogger = createLogger({
 export const applyDefaultConfig = (
   config: Partial<C8yPactHttpControllerConfig>
 ) => {
+  if (!config?.auth) {
+    log("no auth options provided, trying to create from user and password.");
+    const { user, password, tenant } = config;
+    config.auth = user && password ? { user, password, tenant } : undefined;
+  }
+
   if (!("on" in config)) {
+    log(
+      "no callbacks provided, creating empty object for 'on' property of config."
+    );
     config.on = {};
   }
 
   // check all default properties as _.defaults seems to still overwrite in some cases
   if (!("adapter" in config)) {
+    log(
+      `no adapter provided, using default file adapter for folder ${
+        config.folder || "./c8ypact"
+      }.`
+    );
     config.adapter = new C8yPactDefaultFileAdapter(
       config.folder || "./c8ypact"
     );
   }
   if (!("mockNotFoundResponse" in config)) {
+    log("no mockNotFoundResponse provided, using default 404 text response.");
     config.mockNotFoundResponse = (url) => {
       return {
         status: 404,
@@ -168,15 +186,18 @@ export const applyDefaultConfig = (
     };
   }
   if (!("logger" in config)) {
+    log("no logger provided, using default logger.");
     config.logger = defaultLogger;
   }
   if (!("requestMatching" in config)) {
+    log("no requestMatching provided, using default requestMatching.");
     config.requestMatching = {
       ignoreUrlParameters: ["dateFrom", "dateTo", "_", "nocache"],
       baseUrl: config.baseUrl,
     };
   }
   if (!("preprocessor" in config)) {
+    log("no preprocessor provided, using default preprocessor.");
     config.preprocessor = new C8yDefaultPactPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
     });

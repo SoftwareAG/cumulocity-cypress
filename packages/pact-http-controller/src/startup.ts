@@ -20,7 +20,7 @@ import {
 
 export * from "cumulocity-cypress/node";
 
-const log = debug("c8y:pact:httpcontroller");
+const log = debug("c8y:ctrl:startup");
 
 (async () => {
   // load .env file first and overwrite with .c8yctrl file if present
@@ -63,12 +63,6 @@ const log = debug("c8y:pact:httpcontroller");
 
   // now config is complete and we can start the controller
   try {
-    if (!config?.auth) {
-      log("no auth options provided, trying to create from user and password.");
-      const { user, password, tenant } = config;
-      config.auth = user && password ? { user, password, tenant } : undefined;
-    }
-
     const c = config as C8yPactHttpControllerOptions;
     const controller = new C8yPactHttpController(c);
     config.on?.beforeStart?.(controller, c);
