@@ -30,6 +30,9 @@ const log = debug("c8y:ctrl:startup");
   // read config from environment variables or command line arguments
   const [config, configFile] = getConfigFromArgsOrEnvironment();
 
+  // load defaults and merge them with the current config
+  applyDefaultConfig(config);
+
   // load config file if provided and merge it with the current config
   if (configFile) {
     const configLoader = cosmiconfig("cumulocity-cypress", {
@@ -57,9 +60,6 @@ const log = debug("c8y:ctrl:startup");
       config.logger?.info("Config: " + result.filepath);
     }
   }
-
-  // load defaults and merge them with the current config
-  applyDefaultConfig(config);
 
   // now config is complete and we can start the controller
   try {
