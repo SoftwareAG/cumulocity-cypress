@@ -145,13 +145,17 @@ export const defaultLogger = createLogger({
 export const applyDefaultConfig = (
   config: Partial<C8yPactHttpControllerConfig>
 ) => {
+  if (!("on" in config)) {
+    config.on = {};
+  }
+
   // check all default properties as _.defaults seems to still overwrite in some cases
   if (!("adapter" in config)) {
     config.adapter = new C8yPactDefaultFileAdapter(
       config.folder || "./c8ypact"
     );
   }
-  if (!("errorResponseRecord" in config)) {
+  if (!("mockNotFoundResponse" in config)) {
     config.mockNotFoundResponse = (url) => {
       return {
         status: 404,

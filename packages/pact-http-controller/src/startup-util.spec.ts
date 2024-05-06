@@ -1,11 +1,19 @@
 /// <reference types="jest" />
 
+import _ from "lodash";
 import {
+  applyDefaultConfig,
+  defaultLogger,
   getConfigFromArgs,
   getConfigFromArgsOrEnvironment,
   getConfigFromEnvironment,
   getEnvVar,
 } from "./startup-util";
+
+import {
+  C8yPactDefaultFileAdapter,
+  C8yPactHttpControllerOptions,
+} from "../../../src/node";
 
 describe("startup util tests", () => {
   describe("getEnvVar", () => {
@@ -213,6 +221,36 @@ describe("startup util tests", () => {
       expect(config.staticRoot).toBe("/my/static/root");
       expect(config.isRecordingEnabled).toBeTruthy();
       expect(configFile).toBe("c8yctrl.config.ts");
+    });
+  });
+
+  describe("applyDefaultConfig", () => {
+    test("applyDefaultConfig should apply defaults", () => {
+      const config: any = {};
+      applyDefaultConfig(config);
+      expect(config.adapter).toBeDefined();
+      expect(config.on).toBeDefined();
+      expect(config.mockNotFoundResponse).toBeDefined();
+      expect(config.logger).toBeDefined();
+      expect(config.logger).toBe(defaultLogger);
+      expect(config.requestMatching).toBeDefined();
+      expect(config.preprocessor).toBeDefined();
+    });
+
+    test("applyDefaultConfig should not overwrite existing values", () => {
+      const config: C8yPactHttpControllerOptions = {
+        adapter: new C8yPactDefaultFileAdapter("/my/folder"),
+        on: {
+          beforeStart: () => {},
+        },
+      };
+      applyDefaultConfig(config);
+      expect(config.on.beforeStart).toBeDefined();
+      expect(config.adapter.getFolder()).toBe("/my/folder");
+    });
+
+    test("lodash isFunction should return false for undefined", () => {
+      expect(_.isFunction(undefined)).toBeFalsy();
     });
   });
 });

@@ -113,6 +113,22 @@ export interface C8yPactHttpControllerOptions {
    */
   stringifyReplacer?: (key: string, value: any) => any;
   /**
+   * Callbacks for hooking into the controller lifecycle.
+   */
+  on: C8yPactHttpControllerCallbackOptions;
+}
+
+export interface C8yPactHttpControllerCallbackOptions {
+  /**
+   * Called before the controller is started.
+   * @param ctrl The controller instance.
+   * @param config The configuration used for the controller.
+   */
+  beforeStart?: (
+    ctrl: C8yPactHttpController,
+    config?: C8yPactHttpControllerOptions
+  ) => void;
+  /**
    * Called before a request is mocked. Use to modify or return custom response as mock. Also
    * use to forward custom headers from the request to the response. By default, only the
    * recorded `content-type` and `set-cookie` headers are forwarded. Any other recorded headers
@@ -127,7 +143,7 @@ export interface C8yPactHttpControllerOptions {
    * @param req The request to mock.
    * @returns A response to use as mock or null/undefined to pass the request to the proxy handler.
    */
-  onMockRequest?: (
+  mockRequest?: (
     ctrl: C8yPactHttpController,
     req: Request<any, any, any, any>,
     record: C8yPactRecord | undefined | null
@@ -141,7 +157,7 @@ export interface C8yPactHttpControllerOptions {
    * @param req The request to proxy.
    * @returns A response to send back to the client to abort the request or undefined to continue.
    */
-  onProxyRequest?: (
+  proxyRequest?: (
     ctrl: C8yPactHttpController,
     proxyReq: ClientRequest,
     req: Request<any, any, any, any>
@@ -155,7 +171,7 @@ export interface C8yPactHttpControllerOptions {
    * @param res The proxied response.
    * @returns false if the request and response should be ignored, true otherwise.
    */
-  onProxyResponse?: (
+  proxyResponse?: (
     ctrl: C8yPactHttpController,
     req: Request,
     res: C8yPactHttpResponse
@@ -167,7 +183,7 @@ export interface C8yPactHttpControllerOptions {
    * @param req The C8yPact object to be saved.
    * @returns true if the C8yPact should be saved, false otherwise.
    */
-  onSavePact?: (ctrl: C8yPactHttpController, pact: C8yPact) => boolean;
+  savePact?: (ctrl: C8yPactHttpController, pact: C8yPact) => boolean;
 }
 
 export interface C8yPactHttpControllerConfig

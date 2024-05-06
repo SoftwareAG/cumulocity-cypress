@@ -373,8 +373,8 @@ export class C8yPactHttpController {
       req,
       this.baseUrl
     );
-    if (_.isFunction(this.options.onMockRequest)) {
-      response = this.options.onMockRequest(this, req, record);
+    if (_.isFunction(this.options.on.mockRequest)) {
+      response = this.options.on.mockRequest(this, req, record);
       if (!response && record) {
         if (!res.getHeader("x-c8yctrl-type")) {
           res.setHeader("x-c8yctrl-type", "mock-skipped");
@@ -469,8 +469,8 @@ export class C8yPactHttpController {
             }
           }
 
-          if (_.isFunction(this.options.onProxyRequest)) {
-            const r = this.options.onProxyRequest(this, proxyReq, req);
+          if (_.isFunction(this.options.on.proxyRequest)) {
+            const r = this.options.on.proxyRequest(this, proxyReq, req);
             if (r) {
               this.writeResponse(res, r);
             }
@@ -483,8 +483,8 @@ export class C8yPactHttpController {
             const c8yctrlId = (req as any).c8yctrlId;
 
             const pactResponse = this.toC8yPactResponse(res, resBody);
-            if (_.isFunction(this.options.onProxyResponse)) {
-              const shouldContinue = this.options.onProxyResponse(
+            if (_.isFunction(this.options.on.proxyResponse)) {
+              const shouldContinue = this.options.on.proxyResponse(
                 this,
                 req,
                 pactResponse
@@ -547,8 +547,8 @@ export class C8yPactHttpController {
               }
 
               if (pact) {
-                if (_.isFunction(this.options.onSavePact)) {
-                  const shouldSave = this.options.onSavePact(this, pact);
+                if (_.isFunction(this.options.on.savePact)) {
+                  const shouldSave = this.options.on.savePact(this, pact);
                   if (!shouldSave) {
                     if (!res.getHeader("x-c8yctrl-type")) {
                       res.setHeader("x-c8yctrl-type", "not-recorded");

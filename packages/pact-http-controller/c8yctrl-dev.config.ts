@@ -18,8 +18,8 @@ import morgan from "morgan";
 
 const safeTransports = !_.isEmpty(transports) ? transports : transportsDirect;
 
-export default (config: Partial<C8yPactHttpControllerConfig>) => {
-  config.logLevel = "info";
+export default (config: C8yPactHttpControllerConfig) => {
+  config.logLevel = "debug";
 
   config.logger = createLogger({
     transports: [
@@ -85,7 +85,11 @@ export default (config: Partial<C8yPactHttpControllerConfig>) => {
     }),
   ];
 
-  config.onProxyResponse = (
+  /**
+   * onProxyResponse is used to filter out requests that are already recorded. This is to avoid
+   * recording the same request multiple times.
+   */
+  config.on.proxyResponse = (
     ctrl: C8yPactHttpController,
     req: Request,
     res: C8yPactHttpResponse

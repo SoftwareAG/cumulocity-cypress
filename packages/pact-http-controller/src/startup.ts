@@ -69,9 +69,9 @@ const log = debug("c8y:pact:httpcontroller");
       config.auth = user && password ? { user, password, tenant } : undefined;
     }
 
-    const controller = new C8yPactHttpController(
-      config as C8yPactHttpControllerOptions
-    );
+    const c = config as C8yPactHttpControllerOptions;
+    const controller = new C8yPactHttpController(c);
+    config.on?.beforeStart?.(controller, c);
     await controller.start();
   } catch (error) {
     console.error("Error starting HTTP controller:", error);
