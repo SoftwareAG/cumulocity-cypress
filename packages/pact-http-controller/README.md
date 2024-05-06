@@ -252,6 +252,16 @@ Gets the current `C8yPact` including its configuration (`C8yPactInfo`) and numbe
 
 Resets the current `C8yPact`. This will however not delete any data!
 
+### GET /c8yctrl/current/request?<keys>
+
+Returns an object with the provided keys per request from the current pact. Supports special key `size` to get the size in byte of a request body.
+
+Useful to retrieve for example urls of requests without getting all pact data. 
+
+### GET /c8yctrl/current/response?<keys>
+
+Returns an object with the provided keys per response from the current pact. Supports special key `size` to get the size in byte of a response body.
+
 ### POST /c8yctrl/log
 
 Sends a log message to the controller. The log message is forwarded to the logger registered in the controller. The body of the request should be a JSON object with the following properties:
@@ -348,7 +358,7 @@ function c8yctrl(title: string | string[] = Cypress.currentTest.titlePath) {
 - [X] allow multiple request logger
 - [ ] allow adding custom request handlers (maybe for logging or other purposes)
 - [ ] new C8Y_PACT_MODE to enable testing without recording or mocking
-- [ ] avoid recording of requests that are already recorded (configurable)
+- [X] avoid recording of requests that are already recorded (configurable)
 - [ ] join pact ids with suite ids
 - [ ] pass C8yPactConfigOptions and TestConfigOverrides to store in pact file
 - [ ] store tags from test cases in recording
@@ -362,4 +372,4 @@ function c8yctrl(title: string | string[] = Cypress.currentTest.titlePath) {
 - [ ] disable login via cy.session when recording
 - [X] read parameters for c8yctrl from query and body
 - [X] add sample config file to contributions folder
-- [ ] add /c8yctrl/current/summary endpoint for statistics, incl. urls, count, etc.
+- [X] add /c8yctrl/current/? endpoint for statistics, incl. urls, count, etc.

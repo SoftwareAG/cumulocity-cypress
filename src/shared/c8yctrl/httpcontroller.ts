@@ -319,13 +319,10 @@ export class C8yPactHttpController {
           );
         return;
       }
-      const result: any = this.currentPact?.records.map((r) => {
-        const x: any = _.pick(r.request, Object.keys(req.query));
-        if ("size" in req.query) {
-          x.size = this.stringify(r).length;
-        }
-        return x;
-      });
+      const result = this.getObjectWithKeys(
+        this.currentPact?.records.map((r) => r.request),
+        Object.keys(req.query)
+      );
       res.status(200).send(JSON.stringify(result, null, 2));
     });
     this.app.get("/c8yctrl/current/response", (req, res) => {
@@ -337,11 +334,15 @@ export class C8yPactHttpController {
           );
         return;
       }
-      const result = this.currentPact?.records.map((r) => {
-        return _.pick(r.response, Object.keys(req.query));
-      });
+      const result = this.getObjectWithKeys(
+        this.currentPact?.records.map((r) => {
+          return { ...r.response, url: r.request.url };
+        }),
+        Object.keys(req.query)
+      );
       res.status(200).send(JSON.stringify(result, null, 2));
     });
+    // log endpoint
     this.app.post("/c8yctrl/log", (req, res) => {
       const { message, level } = req.body;
       if (message) {
@@ -756,6 +757,16 @@ export class C8yPactHttpController {
 
     targetResponse.writeHead(response?.status || 200, response?.headers);
     targetResponse.end(responseBody);
+  }
+
+  getObjectWithKeys(objs: any[], keys: string[]): any[] {
+    return objs.map((r) => {
+      const x: any = _.pick(r, keys);
+      if (keys.includes("size")) {
+        x.size = r.body ? this.stringify(r.body).length : 0;
+      }
+      return x;
+    });
   }
 }
 
