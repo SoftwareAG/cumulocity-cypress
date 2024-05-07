@@ -10,6 +10,9 @@ import { C8ySchemaGenerator } from "cumulocity-cypress";
  * C8ySchemaGenerator implementation using quicktype library with target language
  * json-schema. From the generated schema, all non-standard keywords are removed
  * to ensure compatibility with any json-schema validators.
+ *
+ * Quicktype has been reported to cause issues in browser runtimes. If you encounter
+ * issues with quicktype, consider implementing a custom schema generator.
  */
 export class C8yQicktypeSchemaGenerator implements C8ySchemaGenerator {
   async generate(obj: any, options: any = {}): Promise<any> {

@@ -81,11 +81,14 @@ declare global {
      */
     preprocessor?: C8yPactPreprocessor;
     /**
-     * The C8ySchemaGenerator implementation used to generate json schemas from json objects.
+     * The C8ySchemaGenerator implementation used to generate json schemas from json objects. The
+     * implementation of `C8ySchemaGenerator` must support browser runtimes!
+     * Default is undefined and schema generation is disabled.
      */
     schemaGenerator?: C8ySchemaGenerator;
     /**
-     * The C8ySchemaMatcher implementation used to match json schemas. Default is C8yAjvSchemaMatcher.
+     * The C8ySchemaMatcher implementation used to match json schemas. The schema matcher implementation
+     * must support browser runtimes! Default is undefined and schema matching is disabled.
      */
     schemaMatcher?: C8ySchemaMatcher;
     /**
