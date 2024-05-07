@@ -66,7 +66,6 @@ export class C8yDefaultPactMatcher implements C8yPactMatcher {
 
     const parents = options?.parents ?? [];
     const strictMatching = options?.strictMatching ?? true;
-    debugger;
     const schemaMatcher =
       options?.schemaMatcher || C8yDefaultPactMatcher.schemaMatcher;
 
