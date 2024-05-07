@@ -521,6 +521,26 @@ The schema is stored in the pact response object as `$body`.
 },
 ```
 
+>**Note:** By, default there is no schema generator registered and with this schema will not be automatically generated. To enable schema generation, set `Cypress.c8ypact.schemaGenerator` to a custom implementation of `C8ySchemaGenerator`. This is the same for schema matching. To enable schema matching, set `Cypress.c8ypact.schemaMatcher` to a custom implementation of `C8ySchemaMatcher`.
+
+`cumulocity-cypress` comes with `C8yQicktypeSchemaGenerator` that uses [quicktype](https://quicktype.io/) to generate JSON schemas for response bodies. For schema matching, is provided `C8yAjvSchemaMatcher` based on [Ajv](https://ajv.js.org/) JSON schema validator. 
+
+To enable schema generation or matching, register the implementations to use for example in your support file.
+
+```typescript
+import { C8yQicktypeSchemaGenerator } from "cumulocity-cypress/contrib/quicktype";
+Cypress.c8ypact.schemaGenerator = new C8yQicktypeSchemaGenerator();
+
+import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
+Cypress.c8ypact.schemaMatcher = new C8yAjvJson6SchemaMatcher();
+// should be optional in browser runtimes. Node.js runtime, such as in the plugin, this is required
+C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
+```
+
+The `C8yAjvJson6SchemaMatcher` uses [Ajv](https://ajv.js.org/) JSON schema validator with JSON schema draft 6. You might want to use different schema version and register with `C8yAjvSchemaMatcher` by imorting schema definition as for example from `ajv/lib/refs/json-schema-draft-06.json`.
+
+> **Important:** The schema generator and matcher implementations MUST support browser runtime. Node.js specific code will not work and will cause issues when running tests in the browser.
+
 To disable schema generation, set `Cypress.c8ypact.schemaGenerator` to `undefined`.
 
 ### Recording of created objects

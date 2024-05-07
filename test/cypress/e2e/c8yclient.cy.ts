@@ -20,8 +20,11 @@ import {
   isWindowFetchResponse,
   toCypressResponse,
   isCypressError,
+  C8yDefaultPactMatcher,
   isCypressResponse,
 } from "cumulocity-cypress";
+
+import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
 
 const { _, sinon } = Cypress;
 
@@ -38,6 +41,9 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_PLUGIN_LOADED", undefined);
     Cypress.env("C8Y_C8YCLIENT_TIMEOUT", undefined);
+
+    Cypress.c8ypact.schemaMatcher = new C8yAjvJson6SchemaMatcher();
+    C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
 
     initRequestStub();
     stubResponses([

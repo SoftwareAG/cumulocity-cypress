@@ -1,6 +1,8 @@
 import { C8yDefaultPact } from "cumulocity-cypress";
 import { url } from "../support/testutils";
 
+import { C8yQicktypeSchemaGenerator } from "cumulocity-cypress/contrib/quicktype";
+
 const { $, _, sinon } = Cypress;
 
 describe("c8ypact intercept", () => {
@@ -29,6 +31,10 @@ describe("c8ypact intercept", () => {
     statusCode: 201,
     headers: { "x-test": "test" },
   };
+
+  beforeEach(() => {
+    Cypress.c8ypact.schemaGenerator = new C8yQicktypeSchemaGenerator();
+  });
 
   afterEach(() => {
     // delete recorded pacts after each test

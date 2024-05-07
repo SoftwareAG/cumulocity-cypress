@@ -8,6 +8,8 @@ import {
   C8ySchemaMatcher,
 } from "cumulocity-cypress";
 
+import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
+
 const { _ } = Cypress;
 
 describe("c8ypactmatcher", () => {
@@ -19,6 +21,9 @@ describe("c8ypactmatcher", () => {
       obj1 = C8yDefaultPactRecord.from(pacts[0]);
       obj2 = C8yDefaultPactRecord.from(pacts[1]);
     });
+
+    Cypress.c8ypact.schemaMatcher = new C8yAjvJson6SchemaMatcher();
+    C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
   });
 
   context("cy.c8ymatch", function () {
@@ -376,12 +381,6 @@ describe("c8ypactmatcher", () => {
     const strictMatchingDisabled: C8yPactMatcherOptions = {
       strictMatching: false,
     };
-
-    beforeEach(() => {
-      if (Cypress.c8ypact.schemaMatcher) {
-        C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
-      }
-    });
 
     it("schema keys should not break object matching", function () {
       const matcher = new C8yDefaultPactMatcher();

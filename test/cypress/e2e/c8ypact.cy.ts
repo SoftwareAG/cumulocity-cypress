@@ -2,13 +2,14 @@ import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/testutils";
 import { defaultClientOptions } from "cumulocity-cypress/lib/commands/c8yclient";
 
+import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
+
 import {
   C8yAuthentication,
   C8yClient,
   C8yDefaultPactMatcher,
   C8yPactMatcher,
   C8yDefaultPactPreprocessor,
-  C8yQicktypeSchemaGenerator,
   C8yDefaultPact,
   C8yDefaultPactRecord,
   C8yPact,
@@ -30,6 +31,8 @@ describe("c8ypact", () => {
   beforeEach(() => {
     Cypress.c8ypact.config.strictMatching = true;
     Cypress.c8ypact.config.ignore = false;
+    Cypress.c8ypact.schemaMatcher = new C8yAjvJson6SchemaMatcher();
+    C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
 
     Cypress.env("C8Y_USERNAME", undefined);
     Cypress.env("C8Y_PASSWORD", undefined);
@@ -89,8 +92,8 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.preprocessor).to.be.a("object");
       expect(Cypress.c8ypact.pactRunner).to.be.a("object");
       expect(Cypress.c8ypact.matcher).to.be.a("object");
-      expect(Cypress.c8ypact.schemaGenerator).to.be.a("object");
-      expect(Cypress.c8ypact.schemaMatcher).to.be.a("object");
+      expect(Cypress.c8ypact.schemaGenerator).to.be.undefined;
+      expect(Cypress.c8ypact.schemaMatcher).to.not.be.undefined;
     });
 
     it(
@@ -586,89 +589,6 @@ describe("c8ypact", () => {
       expect(pactRecord.date()).to.deep.equal(
         new Date("Fri, 17 Nov 2023 13:12:04 GMT")
       );
-    });
-  });
-
-  context("C8yDefaultSchemaGenerator", function () {
-    it("should generate schema from object", async function () {
-      const generator = new C8yQicktypeSchemaGenerator();
-      const schema = await generator.generate({
-        name: "test",
-      });
-      expect(schema).to.deep.equal({
-        $schema: "http://json-schema.org/draft-06/schema#",
-        $ref: "#/definitions/Root",
-        definitions: {
-          Root: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              name: {
-                type: "string",
-              },
-            },
-            required: ["name"],
-            title: "Root",
-          },
-        },
-      });
-    });
-
-    it("should generate schema without qt- properties and with name of root object", async function () {
-      const expectedSchema = {
-        $schema: "http://json-schema.org/draft-06/schema#",
-        $ref: "#/definitions/Body",
-        definitions: {
-          Body: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              self: {
-                type: "string",
-                format: "uri",
-              },
-              managedObjects: {
-                type: "array",
-                items: {
-                  $ref: "#/definitions/ManagedObject",
-                },
-              },
-            },
-            required: ["managedObjects", "self"],
-            title: "Body",
-          },
-          ManagedObject: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              self: {
-                type: "string",
-                format: "uri",
-              },
-              id: {
-                type: "string",
-                format: "integer",
-              },
-            },
-            required: ["id", "self"],
-            title: "ManagedObject",
-          },
-        },
-      };
-      const generator = new C8yQicktypeSchemaGenerator();
-      const schema = await generator.generate(
-        {
-          self: "https://test.com",
-          managedObjects: [
-            {
-              self: "https://test.com",
-              id: "123123",
-            },
-          ],
-        },
-        { name: "Body" }
-      );
-      expect(schema).to.deep.equal(expectedSchema);
     });
   });
 

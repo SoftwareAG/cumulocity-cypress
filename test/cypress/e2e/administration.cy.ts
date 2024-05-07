@@ -89,6 +89,9 @@ describe("administration", () => {
 
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("Missing argument. Requiring IUser");
+        // expect(Cypress.log).to.be.calledWithMatch(
+        //   sinon.match({ message: `{user: test}` })
+        // );
         done();
       });
 
