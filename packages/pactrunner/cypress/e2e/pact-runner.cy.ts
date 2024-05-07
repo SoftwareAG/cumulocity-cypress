@@ -1,9 +1,12 @@
-import { C8yDefaultPact } from "cumulocity-cypress";
+import { C8yDefaultPact, C8yDefaultPactMatcher } from "cumulocity-cypress";
+import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
 
 const { _ } = Cypress;
 
 beforeEach(() => {
   Cypress.session.clearAllSavedSessions();
+  Cypress.c8ypact.schemaMatcher = new C8yAjvJson6SchemaMatcher();
+  C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
 });
 
 const pacts: string[] = Cypress.env("_pacts");

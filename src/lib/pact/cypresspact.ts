@@ -10,8 +10,6 @@ import {
   C8yDefaultPactPreprocessor,
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
-  C8yAjvSchemaMatcher,
-  C8yQicktypeSchemaGenerator,
   C8ySchemaGenerator,
   C8ySchemaMatcher,
   C8yDefaultPactMatcher,
@@ -28,7 +26,6 @@ import * as semver from "semver";
 
 const { _ } = Cypress;
 
-import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 import { FetchClient, IAuthentication } from "@c8y/client";
 import { C8yPactFetchClient } from "./fetchclient";
 
@@ -84,11 +81,14 @@ declare global {
      */
     preprocessor?: C8yPactPreprocessor;
     /**
-     * The C8ySchemaGenerator implementation used to generate json schemas from json objects.
+     * The C8ySchemaGenerator implementation used to generate json schemas from json objects. The
+     * implementation of `C8ySchemaGenerator` must support browser runtimes!
+     * Default is undefined and schema generation is disabled.
      */
     schemaGenerator?: C8ySchemaGenerator;
     /**
-     * The C8ySchemaMatcher implementation used to match json schemas. Default is C8yAjvSchemaMatcher.
+     * The C8ySchemaMatcher implementation used to match json schemas. The schema matcher implementation
+     * must support browser runtimes! Default is undefined and schema matching is disabled.
      */
     schemaMatcher?: C8ySchemaMatcher;
     /**
@@ -222,8 +222,8 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     isEnabled,
     matcher: new C8yDefaultPactMatcher(),
     pactRunner: new C8yDefaultPactRunner(),
-    schemaGenerator: new C8yQicktypeSchemaGenerator(),
-    schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
+    schemaGenerator: undefined,
+    schemaMatcher: undefined,
     debugLog: false,
     preprocessor: new C8yCypressEnvPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
