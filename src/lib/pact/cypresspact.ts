@@ -10,8 +10,6 @@ import {
   C8yDefaultPactPreprocessor,
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
-  C8yAjvSchemaMatcher,
-  C8yQicktypeSchemaGenerator,
   C8ySchemaGenerator,
   C8ySchemaMatcher,
   C8yDefaultPactMatcher,
@@ -28,7 +26,6 @@ import * as semver from "semver";
 
 const { _ } = Cypress;
 
-import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 import { FetchClient, IAuthentication } from "@c8y/client";
 import { C8yPactFetchClient } from "./fetchclient";
 
@@ -222,8 +219,8 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     isEnabled,
     matcher: new C8yDefaultPactMatcher(),
     pactRunner: new C8yDefaultPactRunner(),
-    schemaGenerator: new C8yQicktypeSchemaGenerator(),
-    schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
+    schemaGenerator: undefined,
+    schemaMatcher: undefined,
     debugLog: false,
     preprocessor: new C8yCypressEnvPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
