@@ -1,12 +1,16 @@
+import { IncomingMessage } from "http";
+import { getBaseUrlFromEnv } from "../../../src/lib/utils";
 import { encodeBase64 } from "../../../src/shared/c8yclient";
-const { getBaseUrlFromEnv } = require("../../../src/lib/utils");
-var setCookieParser = require("set-cookie-parser");
+import * as setCookieParser from "set-cookie-parser";
+
 const { _, sinon } = Cypress;
 
+interface WindowWithFetchStub {
+  fetchStub: Cypress.Agent<sinon.SinonStub>;
+}
+
 declare global {
-  interface Window {
-    fetchStub: Cypress.Agent<sinon.SinonStub>;
-  }
+  interface Window extends WindowWithFetchStub {}
 }
 
 /**
@@ -27,14 +31,17 @@ export function url(
   return `${baseUrl}${path}`;
 }
 
+let cypressBackendStub: sinon.SinonStub<any[], any>;
+let cypressAutomationStub: sinon.SinonStub<any[], any>;
+
 /**
  * Init stubbing requests. Must be called before `stubResponse()`, for example
  * in `beforeEach` hook of your tests.
  */
 export function initRequestStub(): void {
-  cy.stub(Cypress, "backend").callThrough();
+  cypressBackendStub = cy.stub(Cypress, "backend").callThrough();
   cy.stub(window, "fetchStub");
-  cy.stub(Cypress, "automation").callThrough();
+  cypressAutomationStub = cy.stub(Cypress, "automation").callThrough();
 }
 
 export function initLoginRequestStub(
@@ -172,11 +179,13 @@ export function stubResponse<T>(
 export function stubCookies<T>(response: StubbedResponseType<T>): void {
   if (!response.headers?.getSetCookie) return;
 
-  let cookies: { name: string; value: string }[] = setCookieParser(response);
+  let cookies: { name: string; value: string }[] = setCookieParser.parse(
+    response as IncomingMessage
+  );
   if (!cookies) return;
 
-  (Cypress.automation as sinon.SinonStub)
-    .withArgs(
+  cypressAutomationStub
+    ?.withArgs(
       "get:cookie",
       sinon.match((value) => {
         return (
@@ -189,9 +198,7 @@ export function stubCookies<T>(response: StubbedResponseType<T>): void {
     )
     .resolves((cookie: any) => cookies.filter((c) => _.isEqual(c.name, c)));
 
-  (Cypress.automation as sinon.SinonStub)
-    .withArgs("get:cookies")
-    .resolves(cookies);
+  cypressAutomationStub?.withArgs("get:cookies").resolves(cookies);
 
   cookies.forEach((cookie) => {
     document.cookie = `${cookie.name}=${cookie.value}`;
@@ -221,11 +228,8 @@ export function expectHttpRequest(expectedOptions: any | any[]): any[] {
   let all = _.isArray(expectedOptions) ? expectedOptions : [expectedOptions];
   expect(Cypress.backend).to.have.callCount(all.length);
 
-  // @ts-ignore
-  const calls: sinon.SinonSpyCall<any, any>[] = Cypress.backend.getCalls(
-    Array<sinon.SinonSpyCall<any, any>>
-  );
-  const requests = calls
+  const requests = cypressBackendStub
+    ?.getCalls()
     .filter((call) => _.isArray(call.args) && call.args[0] === "http:request")
     .map((call) => {
       call.args = call.args.length > 1 ? call.args[1] : {};
@@ -263,6 +267,7 @@ export function expectC8yClientRequest(
     headers: {
       UseXBasic: true,
     },
+    body: undefined,
   }
 ): any[] {
   let all = (
@@ -284,7 +289,6 @@ export function expectC8yClientRequest(
     // window.fetch gets 2 arguments url and options
     return [url, result];
   });
-
   expect(window.fetchStub).to.have.callCount(all.length);
   const calls = window.fetchStub.getCalls();
   return expectCallsWithArgs(calls, all);

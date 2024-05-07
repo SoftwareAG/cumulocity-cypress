@@ -1,5 +1,5 @@
-const { defineConfig } = require("cypress");
-const { configureC8yPlugin } = require("../src/lib/plugin");
+import { defineConfig } from "cypress";
+import { configureC8yPlugin } from "../src/plugin";
 
 module.exports = defineConfig({
   e2e: {

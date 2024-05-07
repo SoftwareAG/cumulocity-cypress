@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "lib": ["dom", "dom.iterable", "ES2020"],
+    "types": ["cypress", "node", "semver", "cookie-parser", "debug"],
+    "outDir": "../dist/"
+  },
+  "exclude": ["**/*.spec.ts", "**/*.spec.tsx"],
+}

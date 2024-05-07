@@ -1,5 +1,7 @@
-import { C8yDefaultPact } from "../../../src/shared/c8ypact";
-import { url } from "../support/util";
+import { C8yDefaultPact } from "cumulocity-cypress";
+import { url } from "../support/testutils";
+
+import { C8yQicktypeSchemaGenerator } from "cumulocity-cypress/contrib/quicktype";
 
 const { $, _, sinon } = Cypress;
 
@@ -29,6 +31,10 @@ describe("c8ypact intercept", () => {
     statusCode: 201,
     headers: { "x-test": "test" },
   };
+
+  beforeEach(() => {
+    Cypress.c8ypact.schemaGenerator = new C8yQicktypeSchemaGenerator();
+  });
 
   afterEach(() => {
     // delete recorded pacts after each test
@@ -102,13 +108,13 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.response.$body).to.not.be.undefined;
-            expect(r.modifiedResponse.body).to.deep.eq(testBody);
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response.body).to.have.property("managedObjects");
+            expect(r?.response.$body).to.not.be.undefined;
+            expect(r?.modifiedResponse?.body).to.deep.eq(testBody);
           });
         });
     });
@@ -137,14 +143,16 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.modifiedResponse.body).to.eq(testResponse.body);
-            expect(r.modifiedResponse.status).to.eq(201);
-            expect(r.modifiedResponse.headers).to.deep.eq(testResponse.headers);
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response.body).to.have.property("managedObjects");
+            expect(r?.modifiedResponse?.body).to.eq(testResponse.body);
+            expect(r?.modifiedResponse?.status).to.eq(201);
+            expect(r?.modifiedResponse?.headers).to.deep.eq(
+              testResponse.headers
+            );
           });
         });
     });
@@ -170,13 +178,13 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.response.$body).to.not.be.undefined;
-            expect(r.modifiedResponse.body).to.deep.eq(testBody);
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response.body).to.have.property("managedObjects");
+            expect(r?.response.$body).to.not.be.undefined;
+            expect(r?.modifiedResponse?.body).to.deep.eq(testBody);
           });
         });
     });
@@ -200,13 +208,13 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.response.$body).to.not.be.undefined;
-            expect(r.modifiedResponse).to.be.undefined;
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response?.body).to.have.property("managedObjects");
+            expect(r?.response?.$body).to.not.be.undefined;
+            expect(r?.modifiedResponse).to.be.undefined;
           });
         });
     });
@@ -235,13 +243,13 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.response.$body).to.not.be.undefined;
-            expect(r.modifiedResponse.body).to.eq(testResponse.body);
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response.body).to.have.property("managedObjects");
+            expect(r?.response.$body).to.not.be.undefined;
+            expect(r?.modifiedResponse?.body).to.eq(testResponse.body);
           });
         });
     });
@@ -272,13 +280,13 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.response.$body).to.not.be.undefined;
-            expect(r.modifiedResponse.body).to.eq(testResponse.body);
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response.body).to.have.property("managedObjects");
+            expect(r?.response.$body).to.not.be.undefined;
+            expect(r?.modifiedResponse?.body).to.eq(testResponse.body);
           });
         });
     });
@@ -311,16 +319,18 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.response.body).to.not.have.property("test");
-            expect(r.response.$body).to.not.be.undefined;
-            expect(r.modifiedResponse.body).to.have.property("managedObjects");
-            expect(r.modifiedResponse.body).to.have.property("test");
-            expect(r.modifiedResponse.status).to.eq(222);
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response.body).to.have.property("managedObjects");
+            expect(r?.response.body).to.not.have.property("test");
+            expect(r?.response.$body).to.not.be.undefined;
+            expect(r?.modifiedResponse?.body).to.have.property(
+              "managedObjects"
+            );
+            expect(r?.modifiedResponse?.body).to.have.property("test");
+            expect(r?.modifiedResponse?.status).to.eq(222);
           });
         });
     });
@@ -348,13 +358,13 @@ describe("c8ypact intercept", () => {
         })
         .then(() => {
           Cypress.c8ypact.loadCurrent().then((pact) => {
-            expect(pact.records).to.have.length(1);
-            const r = pact.records[0];
-            expect(r.request).to.not.be.undefined;
-            expect(r.request.url.startsWith(inventoryPath)).to.be.true;
-            expect(r.response.body).to.have.property("managedObjects");
-            expect(r.response.$body).to.not.be.undefined;
-            expect(r.modifiedResponse.body).to.have.property("fixtureTest");
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.request).to.not.be.undefined;
+            expect(r?.request?.url?.startsWith(inventoryPath)).to.be.true;
+            expect(r?.response.body).to.have.property("managedObjects");
+            expect(r?.response.$body).to.not.be.undefined;
+            expect(r?.modifiedResponse?.body).to.have.property("fixtureTest");
           });
         });
     });
@@ -502,7 +512,7 @@ describe("c8ypact intercept", () => {
     };
 
     it("should ignore pact for static RouteHandlers", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", "test")
         .as("inventory")
@@ -515,7 +525,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should return pact response for interceptions without RouteHandler", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*")
         .as("inventory")
@@ -528,7 +538,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should return pact response for interceptions with RouteHandler continue function", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", (req) => {
         req.continue((res) => {
@@ -546,7 +556,7 @@ describe("c8ypact intercept", () => {
         .then((interception) => {
           expectSavePactNotCalled();
           cy.wrap(interception);
-          expect(interception.response.body).to.deep.eq({
+          expect(interception.response?.body).to.deep.eq({
             ...response.body,
             ...{ test: "test2" },
           });
@@ -554,7 +564,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should throw error if recording not found and strictMocking is enabled", (done) => {
-      Cypress.c8ypact.current = undefined;
+      Cypress.c8ypact.current = null;
       Cypress.once("fail", (err) => {
         expect(err.name).to.eq("C8yPactError");
         expect(err.message).to.contain("Mocking failed in intercept.");
@@ -564,7 +574,7 @@ describe("c8ypact intercept", () => {
     });
 
     it("should not return pact response for interceptions with RouteHandler reply function", () => {
-      // @ts-ignore
+      // @ts-expect-error
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {});
       cy.intercept("/inventory/managedObjects*", (req) => {
         req.reply({
@@ -583,7 +593,6 @@ describe("c8ypact intercept", () => {
     });
 
     it("should return recorded response with different baseUrl", () => {
-      // @ts-ignore
       const r = _.cloneDeep(response);
       r.method = "GET";
       r.url = "https://mytest.com/inventory/managedObjects?fragmentType=abcd";

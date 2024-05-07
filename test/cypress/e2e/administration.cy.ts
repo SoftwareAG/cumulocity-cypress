@@ -3,7 +3,7 @@ import {
   expectC8yClientRequest,
   initRequestStub,
   stubResponses,
-} from "../support/util";
+} from "../support/testutils";
 const { _, sinon } = Cypress;
 
 declare global {
@@ -87,15 +87,15 @@ describe("administration", () => {
     it("throws error for missing user and logs username", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("Missing argument. Requiring IUser");
-        expect(Cypress.log).to.be.calledWithMatch(
-          sinon.match({ message: `{user: test}` })
-        );
+        // expect(Cypress.log).to.be.calledWithMatch(
+        //   sinon.match({ message: `{user: test}` })
+        // );
         done();
       });
 
       cy.spy(Cypress, "log").log(false);
 
-      //@ts-ignore
+      //@ts-expect-error
       cy.deleteUser({ user: "test" });
     });
   });

@@ -1,6 +1,4 @@
 import {
-  BasicAuth,
-  CookieAuth,
   FetchClient,
   IAuthentication,
   IFetchOptions,
@@ -11,15 +9,19 @@ import {
   toWindowFetchResponse,
   wrapFetchResponse,
 } from "../../shared/c8yclient";
-import { C8yAuthOptions } from "../commands/auth";
-const { getAuthOptions, getBaseUrlFromEnv } = require("./../utils");
+import { C8yAuthOptions, isAuthOptions } from "../../shared/auth";
+import {
+  getAuthOptions,
+  getBaseUrlFromEnv,
+  getC8yClientAuthentication,
+} from "../utils";
 
 const { _ } = Cypress;
 
 export class C8yPactFetchClient extends FetchClient {
   private authentication: IAuthentication;
-  private cypresspact: CypressC8yPact;
-  private authOptions: C8yAuthOptions;
+  private cypresspact: CypressC8yPact | undefined;
+  private authOptions: C8yAuthOptions | undefined;
 
   private user: string;
   private userAlias: string;
@@ -29,50 +31,29 @@ export class C8yPactFetchClient extends FetchClient {
     baseUrl?: string;
     cypresspact?: CypressC8yPact;
   }) {
-    let auth: IAuthentication;
-    let authOptions: C8yAuthOptions;
-    let baseUrl: string;
+    const auth = getC8yClientAuthentication(options.auth);
+    const url: string = options.baseUrl || getBaseUrlFromEnv();
 
-    if (options.auth) {
-      if (_.isString(options.auth)) {
-        authOptions = getAuthOptions(options?.auth);
-      } else if (_.isObjectLike(options.auth)) {
-        if ("logout" in options.auth) {
-          auth = options.auth as IAuthentication;
-        } else {
-          authOptions = options.auth as C8yAuthOptions;
-        }
-      }
+    let authOptions: C8yAuthOptions | undefined;
+    if (_.isString(auth)) {
+      authOptions = getAuthOptions(auth);
+    } else if (isAuthOptions(auth)) {
+      authOptions = auth;
     }
 
-    if (!auth) {
-      const cookieAuth = new CookieAuth();
-      const token: string = _.get(
-        cookieAuth.getFetchOptions({}),
-        "headers.X-XSRF-TOKEN"
-      );
-      if (token?.trim() && !_.isEmpty(token.trim())) {
-        auth = cookieAuth;
-      } else if (authOptions) {
-        auth = new BasicAuth(authOptions);
-      }
-    }
-
-    let [user, userAlias] = [
-      // @ts-ignore
-      authOptions?.user || auth?.user || Cypress.env("C8Y_LOGGED_IN_USER"),
-      authOptions?.userAlias || Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
-    ];
-
-    baseUrl = baseUrl || getBaseUrlFromEnv();
     if (!auth) {
       throw new Error("C8yPactFetchClient Error. No authentication provided.");
     }
-    if (!baseUrl) {
+    if (!url) {
       throw new Error("C8yPactFetchClient Error. No baseUrl provided.");
     }
 
-    super(auth, baseUrl);
+    const [user, userAlias] = [
+      // @ts-expect-error
+      authOptions?.user || auth?.user || Cypress.env("C8Y_LOGGED_IN_USER"),
+      authOptions?.userAlias || Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
+    ];
+    super(auth, url);
 
     this.authOptions = authOptions;
     this.authentication = auth;
@@ -101,7 +82,7 @@ export class C8yPactFetchClient extends FetchClient {
       const fullUrl: string = this.getUrl(url, fetchOptions);
       if (currentPact) {
         const record = currentPact.nextRecordMatchingRequest({
-          url: fullUrl?.replace(this.baseUrl, ""),
+          url: fullUrl?.replace(this.baseUrl || "", ""),
           method: fetchOptions?.method,
         });
         if (record) {

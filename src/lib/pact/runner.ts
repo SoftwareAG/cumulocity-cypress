@@ -1,6 +1,6 @@
 import { C8yClientOptions } from "../../shared/c8yclient";
 import { C8yPact, C8yPactInfo, C8yPactRecord } from "../../shared/c8ypact";
-const { getBaseUrlFromEnv } = require("./../utils");
+import { getBaseUrlFromEnv } from "../utils";
 const { _ } = Cypress;
 
 declare global {
@@ -59,12 +59,12 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     const tests: C8yPact[] = [];
 
     for (const pact of pacts) {
-      const { info, records, id } = pact;
+      const { info } = pact;
       if (!isPact(pact)) continue;
 
       if (
         _.isString(options.consumer) &&
-        (_.isString(info?.consumer) ? info?.consumer : info?.consumer.name) !==
+        (_.isString(info?.consumer) ? info?.consumer : info?.consumer?.name) !==
           options.consumer
       ) {
         continue;
@@ -72,7 +72,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
       if (
         _.isString(options.producer) &&
-        (_.isString(info?.producer) ? info?.consumer : info?.producer.name) !==
+        (_.isString(info?.producer) ? info?.consumer : info?.producer?.name) !==
           options.consumer
       ) {
         continue;
@@ -96,7 +96,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
       const titles = pact.info.title;
 
       let currentNode = tree;
-      titles.forEach((title, index) => {
+      titles?.forEach((title, index) => {
         if (!currentNode[title]) {
           currentNode[title] = index === titles.length - 1 ? pact : {};
         }
@@ -108,15 +108,14 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
 
   protected createTestsFromHierarchy(hierarchy: TestHierarchyTree<C8yPact>) {
     const keys = Object.keys(hierarchy);
-    keys.forEach((key: string, index: number) => {
+    keys.forEach((key: string) => {
       const subTree = hierarchy[key];
-      const that = this;
-
       if (isPact(subTree)) {
         it(key, () => {
-          that.runTest(subTree);
+          this.runTest(subTree);
         });
       } else {
+        const that = this;
         context(key, function () {
           that.createTestsFromHierarchy(subTree);
         });
@@ -128,7 +127,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     Cypress.c8ypact.current = pact;
     this.idMapper = {};
 
-    for (const record of pact?.records) {
+    for (const record of pact?.records || []) {
       cy.then(() => {
         Cypress.c8ypact.config.strictMatching =
           pact.info?.strictMatching != null ? pact.info.strictMatching : true;
@@ -136,9 +135,9 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
         const url = this.createURL(record, pact.info);
         const clientFetchOptions = this.createFetchOptions(record, pact.info);
 
-        let user = record.auth.userAlias || record.auth.user;
-        if (user.split("/").length > 1) {
-          user = user.split("/").slice(1).join("/");
+        let user = record.auth?.userAlias || record.auth?.user;
+        if ((user || "").split("/").length > 1) {
+          user = user?.split("/")?.slice(1)?.join("/");
         }
         if (url === "/devicecontrol/deviceCredentials") {
           user = "devicebootstrap";
@@ -165,22 +164,25 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
               Cypress.env(`${username}_password`, password);
             }
           }
-          // @ts-ignore
           if (response.method === "POST") {
             const newId = response.body.id;
-            if (newId) {
+            if (newId && record.createdObject) {
               this.idMapper[record.createdObject] = newId;
             }
           }
         };
 
         if (record.auth && record.auth.type === "CookieAuth") {
-          cy.getAuth(user).login();
-          cy.c8yclient(
-            (c) => c.core.fetch(url, clientFetchOptions),
-            cOpts
-          ).then(responseFn);
-        } else {
+          if (user) {
+            cy.getAuth(user).login();
+          }
+          if (url) {
+            cy.c8yclient(
+              (c) => c.core.fetch(url, clientFetchOptions),
+              cOpts
+            ).then(responseFn);
+          }
+        } else if (user && url) {
           cy.getAuth(user)
             .c8yclient((c) => c.core.fetch(url, clientFetchOptions), cOpts)
             .then(responseFn);
@@ -189,8 +191,8 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     }
   }
 
-  protected createHeader(pact: C8yPactRecord, info: C8yPactInfo): any {
-    let headers = _.omit(pact.request.headers || {}, [
+  protected createHeader(pact: C8yPactRecord): any {
+    const headers = _.omit(pact.request.headers || {}, [
       "X-XSRF-TOKEN",
       "Authorization",
     ]);
@@ -198,11 +200,11 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
   }
 
   protected createFetchOptions(pact: C8yPactRecord, info: C8yPactInfo): any {
-    let options: any = {
+    const options: any = {
       method: pact.request.method || "GET",
-      headers: this.createHeader(pact, info),
+      headers: this.createHeader(pact),
     };
-    let body = pact.request.body;
+    const body = pact.request.body;
     if (body) {
       if (_.isString(body)) {
         options.body = this.updateIds(body);
@@ -217,16 +219,21 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     return options;
   }
 
-  protected createURL(pact: C8yPactRecord, info: C8yPactInfo): string {
+  protected createURL(
+    pact: C8yPactRecord,
+    info: C8yPactInfo
+  ): string | undefined {
     let url = pact.request.url;
-    if (info?.baseUrl && url.includes(info.baseUrl)) {
+    if (info?.baseUrl && url?.includes(info.baseUrl)) {
       url = url.replace(info.baseUrl, "");
     }
     const baseUrl = getBaseUrlFromEnv();
-    if (url.includes(baseUrl)) {
+    if (url?.includes(baseUrl)) {
       url = url.replace(baseUrl, "");
     }
-    url = this.updateIds(url);
+    if (url) {
+      url = this.updateIds(url);
+    }
     return url;
   }
 
@@ -234,18 +241,20 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
     if (!value || !info) return value;
     let result = value;
 
-    const tenantUrl = (baseUrl: string, tenant: string): URL => {
+    const tenantUrl = (baseUrl: string, tenant?: string): URL | undefined => {
       if (!baseUrl || !tenant) return undefined;
       try {
         const url = new URL(baseUrl);
         const instance = url.host.split(".")?.slice(1)?.join(".");
         url.host = `${tenant}.${instance}`;
         return url;
-      } catch {}
+      } catch {
+        // no-op
+      }
       return undefined;
     };
 
-    const infoUrl = tenantUrl(info.baseUrl, info.tenant);
+    const infoUrl = tenantUrl(info.baseUrl, info?.tenant);
     const url = tenantUrl(getBaseUrlFromEnv(), Cypress.env("C8Y_TENANT"));
 
     if (infoUrl && url) {

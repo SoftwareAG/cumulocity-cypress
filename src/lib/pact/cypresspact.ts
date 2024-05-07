@@ -10,8 +10,6 @@ import {
   C8yDefaultPactPreprocessor,
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
-  C8yAjvSchemaMatcher,
-  C8yQicktypeSchemaGenerator,
   C8ySchemaGenerator,
   C8ySchemaMatcher,
   C8yDefaultPactMatcher,
@@ -21,14 +19,15 @@ import {
   C8yPactSaveKeys,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
+import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClient } from "../../shared/c8yclient";
-
-const { getBaseUrlFromEnv } = require("./../utils");
-const semver = require("semver");
+import { getBaseUrlFromEnv } from "../utils";
+import * as semver from "semver";
 
 const { _ } = Cypress;
 
-const draft06Schema = require("ajv/lib/refs/json-schema-draft-06.json");
+import { FetchClient, IAuthentication } from "@c8y/client";
+import { C8yPactFetchClient } from "./fetchclient";
 
 declare global {
   namespace Cypress {
@@ -76,19 +75,22 @@ declare global {
      * The C8yPactMatcher implementation used to match requests and responses. Default is C8yDefaultPactMatcher.
      * Can be overridden by setting a matcher in C8yPactConfigOptions.
      */
-    matcher: C8yPactMatcher;
+    matcher?: C8yPactMatcher;
     /**
      * The C8yPactPreprocessor implementation used to preprocess the pact objects.
      */
-    preprocessor: C8yPactPreprocessor;
+    preprocessor?: C8yPactPreprocessor;
     /**
-     * The C8ySchemaGenerator implementation used to generate json schemas from json objects.
+     * The C8ySchemaGenerator implementation used to generate json schemas from json objects. The
+     * implementation of `C8ySchemaGenerator` must support browser runtimes!
+     * Default is undefined and schema generation is disabled.
      */
-    schemaGenerator: C8ySchemaGenerator;
+    schemaGenerator?: C8ySchemaGenerator;
     /**
-     * The C8ySchemaMatcher implementation used to match json schemas. Default is C8yAjvSchemaMatcher.
+     * The C8ySchemaMatcher implementation used to match json schemas. The schema matcher implementation
+     * must support browser runtimes! Default is undefined and schema matching is disabled.
      */
-    schemaMatcher: C8ySchemaMatcher;
+    schemaMatcher?: C8ySchemaMatcher;
     /**
      * Save the given response as a pact record in the pact for the current test case.
      */
@@ -111,7 +113,7 @@ declare global {
     /**
      * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
      */
-    pactRunner: C8yPactRunner;
+    pactRunner?: C8yPactRunner;
     /**
      * Use debugLog to enable logging of debug information to the Cypress debug log.
      */
@@ -140,6 +142,15 @@ declare global {
      * Resolves all environment variables as a C8yPactEnv object.
      */
     env(): C8yPactEnv;
+    /**
+     * Create a custom FetchClient from given auth options and baseUrl. Default implementation
+     * of FetchClient is C8yPactFetchClient. Override to provide a custom FetchClient implementation to
+     * cy.mount. If undefined is returned, cy.mount will not register a custom FetchClient provider.
+     */
+    createFetchClient(
+      auth: C8yAuthOptions | IAuthentication,
+      baseUrl: string
+    ): FetchClient;
   }
 
   /**
@@ -211,8 +222,8 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     isEnabled,
     matcher: new C8yDefaultPactMatcher(),
     pactRunner: new C8yDefaultPactRunner(),
-    schemaGenerator: new C8yQicktypeSchemaGenerator(),
-    schemaMatcher: new C8yAjvSchemaMatcher([draft06Schema]),
+    schemaGenerator: undefined,
+    schemaMatcher: undefined,
     debugLog: false,
     preprocessor: new C8yCypressEnvPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
@@ -258,14 +269,14 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
           debugLogger()
         )
         .then((pact) => {
-          if (pact == null) return cy.wrap<C8yPact>(null, debugLogger());
+          if (pact == null) return cy.wrap<C8yPact | null>(null, debugLogger());
 
           // required to map the record object to a C8yPactRecord here as this can
           // not be done in the plugin
           pact.records = pact.records?.map((record) => {
             return C8yDefaultPactRecord.from(record);
           });
-          return cy.wrap(
+          return cy.wrap<C8yPact | null>(
             new C8yDefaultPact(pact.records, pact.info, pact.id),
             debugLogger()
           );
@@ -286,6 +297,13 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
           obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
         },
       };
+    },
+    createFetchClient: (auth: C8yAuthOptions, baseUrl: string) => {
+      return new C8yPactFetchClient({
+        cypresspact: Cypress.c8ypact,
+        auth,
+        baseUrl,
+      });
     },
   };
 }
@@ -382,10 +400,12 @@ async function savePact(
 
     if (!pact) return;
     save(pact, options);
-  } catch {}
+  } catch {
+    // no-op
+  }
 }
 
-export function save(pact: any, options: C8yPactSaveOptions) {
+function save(pact: any, options: C8yPactSaveOptions) {
   const taskName = "c8ypact:save";
   if (options?.noqueue === true) {
     if (
@@ -394,7 +414,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
     ) {
       return new Promise((resolve) => setTimeout(resolve, 5))
         .then(() =>
-          // @ts-ignore
+          // @ts-expect-error
           Cypress.backend("run:privileged", {
             commandName: "task",
             userArgs: [taskName, pact],
@@ -408,14 +428,14 @@ export function save(pact: any, options: C8yPactSaveOptions) {
           /* noop */
         });
     }
-    // @ts-ignore
+    // @ts-expect-error
     const { args, promise } = Cypress.emitMap("command:invocation", {
       name: "task",
       args: [taskName, pact],
     })[0];
     new Promise((r) => promise.then(r))
       .then(() =>
-        // @ts-ignore
+        // @ts-expect-error
         Cypress.backend("run:privileged", {
           commandName: "task",
           args,
@@ -425,7 +445,7 @@ export function save(pact: any, options: C8yPactSaveOptions) {
           },
         })
       )
-      .catch((err) => {
+      .catch(() => {
         /* noop */
       });
   } else {

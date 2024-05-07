@@ -1,11 +1,11 @@
-import { ICredentials } from "@c8y/client";
+import { getAuthOptions, resetClient } from "../utils";
+import { C8yAuthOptions, C8yAuthentication } from "../../shared/auth";
 
-const { _ } = Cypress;
-const { getAuthOptions, resetClient } = require("./../utils");
+export { C8yAuthOptions, C8yAuthentication };
 
 declare global {
   namespace Cypress {
-    interface Chainable {
+    interface Chainable extends ChainableWithState {
       /**
        * Get `C8yAuthOptions` from arguments or environment variables.
        *
@@ -53,67 +53,47 @@ declare global {
     | [authOptions: C8yAuthOptions];
 }
 
-export interface C8yAuthOptions extends ICredentials {
-  // support cy.request properties
-  sendImmediately?: boolean;
-  bearer?: (() => string) | string;
-  userAlias?: string;
-  type?: string;
-  xsfrToken?: string;
-}
+Cypress.Commands.add("getAuth", { prevSubject: "optional" }, (...args) => {
+  const auth = getAuthOptions(...args);
+  const consoleProps = {
+    auth,
+    arguments: args,
+  };
+  Cypress.log({
+    name: "getAuth",
+    message: `${auth ? auth.user : ""}`,
+    consoleProps: () => consoleProps,
+  });
 
-Cypress.Commands.add(
-  "getAuth",
-  // @ts-ignore
-  { prevSubject: "optional" },
-  function (...args: C8yAuthArgs) {
-    const auth: C8yAuthOptions = getAuthOptions(...args);
-    const consoleProps = {
-      auth,
-      arguments: args,
-    };
-    Cypress.log({
-      name: "getAuth",
-      message: `${auth ? auth.user : ""}`,
-      consoleProps: () => consoleProps,
-    });
-
-    if (!auth) {
-      throw new Error(
-        `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
-      );
-    }
-
-    return Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false });
+  if (!auth) {
+    throw new Error(
+      `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
+    );
   }
-);
 
-Cypress.Commands.add(
-  "useAuth",
-  // @ts-ignore
-  { prevSubject: "optional" },
-  function (...args: C8yAuthArgs) {
-    const auth: C8yAuthOptions = getAuthOptions(...args);
-    const consoleProps = {
-      auth,
-      arguments: args,
-    };
-    Cypress.log({
-      name: "useAuth",
-      message: `${auth ? auth.user : ""}`,
-      consoleProps: () => consoleProps,
-    });
-    if (auth) {
-      // @ts-ignore
-      const win: Cypress.AUTWindow = cy.state("window");
-      win.localStorage.setItem("__auth", JSON.stringify(auth));
-    } else {
-      throw new Error(
-        `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
-      );
-    }
-    resetClient();
+  return cy.wrap<C8yAuthOptions>(auth, { log: false });
+});
 
-    return Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false });
+Cypress.Commands.add("useAuth", { prevSubject: "optional" }, (...args) => {
+  const auth = getAuthOptions(...args);
+  const consoleProps = {
+    auth,
+    arguments: args,
+  };
+  Cypress.log({
+    name: "useAuth",
+    message: `${auth ? auth.user : ""}`,
+    consoleProps: () => consoleProps,
+  });
+  if (auth) {
+    const win: Cypress.AUTWindow = cy.state("window");
+    win.localStorage.setItem("__auth", JSON.stringify(auth));
+  } else {
+    throw new Error(
+      `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
+    );
   }
-);
+  resetClient();
+
+  return cy.wrap<C8yAuthOptions>(auth, { log: false });
+});

@@ -3,7 +3,7 @@ import {
   stubResponse,
   initRequestStub,
   url as _url,
-} from "../support/util";
+} from "../support/testutils";
 
 const { _, $ } = Cypress;
 
@@ -94,7 +94,6 @@ describe("login", () => {
         .c8yclient()
         .then((client) => {
           expect(client).to.not.be.undefined;
-          // @ts-ignore
           expect(cy.state("ccs.client")).to.not.be.undefined;
         });
 
@@ -110,7 +109,6 @@ describe("login", () => {
         expectHttpRequest({ url });
         expect(validationCalled).to.be.true;
         expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("user");
-        // @ts-ignore
         expect(cy.state("ccs.client")).to.be.undefined;
       });
     });
@@ -152,11 +150,12 @@ describe("login", () => {
         tenant: "t702341987",
       }).then((auth) => {
         Cypress.session.getCurrentSessionData().then((sessionData) => {
+          expect(sessionData.cookies).to.not.be.undefined;
           expect(sessionData.cookies).to.have.length(2);
-          expect(sessionData.cookies[0].name).to.eq("authorization");
-          expect(sessionData.cookies[0].value).to.eq("eyJhbGciOiJ");
-          expect(sessionData.cookies[1].name).to.eq("XSRF-TOKEN");
-          expect(sessionData.cookies[1].value).to.eq("pQWAHZQfhLRcDVqVsCjV");
+          expect(sessionData.cookies![0].name).to.eq("authorization");
+          expect(sessionData.cookies![0].value).to.eq("eyJhbGciOiJ");
+          expect(sessionData.cookies![1].name).to.eq("XSRF-TOKEN");
+          expect(sessionData.cookies![1].value).to.eq("pQWAHZQfhLRcDVqVsCjV");
         });
 
         cy.getCookies().then((cookies) => {
@@ -186,9 +185,9 @@ describe("login", () => {
         }
       ).then(() => {
         cy.window().then((win) => {
-          const cookie = JSON.parse(
-            win.localStorage.getItem("acceptCookieNotice")
-          );
+          const c = win.localStorage.getItem("acceptCookieNotice");
+          expect(c).to.not.be.null;
+          const cookie = JSON.parse(c!);
           expect(cookie).to.deep.eq({ required: true, functional: true });
         });
       });

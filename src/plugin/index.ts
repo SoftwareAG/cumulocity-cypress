@@ -5,11 +5,11 @@ import debug from "debug";
 import {
   C8yPactFileAdapter,
   C8yPactDefaultFileAdapter,
-} from "../../shared/c8ypact/fileadapter";
-import { C8yPact } from "../../shared/c8ypact";
-import { C8yAuthOptions, oauthLogin } from "../../shared/c8yclient";
+} from "../shared/c8ypact/fileadapter";
+import { C8yPact } from "../shared/c8ypact/c8ypact";
+import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
 
-export { C8yPactFileAdapter };
+export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
 /**
  * Configuration options for the Cumulocity Cypress plugin.
@@ -42,7 +42,7 @@ export function configureC8yPlugin(
   config: Cypress.PluginConfigOptions,
   options: C8yPluginConfig = {}
 ) {
-  let adapter: C8yPactFileAdapter = options.pactAdapter;
+  let adapter = options.pactAdapter;
   if (!adapter) {
     const folder =
       options.pactFolder ||
@@ -100,10 +100,13 @@ export function configureC8yPlugin(
     return pacts[pact] || null;
   }
 
-  function loadPacts(): { [key: string]: C8yPact } {
-    pacts = adapter?.loadPacts() || null;
-    log(`loadPacts() - loaded ${pacts?.length}`);
-    return pacts;
+  function loadPacts(): { [key: string]: C8yPact } | undefined {
+    const p = adapter?.loadPacts();
+    log(`loadPacts() - loaded ${p?.length}`);
+    if (p) {
+      pacts = p;
+    }
+    return p;
   }
 
   function removePact(pact: string): boolean {
@@ -113,7 +116,7 @@ export function configureC8yPlugin(
     if (!pacts[pact]) return false;
     delete pacts[pact];
 
-    adapter.deletePact(pact);
+    adapter?.deletePact(pact);
     return true;
   }
 
@@ -176,5 +179,3 @@ function getVersion() {
   }
   return "unknown";
 }
-
-module.exports = { configureC8yPlugin, C8yPactDefaultFileAdapter };

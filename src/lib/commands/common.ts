@@ -1,13 +1,30 @@
+import { FetchClient } from "@c8y/client";
 import { C8yPact } from "../../shared/c8ypact";
+import { C8yAuthOptions } from "../../shared/auth";
+import { getC8yClientAuthentication } from "../utils";
 
-export {};
+declare global {
+  interface ChainableWithState {
+    state(state: string): any;
+    state(state: string, value: any): void;
+  }
+
+  namespace Cypress {
+    interface Cypress {
+      errorMessages: any;
+    }
+    interface LogConfig {
+      renderProps(): ObjectLike;
+    }
+  }
+}
 
 if (!Cypress.c8ypact) {
   Cypress.c8ypact = {
     current: null,
-    getCurrentTestId: () => null,
+    getCurrentTestId: () => "-",
     isRecordingEnabled: () => false,
-    savePact: (...args) => new Promise((resolve) => resolve()),
+    savePact: () => new Promise((resolve) => resolve()),
     isEnabled: () => false,
     matcher: undefined,
     pactRunner: undefined,
@@ -16,9 +33,11 @@ if (!Cypress.c8ypact) {
     debugLog: false,
     preprocessor: undefined,
     config: {},
-    getConfigValue: (key: string, defaultValue?: any) => undefined,
-    getConfigValues: () => undefined,
+    getConfigValue: () => undefined,
+    getConfigValues: () => ({}),
     loadCurrent: () => cy.wrap<C8yPact | null>(null, { log: false }),
     env: () => ({}),
+    createFetchClient: (auth: C8yAuthOptions, baseUrl: string) =>
+      new FetchClient(getC8yClientAuthentication(auth), baseUrl),
   };
 }

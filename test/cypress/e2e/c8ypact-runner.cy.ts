@@ -1,15 +1,17 @@
-import { C8yDefaultPactRunner } from "../../../src/lib/pact/runner";
-import { C8yDefaultPactRecord } from "../../../src/shared/c8ypact";
+import { C8yDefaultPactRunner, C8yDefaultPactRecord } from "cumulocity-cypress";
 
 const { _ } = Cypress;
 
 // required as the tested methods are protected / private
 class C8yTestPactRunner extends C8yDefaultPactRunner {
   test_createHeader(pact: any, info: any): any {
-    return this.createHeader(pact, info);
+    return this.createHeader(pact);
   }
 
-  test_createURL(pact: any | string, info: any | string = {}): string {
+  test_createURL(
+    pact: any | string,
+    info: any | string = {}
+  ): string | undefined {
     if (_.isString(pact)) {
       pact = { request: { url: pact } };
     }

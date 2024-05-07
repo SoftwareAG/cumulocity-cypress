@@ -1,4 +1,5 @@
 import {
+  FormatWidth,
   NgLocaleDataIndex,
   getNgLocale,
   getNgLocaleId,
@@ -11,13 +12,13 @@ import {
   registerLocale,
 } from "../locale/locale";
 
-const { throwError } = require("./../utils");
 import * as datefns from "date-fns";
+import { throwError } from "../utils";
 const { _ } = Cypress;
 
 declare global {
   namespace Cypress {
-    interface Chainable {
+    interface Chainable extends ChainableWithState {
       /**
        * Creates a `Date` object from given string or number input. Supported strings must be created using the Cumulocity `c8yDate` or Angular `date` pipes. Format is detected automatically for reading the strings based on locale set via `cy.setLanguage`. Supported formats are datetime, time, date.
        *
@@ -41,11 +42,13 @@ declare global {
        * @param {ISODateSource} source string or number of an array of strings or numbers to convert into a date
        * @param {ISODateOptions} options the configuration options for date processing
        */
-      toDate(
+      toDate<T = Date | Date[]>(
         source?: ISODateSource,
         options?: ISODateOptions
-      ): Chainable<Date | Date[] | undefined>;
-      toDate(options?: ISODateOptions): Chainable<Date | Date[] | undefined>;
+      ): Chainable<T | undefined>;
+      toDate<T = Date | Date[]>(
+        options?: ISODateOptions
+      ): Chainable<T | undefined>;
 
       /**
        * Creates an ISO formatted date string from given or yielded string or number input. Use `cy.toDate()` for reading the date and converts into ISO date.
@@ -67,8 +70,8 @@ declare global {
        * @param {ISODateSource} source string or number of an array of strings or numbers to convert into a date
        * @param {ISODateOptions} options the configuration options for date processing
        */
-      toISODate(
-        source?: ISODateSource,
+      toISODate<T = ISODateSource>(
+        source?: T,
         options?: ISODateOptions
       ): Chainable<string | string[] | undefined>;
       toISODate(
@@ -135,6 +138,8 @@ declare global {
     invalid?: "keep" | "ignore" | "throw";
     /** If `strictFormats` is enabled, only the Angular date formats will be used. If disabled, also other ways will be tried to parse the formatted date string. */
     strictFormats?: boolean;
+    consoleProps?: any;
+    logger?: Cypress.Log;
   }
 
   /**
@@ -151,7 +156,7 @@ declare global {
     localeId: string,
     extraData?: unknown,
     datefnsLocale?: string
-  ): void;
+  ): Promise<void>;
 
   /**
    * Registers default Angular locales. Currently this is `en` (en-GB) and `de` (de) Angular locales.
@@ -159,15 +164,6 @@ declare global {
   function registerDefaultLocales(): void;
 
   function setLocale(localeId: string): void;
-}
-
-// https://angular.io/api/common/DatePipe#pre-defined-format-options
-// https://github.com/angular/angular/blob/9847085448feff29ac6d51493e224250990c3ff0/packages/common/src/pipes/date_pipe.ts#L58
-export enum FormatWidth {
-  Short,
-  Medium,
-  Long,
-  Full,
 }
 
 Cypress.datefns = datefns;
@@ -193,50 +189,77 @@ globalThis.setLocale = (localeId: string) => {
   }
 };
 
+const isISODateSource = (arg: any): arg is ISODateSource => {
+  return arg != null && (_.isString(arg) || _.isNumber(arg) || _.isArray(arg));
+};
+
+const fromArguments = <T = string | ISODateSource>(
+  args: any[]
+): [T | undefined, ISODateOptions | undefined] => {
+  let source: T | undefined = undefined;
+  let options: ISODateOptions | string | undefined = undefined;
+  if (args.length === 1) {
+    source = args[0];
+  } else if (args.length > 1) {
+    if (isISODateSource(args[1]) || typeof args[1] === "string") {
+      source = args[1] as T;
+      if (args.length > 2) {
+        options = args[2];
+      }
+    } else {
+      source = args[0];
+      options = _.last(args);
+    }
+  }
+  return [source, _.defaults({}, options, defaultOptions)];
+};
+
 Cypress.Commands.add(
   "toDate",
-  // @ts-ignore
   { prevSubject: "optional" },
-  (
-    prevSubject: ISODateSource,
-    source: ISODateSource,
-    options: ISODateOptions = defaultOptions
-  ) => {
-    if (
-      (!source && prevSubject) ||
-      (_.isObjectLike(source) && !_.isArray(source))
-    ) {
-      source = prevSubject;
-    }
-
-    const localizedFormats = prepareLocalizedFormats(options);
-    // @ts-ignore
+  (prevSubject: unknown, ...args) => {
+    const [unsafeSource, options] = fromArguments([prevSubject, ...args]);
+    const localizedFormats =
+      options != null ? prepareLocalizedFormats(options) : [];
     const win = cy.state("window");
     const language =
       options?.language ?? win.localStorage.getItem("c8y_language") ?? "en";
 
-    const consoleProps: any = {
-      Options: options,
-      language: `${language} (${getNgLocaleId(language)})`,
-      localizedFormats,
-    };
-    if (options?.log === true) {
-      Cypress.log({
+    const consoleProps: any = options?.consoleProps ?? {};
+
+    if (!consoleProps.options) {
+      consoleProps.options = options || null;
+    }
+    consoleProps.language = `${language} (${getNgLocaleId(language)})`;
+    consoleProps.localizedFormats = localizedFormats || null;
+    consoleProps.source = unsafeSource || null;
+
+    let logger = options?.logger;
+    let ourlogger = false;
+    if (options?.log === true && options?.consoleProps == null) {
+      logger = Cypress.log({
         name: "toDate",
-        message: source,
+        message: `${unsafeSource || null}`,
         consoleProps: () => consoleProps,
+        autoEnd: false,
       });
+      ourlogger = true;
     }
 
+    if (!unsafeSource) {
+      logger?.end();
+      throwError(`No or undefined source provided to cy.toDate.`);
+    }
+
+    const source = unsafeSource as ISODateSource;
     const input = Array.isArray(source) ? source : [source];
-    let formats: string[] = [];
+    const formats: (string | undefined)[] = [];
     let dates = input.map((item) => {
-      let parsedDate: Date;
+      let parsedDate: Date | undefined;
 
       // try to read date from Angular date formats or number
       for (const format of localizedFormats) {
-        parsedDate = parseDate(item, format, language);
-        // @ts-ignore
+        parsedDate = parseDate(item, format);
         if (isValidDate(parsedDate)) {
           formats.push(format);
           return parsedDate;
@@ -268,51 +291,51 @@ Cypress.Commands.add(
           `'${item?.toString()}' could not be converted into a valid date. No matching format or invalid input.`
         );
       }
-
       return undefined;
     });
 
     if (options?.invalid === "ignore") {
       dates = dates.filter((date) => date);
       if (_.isEmpty(dates)) {
-        return cy.wrap(undefined, { log: false });
+        if (ourlogger) {
+          logger?.end();
+        }
+        return undefined;
       }
     }
 
     const result = Array.isArray(source) ? dates : dates[0];
-    consoleProps["Format"] = Array.isArray(source) ? formats : formats[0];
-    consoleProps["Yielded"] = result;
-
-    return cy.wrap(result, { log: false });
+    consoleProps["Format"] =
+      (Array.isArray(source) ? formats : formats[0]) || null;
+    consoleProps["Yielded"] = result || null;
+    if (ourlogger) {
+      logger?.end();
+    }
+    cy.wrap(result, { log: false });
   }
 );
 
 Cypress.Commands.add(
   "toISODate",
-  // @ts-ignore
   { prevSubject: "optional" },
-  (
-    prevSubject: ISODateSource,
-    source: ISODateSource,
-    options: ISODateOptions = defaultOptions
-  ) => {
-    if (
-      (!source && prevSubject) ||
-      (_.isObjectLike(source) && !_.isArray(source))
-    ) {
-      source = prevSubject;
-    }
+  (prevSubject: unknown, ...args) => {
+    const [source, options] = fromArguments([prevSubject, ...args]);
     const consoleProps: any = {
-      Options: options,
+      source: source || null,
+      options,
     };
-    if (options?.log === true) {
-      Cypress.log({
+
+    let log: Cypress.Log | undefined = undefined;
+    if (options?.log === true || options?.log == null) {
+      log = Cypress.log({
         name: "toISODate",
-        message: source,
+        message: `${source || null}`,
         consoleProps: () => consoleProps,
+        autoEnd: false,
       });
     }
-    cy.toDate(source, { ...options, ...{ log: true } }).then((dates) => {
+    const o = { ...options, ...{ log: false, consoleProps, logger: log } };
+    cy.toDate(source, o).then((dates) => {
       const sources = Array.isArray(source) ? source : [source];
       const d = Array.isArray(dates) ? dates : [dates];
       let isoStrings = d.map((date, index) => {
@@ -324,6 +347,7 @@ Cypress.Commands.add(
       if (options?.invalid === "ignore") {
         isoStrings = isoStrings.filter((iso) => iso);
         if (_.isEmpty(isoStrings)) {
+          log?.end();
           return cy.wrap(Array.isArray(source) ? [] : undefined, {
             log: false,
           });
@@ -331,34 +355,23 @@ Cypress.Commands.add(
       }
 
       const result = Array.isArray(source) ? isoStrings : isoStrings[0];
-      consoleProps["Dates"] = dates;
-      consoleProps["Yielded"] = result;
-      return cy.wrap(result, { log: false });
+      consoleProps["Dates"] = dates || null;
+      consoleProps["Yielded"] = result || null;
+      log?.end();
+      cy.wrap(result, { log: false });
     });
   }
 );
 
 Cypress.Commands.add(
   "dateFormat",
-  // @ts-ignore
   { prevSubject: "optional" },
-  (
-    prevSubject: string,
-    source: string,
-    options: Pick<
-      ISODateOptions,
-      "invalid" | "language" | "log"
-    > = defaultOptions
-  ) => {
-    if (
-      (!source && prevSubject) ||
-      (_.isObjectLike(source) && !_.isArray(source))
-    ) {
-      source = prevSubject;
-    }
+  (prevSubject: unknown, ...args) => {
+    const [source, opts] = fromArguments<string>([prevSubject, ...args]);
+    const options: Pick<ISODateOptions, "invalid" | "language" | "log"> =
+      _.pick(opts, ["invalid", "language", "log"]);
 
     const localizedFormats = prepareLocalizedFormats(options);
-    // @ts-ignore
     const win = cy.state("window");
     const language =
       options?.language ?? win.localStorage.getItem("c8y_language") ?? "en";
@@ -377,7 +390,11 @@ Cypress.Commands.add(
       });
     }
 
-    const format = findDateFormatForSource(source, localizedFormats, language);
+    if (!source) {
+      throwError(`No or undefined provided source provided to cy.dateFormat.`);
+    }
+
+    const format = findDateFormatForSource(source as string, localizedFormats);
     if (!format && options?.invalid === "throw") {
       throwError(
         `'${source?.toString()}' could not be converted into a valid date. No matching format or invalid input.`
@@ -385,13 +402,13 @@ Cypress.Commands.add(
     }
 
     consoleProps.yielded = format;
-    return format;
+    cy.wrap(format, { log: false });
   }
 );
 
 Cypress.Commands.add(
   "compareDates",
-  // @ts-ignore
+  // @ts-expect-error
   { prevSubject: "optional" },
   (
     prevSubject: string,
@@ -417,7 +434,6 @@ Cypress.Commands.add(
     }
 
     const localizedFormats = prepareLocalizedFormats(options).reverse();
-    // @ts-ignore
     const win = cy.state("window");
     const language =
       options?.language ?? win.localStorage.getItem("c8y_language") ?? "en";
@@ -439,9 +455,9 @@ Cypress.Commands.add(
 
     consoleProps.target = target;
 
-    const format = findDateFormatForSource(source, localizedFormats, language);
-    consoleProps.format = format;
-    if (!format) {
+    const unsafeFortmat = findDateFormatForSource(source, localizedFormats);
+    consoleProps.format = unsafeFortmat;
+    if (!unsafeFortmat) {
       if (options?.invalid === "throw") {
         throwError(
           `'${source?.toString()}' could not be converted into a valid date. No matching format or invalid input.`
@@ -450,7 +466,7 @@ Cypress.Commands.add(
         return cy.wrap(false);
       }
     }
-
+    const format = unsafeFortmat as string;
     const formattedTarget = Cypress.datefns.format(target, format);
     consoleProps.formattedTarget = formattedTarget;
 
@@ -467,12 +483,11 @@ Cypress.Commands.add(
 
 function findDateFormatForSource(
   source: string,
-  localizedFormats: string[],
-  language: string
-): string {
+  localizedFormats: string[]
+): string | undefined {
   if (!source) return undefined;
   for (const format of localizedFormats) {
-    if (isValidDate(parseDate(source, format, language))) {
+    if (isValidDate(parseDate(source, format))) {
       return format;
     }
   }
@@ -480,7 +495,6 @@ function findDateFormatForSource(
 }
 
 function prepareLocalizedFormats(options: ISODateOptions): string[] {
-  // @ts-ignore
   const win = cy.state("window");
   const language =
     options?.language ?? win.localStorage.getItem("c8y_language") ?? "en";

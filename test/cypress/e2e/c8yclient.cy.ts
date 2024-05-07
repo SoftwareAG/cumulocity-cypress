@@ -10,7 +10,7 @@ import {
   initRequestStub,
   stubResponse,
   stubResponses,
-} from "../support/util";
+} from "../support/testutils";
 import {
   defaultClientOptions,
   isArrayOfFunctions,
@@ -20,7 +20,10 @@ import {
   isWindowFetchResponse,
   toCypressResponse,
   isCypressError,
-} from "../../../src/shared/c8yclient";
+  C8yDefaultPactMatcher,
+} from "cumulocity-cypress";
+
+import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
 
 const { _, sinon } = Cypress;
 
@@ -37,6 +40,9 @@ describe("c8yclient", () => {
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_PLUGIN_LOADED", undefined);
     Cypress.env("C8Y_C8YCLIENT_TIMEOUT", undefined);
+
+    Cypress.c8ypact.schemaMatcher = new C8yAjvJson6SchemaMatcher();
+    C8yDefaultPactMatcher.schemaMatcher = Cypress.c8ypact.schemaMatcher;
 
     initRequestStub();
     stubResponses([
@@ -433,8 +439,7 @@ describe("c8yclient", () => {
 
   context("schema matching", () => {
     it("should use schema for matching response", () => {
-      //@ts-ignore
-      const spy = cy.spy(Cypress.c8ypact.schemaMatcher, "match");
+      const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match");
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
         .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
           schema: {
@@ -447,7 +452,6 @@ describe("c8yclient", () => {
           },
         })
         .then(() => {
-          // @ts-ignore
           expect(spy).to.have.been.calledOnce;
         });
     });
@@ -471,7 +475,7 @@ describe("c8yclient", () => {
           },
         })
         .then(() => {
-          // @ts-ignore
+          // @ts-expect-error
           const spy = Cypress.c8ypact.matcher.schemaMatcher
             .match as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
@@ -970,6 +974,7 @@ describe("c8yclient", () => {
   context("toCypressResponse", () => {
     it("should not fail for undefined response", () => {
       const response = toCypressResponse(
+        // @ts-expect-error
         undefined,
         0,
         {},
@@ -1005,14 +1010,13 @@ describe("c8yclient", () => {
       expect(response)
         .to.have.property("allRequestResponses")
         .that.is.an("array");
-      expect(response.body).to.deep.eq({});
-      expect(response.requestBody).to.deep.eq({ id: "10101" });
+      expect(response?.body).to.deep.eq({});
+      expect(response?.requestBody).to.deep.eq({ id: "10101" });
       expect(response).to.have.property("method", "PUT");
     });
 
     it("should return responseObject Cypress.Response", () => {
       const r: IResult<any> = {
-        // @ts-ignore
         res: new window.Response(JSON.stringify({ name: "t1234" }), {
           status: 404,
           statusText: "Error",
@@ -1038,8 +1042,8 @@ describe("c8yclient", () => {
       expect(response).to.have.property("statusText", "Error");
       expect(response).to.have.property("duration", 0);
       expect(response).to.have.property("url", "http://example.com");
-      expect(response.body).to.deep.eq({});
-      expect(response.requestBody).to.deep.eq({});
+      expect(response?.body).to.deep.eq({});
+      expect(response?.requestBody).to.deep.eq({});
       expect(response).to.have.property("method", "PUT");
     });
 
@@ -1145,7 +1149,7 @@ describe("c8yclient", () => {
     it("isIResult does not validate with incomplete res object", () => {
       const response: IResult<any> = {
         data: {},
-        // @ts-ignore
+        // @ts-expect-error
         res: {
           status: 200,
           statusText: "OK",
@@ -1161,13 +1165,15 @@ describe("c8yclient", () => {
     });
 
     it("isArrayOfFunctions validates undefined and empty", () => {
+      // @ts-expect-error
       expect(isArrayOfFunctions(undefined)).to.be.false;
       expect(isArrayOfFunctions([])).to.be.false;
     });
 
     it("isArrayOfFunctions validates array of functions", () => {
+      // @ts-expect-error
       expect(isArrayOfFunctions([() => {}, () => {}])).to.be.true;
-      // @ts-ignore
+      // @ts-expect-error
       expect(isArrayOfFunctions([() => {}, "test"])).to.be.false;
     });
 
