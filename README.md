@@ -8,6 +8,10 @@ Contribute by raising pull requests. All commands must be documented and, if pos
 <!-- set markdown.extension.toc.levels 2..6 - level 1 is ignored in auto generated toc -->
 - [Overview of commands](#overview-of-commands)
 - [Installation and setup](#installation-and-setup)
+  - [Peer dependencies](#peer-dependencies)
+- [Load plugin](#load-plugin)
+  - [Import commands](#import-commands)
+  - [Environment variables](#environment-variables)
 - [Additional frameworks](#additional-frameworks)
 - [Concepts](#concepts)
   - [Authentication and credentials](#authentication-and-credentials)
@@ -17,6 +21,8 @@ Contribute by raising pull requests. All commands must be documented and, if pos
     - [Passing authentication to cy.request](#passing-authentication-to-cyrequest)
   - [Chaining of commands](#chaining-of-commands)
   - [c8y/client and Web SDK types](#c8yclient-and-web-sdk-types)
+  - [Recording of requests and responses](#recording-of-requests-and-responses)
+  - [Component testing](#component-testing)
 - [Development](#development)
   - [Debugging](#debugging)
     - [Console log debugging](#console-log-debugging)
@@ -69,23 +75,81 @@ See [Integration and API testing](./doc/API%20and%20Integration%20Testing.md) fo
 
 ## Installation and setup
 
-Add dependency to your package.json.
+Add dependency to your package.json and install via npm or yarn.
 
 ```bash
 npm install cumulocity-cypress --save-dev
+```
+or 
+
+```bash
 yarn add -D cumulocity-cypress
 ```
 
-You also need to have `@c8y/client` installed and make it available within the tested project as `cumulocity-cypress` defines `@c8y/client` as a peer-dependency. This is to ensure the version of `@c8y/client` to be used is the same as in the hosted test project.
+### Peer dependencies
 
-Install `@c8y/client` if needed using
+`cumulocity-cypress` requires some peer dependencies to be installed in your project for all commands to work as expected. This is to make sure the exact versions of the dependencies in your tested project are used by `cumulocity-cypress`.
 
-```bash
-npm install @c8y/client --save-dev
-yarn add -D @c8y/client
+Make sure the following dependencies are installed in your project:
+- `cypress`
+- `@c8y/client`
+- `angular-core`
+- `angular-common`
+
+## Load plugin
+
+`cumulocity-cypress` comes with a Cypress plugin that needs to be loaded in your `cypress.config.ts` file. Currently, this is only required for recording and mocking of requests and responses, but it is recommended to load the plugin in any case.
+
+```typescript
+import { defineConfig } from "cypress";
+import { configureC8yPlugin } from "cumulocity-cypress/plugin";
+
+module.exports = defineConfig({
+  e2e: {
+    setupNodeEvents(on, config) {
+      configureC8yPlugin(on, config);
+      // important to return the config object
+      return config;
+    },
+  },
+});
 ```
 
-Configure Cumulocity authentication. Easiest way to configure authentication is to create `cypress.env.json` file in your project and add all credentials needed for the tests, for example with different permissions or roles.
+### Import commands
+
+To use the `cumulocity-cypress` commands in your Cypress tests, import the commands in  your projects `e2e.supportFile` (e.g. `cypress/support/e2e.ts`).
+
+```typescript
+import "cumulocity-cypress/lib/commands/";
+```
+
+This will import the standard commands, including for example login, authentication, date conversion, administration. 
+
+Import optional commands:
+
+```typescript
+// Import extension for cy.request() to support authentication
+import "cumulocity-cypress/lib/commands/request";
+// Import c8yclient command for API testing
+import "cumulocity-cypress/lib/commands/c8yclient";
+// Import commands for recording and mocking of requests and responses
+import "cumulocity-cypress/lib/commands/c8ypact";
+// Enable recording and mocking for cy.intercept()
+import "cumulocity-cypress/lib/commands/intercept";
+```
+
+See [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md) for more information on how to enable recording and matching of requests and responses using `cy.c8yclient` and `cy.intercept`.
+
+
+Import the `mount` command for component testing of Cumulocity Angular components.
+
+```typescript
+import "cumulocity-cypress/lib/commands/mount";
+```
+
+### Environment variables
+
+The easiest way to configure environment variables is to create a `cypress.env.json` file in your project. Use this file to pass for example credentials needed for the tests or any other environment variable supported by `cumulocity-cypress`. Of course, environment variables can be set in any other way as described in [Cypress documentation](https://docs.cypress.io/guides/guides/environment-variables#Setting).
 
 ```json
 {
@@ -96,23 +160,9 @@ Configure Cumulocity authentication. Easiest way to configure authentication is 
 }
 ```
 
-Update your projects `e2e.supportFile` (e.g. `cypress/support/e2e.ts`) to make custom commands available to your tests.
+A list of supported environment variables can be found in Environment variables section of the [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md#environment-variables) documentation.
 
-Import all commands:
-
-```typescript
-import "cumulocity-cypress/lib/commands/";
-```
-
-Import selected commands:
-
-```typescript
-import "cumulocity-cypress/lib/commands/request";
-```
-
-See [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md) for more information on how to enable recording and matching of requests and responses using `cy.c8yclient` and `cy.intercept`.
-
-With this, also in the support file of your Cypress project, you can init environment variables as for example with:
+It is also recommended to init certain environment variables in a global before hook of your tests. This could be for example the current tenant and instance for the `baseUrl` configured for your tests. `C8Y_TENANT` for example is used by `cumulocity-cypress` if a tenant id is required. Some commands like `login` require a tenant id to be passed. Setting the tenant id once in global before hook will make sure it is available for all tests.
 
 ```typescript
 before(() => {
@@ -131,6 +181,8 @@ before(() => {
     });
 });
 ```
+
+`C8Y_INSTANCE` is just an example of any other environment variable that might be needed in your tests.
 
 ## Additional frameworks
 
@@ -240,7 +292,7 @@ With `import "cumulocity-cypress/lib/commands/request"`, it is also possible to 
 
 Note: chaining authentication into `cy.request()` is not supported as `cy.request()` does not support previous subject and always is a parent in the Cypress chain.
 
-Note: in order to work, add the import before any other imports (not related to this library) in your support file. This is required if `cy.request()` is overwritten. If any `cy.overwrite("request", ...)` is called after the import, `cy.request()` will not automatically use the authentication.
+> **Note**: Add the import before other imports (not related to this library). This is required in case `cy.request()` is overwritten. If any `cy.overwrite("request", ...)` is called after the import, `cy.request()` will not automatically use the authentication.
 
 ```typescript
 it(
@@ -270,7 +322,7 @@ it("standard request authentication", function () {
 
 ### Chaining of commands
 
-Custom commands provided by this library should support chaining. This means commands need to accept `previousSubject` and yield it's result for next command in the chain.
+Custom commands provided by this library support chaining. This means commands accept `previousSubject` and yield it's result for next command in the chain.
 
 Instead of having one command with a lot of arguments, chaining allows splitting into multiple commands.
 
@@ -281,11 +333,25 @@ cy.wrap("admin").getAuth().login();
 
 ### c8y/client and Web SDK types
 
-In general, all custom commands should use `c8y/client` type definitions working with Cumulocity API.
+In general, all custom commands use `c8y/client` type definitions working with Cumulocity API.
 
 To interact with Cumulocity REST endpoints, `cy.c8yclient` custom command is provided. `cy.c8yclient` mimics `cy.request` to easily exchange or replace `cy.request` within your tests. For compatibility, the yielded result of `cy.c8yclient` is a `Cypress.Response<T>` (as used by `cy.request`) to make all assertions work as expected for `cy.request` and `cy.c8yclient`.
 
 See [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md) for more information.
+
+### Recording of requests and responses
+
+`cumulocity-cypress` allows to record requests and responses when running e2e, component or API tests. This recordings can be used to match against or mock requests and responses in following runs and to share or document the tested component's use of APIs with other teams or projects.
+
+See [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md) for more information.
+
+### Component testing
+
+`cumulocity-cypress` provides fully configured `cy.mount` command for testing Cumulocity Angular components. For general information on component testing in Cypress, see [Component Testing](https://docs.cypress.io/guides/component-testing/introduction).
+
+The `cy.mount` command comes with capabilities to easily record and mock API requests and responses for component tests. For recording, `cy.mount` allows running component tests against a configured `C8Y_BASEURL` and record responses for mocking. 
+
+> **Note**: Configuration of baseUrl via `C8Y_BASEURL` environment variable is required as Cypress component tests do not allow configuration of a baseUrl. Component tests are expected to run using mocked data.
 
 ## Development
 

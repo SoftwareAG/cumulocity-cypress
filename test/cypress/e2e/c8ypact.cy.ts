@@ -1,5 +1,6 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
 import { initRequestStub, stubResponses, url } from "../support/testutils";
+
 import { defaultClientOptions } from "cumulocity-cypress/lib/commands/c8yclient";
 
 import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
@@ -15,8 +16,8 @@ import {
   C8yPact,
   createPactRecord,
   C8yCypressEnvPreprocessor,
-  isPactRecord,
   isPact,
+  isPactRecord,
 } from "cumulocity-cypress";
 
 const { _ } = Cypress;
