@@ -1,6 +1,6 @@
 # API and Integration tests
 
-The [Cypress](https://www.cypress.io/) testing framework provides only some very basic capabilities for API and Integration testing. This is why it is typically not first choice when considering a testing framework for Integration tests. As Cypress is widely used for E2E testing, `cumulocity-cypress` adds capabilities to enable teams to easily and efficiently extend their E2E test for API and Integration testing with Cypress. Depending on the requirements, it can also help to setup contract testing or to derive contract tests from existing E2E tests.
+The [Cypress](https://www.cypress.io/) testing framework provides only some very basic capabilities for API and Integration testing. This is why it is typically not first choice when considering a testing framework for Integration tests. As Cypress is widely used for E2E testing, `cumulocity-cypress` adds capabilities to enable teams to easily and efficiently extend their E2E test for API and Integration testing. Depending on the requirements, `cumulocity-cypress` can also help with mocking to derive contract tests from existing E2E or component tests.
 
 Summary of capabilities:
 * `cy.c8yclient` to replace `cy.request` and to interact with Cumulocity IoT APIs
