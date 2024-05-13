@@ -15,6 +15,8 @@ import {
   C8yPact,
   createPactRecord,
   C8yCypressEnvPreprocessor,
+  isPact,
+  isPactRecord,
 } from "cumulocity-cypress";
 
 const { _ } = Cypress;
@@ -92,26 +94,6 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.matcher).to.be.a("object");
       expect(Cypress.c8ypact.schemaGenerator).to.be.undefined;
       expect(Cypress.c8ypact.schemaMatcher).to.not.be.undefined;
-    });
-
-    it("isPactRecord is registered globally", function () {
-      expect(globalThis.isPactRecord).to.be.a("function");
-    });
-
-    it("isPact is registered globally", function () {
-      expect(globalThis.isPact).to.be.a("function");
-    });
-
-    it("isCypressResponse is registered globally", function () {
-      expect(globalThis.isCypressResponse).to.be.a("function");
-    });
-
-    it("isPactError is registered globally", function () {
-      expect(globalThis.isPactError).to.be.a("function");
-    });
-
-    it("isAuthOptions is registered globally", function () {
-      expect(globalThis.isAuthOptions).to.be.a("function");
     });
 
     it(

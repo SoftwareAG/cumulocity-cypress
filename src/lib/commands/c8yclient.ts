@@ -24,7 +24,7 @@ import {
   toCypressResponse,
   wrapFetchRequest,
 } from "../../shared/c8yclient";
-import { C8yAuthentication } from "../../shared/auth";
+import { C8yAuthentication, isAuthOptions } from "../../shared/auth";
 
 declare global {
   namespace Cypress {

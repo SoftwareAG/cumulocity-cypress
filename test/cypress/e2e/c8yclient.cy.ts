@@ -21,6 +21,7 @@ import {
   toCypressResponse,
   isCypressError,
   C8yDefaultPactMatcher,
+  isCypressResponse,
 } from "cumulocity-cypress";
 
 import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";

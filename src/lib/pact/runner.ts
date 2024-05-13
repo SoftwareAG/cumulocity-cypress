@@ -1,5 +1,10 @@
 import { C8yClientOptions } from "../../shared/c8yclient";
-import { C8yPact, C8yPactInfo, C8yPactRecord } from "../../shared/c8ypact";
+import {
+  C8yPact,
+  C8yPactInfo,
+  C8yPactRecord,
+  isPact,
+} from "../../shared/c8ypact";
 import { getBaseUrlFromEnv } from "../utils";
 const { _ } = Cypress;
 

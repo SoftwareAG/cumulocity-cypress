@@ -4,6 +4,7 @@ import {
   C8yPactRecord,
   C8yPactMatcher,
   C8ySchemaMatcher,
+  isPactError,
 } from "../../shared/c8ypact";
 import { C8yClientOptions, isCypressError } from "../../shared/c8yclient";
 import { throwError } from "../utils";
