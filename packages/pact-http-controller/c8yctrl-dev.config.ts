@@ -94,6 +94,19 @@ export default (config: C8yPactHttpControllerConfig) => {
     req: Request,
     res: C8yPactHttpResponse
   ) => {
+    // log some details of request and responses for failing requests
+    if ((res.status || 200) >= 400) {
+      ctrl.logger?.error({
+        url: req.url,
+        status: `${res.status} ${res.statusText}`,
+        requestHeader: JSON.stringify(req.headers, undefined, 2),
+        responseHeader: JSON.stringify(res.headers, undefined, 2),
+        responseBody: _.isString(res.body)
+          ? res.body
+          : ctrl.stringify(res.body),
+      });
+    }
+    // filter out requests that are already recorded
     const record = ctrl.currentPact?.nextRecordMatchingRequest(
       req,
       config.baseUrl

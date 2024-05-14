@@ -42,8 +42,8 @@ export class C8yPactHttpController {
   protected port: number;
   protected hostname: string;
 
-  _baseUrl?: string;
-  _staticRoot?: string;
+  protected _baseUrl?: string;
+  protected _staticRoot?: string;
   protected tenant?: string;
 
   adapter?: C8yPactFileAdapter;
@@ -51,11 +51,11 @@ export class C8yPactHttpController {
   protected _isStrictMocking: boolean = true;
 
   protected authOptions?: C8yAuthOptions;
-  protected app: Express;
+  app: Express;
   protected server?: Server;
-  protected options: C8yPactHttpControllerOptions;
+  options: C8yPactHttpControllerOptions;
 
-  protected logger: winston.Logger;
+  logger: winston.Logger;
 
   protected mockHandler?: RequestHandler;
   protected proxyHandler?: RequestHandler;
@@ -608,7 +608,7 @@ export class C8yPactHttpController {
       : this.stringifyReplacer;
   }
 
-  protected stringify(obj?: any): string {
+  public stringify(obj?: any): string {
     if (!obj) return "";
     return JSON.stringify(obj, this.getStringifyReplacer(), 2);
   }
