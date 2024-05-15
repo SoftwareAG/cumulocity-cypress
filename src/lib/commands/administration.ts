@@ -313,13 +313,15 @@ Cypress.Commands.add("deleteUser", { prevSubject: "optional" }, (...args) => {
     auth: auth,
     clientOptions: options,
   };
-  Cypress.log({
+  const logger = Cypress.log({
+    autoEnd: false,
     name: "deleteUser",
-    message: _.isObjectLike(user) ? user.userName : user,
+    message: _.isObjectLike(user) && user.userName ? user.userName : user,
     consoleProps: () => consoleProps,
   });
 
   if (!user || (_.isObjectLike(user) && !user.userName)) {
+    logger.end();
     return throwError(
       "Missing argument. Requiring IUser object with userName or username argument."
     );
@@ -333,6 +335,7 @@ Cypress.Commands.add("deleteUser", { prevSubject: "optional" }, (...args) => {
     )
     .then((deleteResponse) => {
       expect(deleteResponse.status).to.be.oneOf([204, 404]);
+      logger.end();
       return cy.wrap(deleteResponse);
     });
 });

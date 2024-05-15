@@ -1,6 +1,7 @@
 import { IUserGroup } from "@c8y/client";
 import {
   expectC8yClientRequest,
+  getMessageForLogSpy,
   initRequestStub,
   stubResponses,
 } from "../support/testutils";
@@ -85,18 +86,17 @@ describe("administration", () => {
     });
 
     it("throws error for missing user and logs username", (done) => {
+      const user = { user: "test" };
+      const spyLog = cy.spy(Cypress, "log").log(false);
       Cypress.once("fail", (err) => {
         expect(err.message).to.contain("Missing argument. Requiring IUser");
-        // expect(Cypress.log).to.be.calledWithMatch(
-        //   sinon.match({ message: `{user: test}` })
-        // );
+        const message = getMessageForLogSpy(spyLog, "deleteUser");
+        expect(message).to.eq(user);
         done();
       });
 
-      cy.spy(Cypress, "log").log(false);
-
       //@ts-expect-error
-      cy.deleteUser({ user: "test" });
+      cy.deleteUser(user);
     });
   });
 

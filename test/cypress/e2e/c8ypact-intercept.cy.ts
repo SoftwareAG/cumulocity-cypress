@@ -87,6 +87,11 @@ describe("c8ypact intercept", () => {
       cy.spy(Cypress.c8ypact, "savePact").log(false);
     });
 
+    it("should have required recording setup", () => {
+      expect(Cypress.c8ypact.isEnabled()).to.be.true;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+    });
+
     it("should intercept static string response", () => {
       cy.intercept("/inventory/managedObjects*", testBody)
         .as("inventory")
@@ -372,7 +377,7 @@ describe("c8ypact intercept", () => {
 
   context("recording disabled", () => {
     beforeEach(() => {
-      Cypress.env("C8Y_PACT_MODE", undefined);
+      Cypress.env("C8Y_PACT_MODE", "mockdummy");
       cy.spy(Cypress.c8ypact, "savePact").log(false);
     });
 
@@ -492,7 +497,7 @@ describe("c8ypact intercept", () => {
   context("mock interceptions", () => {
     beforeEach(() => {
       cy.spy(Cypress.c8ypact, "savePact").log(false);
-      Cypress.env("C8Y_PACT_MODE", undefined);
+      Cypress.env("C8Y_PACT_MODE", "mockdummy");
     });
 
     const response: Cypress.Response<any> = {
@@ -510,6 +515,11 @@ describe("c8ypact intercept", () => {
         Cypress.config().baseUrl +
         "/inventory/managedObjects?fragmentType=abcd",
     };
+
+    it("should have required mock setup", () => {
+      expect(Cypress.c8ypact.isEnabled()).to.be.true;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+    });
 
     it("should ignore pact for static RouteHandlers", () => {
       // @ts-expect-error

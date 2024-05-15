@@ -12,7 +12,12 @@ import {
   IResult,
   IResultList,
 } from "@c8y/client";
-import { C8yPactRecord, isCypressResponse, isPactRecord } from "./c8ypact";
+import {
+  C8yPactRecord,
+  C8ySchemaMatcher,
+  isCypressResponse,
+  isPactRecord,
+} from "./c8ypact";
 
 import * as setCookieParser from "set-cookie-parser";
 
@@ -49,6 +54,8 @@ export type C8yClientOptions = Partial<Cypress.Loggable> &
     failOnPactValidation: boolean;
     ignorePact: boolean;
     schema: any;
+    schemaMatcher: C8ySchemaMatcher;
+    strictMatching: boolean;
   }>;
 
 /**
