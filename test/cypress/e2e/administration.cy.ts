@@ -88,10 +88,11 @@ describe("administration", () => {
     it("throws error for missing user and logs username", (done) => {
       const user = { user: "test" };
       const spyLog = cy.spy(Cypress, "log").log(false);
+
       Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("Missing argument. Requiring IUser");
-        const message = getMessageForLogSpy(spyLog, "deleteUser");
-        expect(message).to.eq(user);
+        expect(err.message).to.contain(
+          "Missing argument. deleteUser() requires IUser object"
+        );
         done();
       });
 

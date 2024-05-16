@@ -309,30 +309,30 @@ Cypress.Commands.add("deleteUser", { prevSubject: "optional" }, (...args) => {
   const [auth, user, clientOptions] = $args;
 
   const options = { ...clientOptions, ...{ failOnStatusCode: false } };
+  const username = _.isObjectLike(user) ? user.userName : user;
   const consoleProps = {
-    auth: auth,
-    clientOptions: options,
+    auth: auth || null,
+    clientOptions: options || null,
+    user: user || null,
+    username: username || null,
   };
+
   const logger = Cypress.log({
     autoEnd: false,
     name: "deleteUser",
-    message: _.isObjectLike(user) && user.userName ? user.userName : user,
     consoleProps: () => consoleProps,
   });
 
-  if (!user || (_.isObjectLike(user) && !user.userName)) {
+  if (!username || !_.isString(username)) {
     logger.end();
-    return throwError(
-      "Missing argument. Requiring IUser object with userName or username argument."
+    throwError(
+      "Missing argument. deleteUser() requires IUser object with userName or username string argument."
     );
   }
 
   return cy
     .wrap(auth, { log: false })
-    .c8yclient(
-      (c) => c.user.delete(_.isObjectLike(user) ? user.userName : user),
-      options
-    )
+    .c8yclient((c) => c.user.delete(username), options)
     .then((deleteResponse) => {
       expect(deleteResponse.status).to.be.oneOf([204, 404]);
       logger.end();
