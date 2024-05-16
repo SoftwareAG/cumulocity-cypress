@@ -324,3 +324,25 @@ function expectCallsWithArgs(
 
   return expected;
 }
+
+/**
+ * Gets the console props passed as arguments to given Cypress.log spy.
+ * @param spy The spy created using cy.spy(Cypress, "log")
+ * @param name The name of the custom command to get console props for
+ * @returns console props object passed to the spy
+ */
+export function getConsolePropsForLogSpy(
+  spy: sinon.SinonSpy,
+  name: string
+): any {
+  const arg = _.findLast(_.flatten(spy.args), (arg: any) => arg.name === name);
+  if (!arg) return undefined;
+  if (!_.isFunction(arg.consoleProps)) return undefined;
+  return arg.consoleProps();
+}
+
+export function getMessageForLogSpy(spy: sinon.SinonSpy, name: string): any {
+  const arg = _.findLast(_.flatten(spy.args), (arg: any) => arg.name === name);
+  if (!arg) return undefined;
+  return arg.message;
+}

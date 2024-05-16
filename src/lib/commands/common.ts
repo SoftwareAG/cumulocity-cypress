@@ -35,7 +35,7 @@ if (!Cypress.c8ypact) {
     debugLog: false,
     preprocessor: undefined,
     config: {},
-    getConfigValue: () => undefined,
+    getConfigValue: (key, defaultValue) => defaultValue,
     getConfigValues: () => ({}),
     loadCurrent: () => cy.wrap<C8yPact | null>(null, { log: false }),
     env: () => ({}),

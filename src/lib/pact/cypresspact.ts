@@ -335,6 +335,8 @@ beforeEach(() => {
 
 function isEnabled(): boolean {
   if (Cypress.env("C8Y_PLUGIN_LOADED") == null) return false;
+  if (Cypress.env("C8Y_PACT_MODE") == null) return false;
+
   if (Cypress.config().c8ypact?.ignore === true) {
     return false;
   } else {

@@ -8,6 +8,7 @@ import {
 } from "../../shared/c8ypact";
 import { C8yClientOptions, isCypressError } from "../../shared/c8yclient";
 import { throwError } from "../utils";
+import { C8yAjvSchemaMatcher } from "cumulocity-cypress/contrib/ajv";
 
 const { _ } = Cypress;
 
@@ -37,30 +38,52 @@ declare global {
   }
 }
 
-Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
-  let matcher: C8yPactMatcher | C8ySchemaMatcher | undefined =
-    Cypress.c8ypact.matcher;
-  if (!matcher) return;
+type Matcher = C8yPactMatcher | C8ySchemaMatcher | undefined;
 
-  const isSchemaMatching =
-    !("request" in pact) && !("response" in pact) && _.isObjectLike(pact);
+Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
+  let matcher: Matcher = Cypress.c8ypact.matcher;
+  if (!matcher && Cypress.c8ypact?.isEnabled() === true) return;
+
+  if (!pact || !_.isObjectLike(pact)) {
+    throwError(
+      `Matching requires object or schema to match. Received: ${pact}`
+    );
+  }
+
+  const isSchemaMatching = !("request" in pact) && !("response" in pact);
   if (isSchemaMatching) {
-    matcher = Cypress.c8ypact.schemaMatcher;
+    matcher =
+      options.schemaMatcher ||
+      Cypress.c8ypact?.schemaMatcher ||
+      new C8yAjvSchemaMatcher();
     options.failOnPactValidation = true;
   }
 
-  const consoleProps: any = { response, matcher };
+  const consoleProps: any = {
+    response: response || null,
+    matcher: matcher || null,
+    options,
+    info,
+    isSchemaMatching,
+  };
   const logger = Cypress.log({
     autoEnd: false,
+    name: "c8ymatch",
     consoleProps: () => consoleProps,
     message: matcher?.constructor.name || "-",
   });
 
   try {
+    let strictMatching: boolean =
+      Cypress.c8ypact?.getConfigValue<boolean>("strictMatching") || true;
+    if (options.strictMatching != null) {
+      strictMatching = options.strictMatching;
+    }
+
     if (isSchemaMatching) {
       const schema = pact;
       _.extend(consoleProps, { response }, { schema });
-      matcher?.match(response.body, schema);
+      matcher?.match(response.body, schema, strictMatching);
     } else {
       const matchingProperties = ["request", "response"];
       const pactToMatch = _.pick(pact, matchingProperties);
@@ -76,10 +99,6 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
         { response },
         { pact: pactToMatch }
       );
-      const strictMatching = Cypress.c8ypact.getConfigValue(
-        "strictMatching",
-        true
-      );
       (matcher as C8yPactMatcher).match(responseAsRecord, pactToMatch, {
         strictMatching,
         loggerProps: consoleProps,
@@ -87,7 +106,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
       });
     }
   } catch (error: any) {
-    if (options.failOnPactValidation) {
+    if (options.failOnPactValidation === true) {
       if (isCypressError(error) || isPactError(error)) {
         throw error;
       } else {

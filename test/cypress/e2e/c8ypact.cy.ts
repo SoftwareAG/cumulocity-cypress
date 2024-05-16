@@ -39,11 +39,13 @@ describe("c8ypact", () => {
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER", undefined);
     Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", undefined);
-    Cypress.env("C8Y_PACT_MODE", undefined);
     Cypress.env("C8Y_PACT_IGNORE", undefined);
     Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE", undefined);
     Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", undefined);
     Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", undefined);
+
+    // enabled is just a placeholder so C8Y_PACT_MODE is not undefined
+    Cypress.env("C8Y_PACT_MODE", "enabled");
 
     initRequestStub();
     stubResponses([
@@ -94,6 +96,22 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.matcher).to.be.a("object");
       expect(Cypress.c8ypact.schemaGenerator).to.be.undefined;
       expect(Cypress.c8ypact.schemaMatcher).to.not.be.undefined;
+    });
+
+    it("should not be enabled if pact mode is undefined", function () {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+    });
+
+    it("should not be enabled if plugin is not loaded", function () {
+      Cypress.env("C8Y_PLUGIN_LOADED", undefined);
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      Cypress.env("C8Y_PLUGIN_LOADED", "true");
+    });
+
+    it("should have recording disabled if pact mode is undefined", function () {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
     });
 
     it(
@@ -854,12 +872,7 @@ describe("c8ypact", () => {
     };
 
     beforeEach(() => {
-      Cypress.env("C8Y_PACT_MODE", undefined);
       Cypress.c8ypact.matcher = new C8yDefaultPactMatcher();
-    });
-
-    it("should have recording disabled", function () {
-      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
     });
 
     it("should use custom matcher", { auth: "admin" }, function (done) {
