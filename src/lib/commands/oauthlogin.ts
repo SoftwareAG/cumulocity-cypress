@@ -44,6 +44,14 @@ Cypress.Commands.add("oauthLogin", { prevSubject: "optional" }, (...args) => {
     throw error;
   }
 
+  if (Cypress.env("C8Y_PLUGIN_LOADED") == null) {
+    const error = new Error(
+      "cy.oauthLogin requires the c8y plugin to be loaded."
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+
   const consoleProps: any = {};
   const logger = Cypress.log({
     autoEnd: false,

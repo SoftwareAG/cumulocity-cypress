@@ -7,6 +7,7 @@ import {
 } from "@c8y/client";
 import {
   expectC8yClientRequest,
+  getConsolePropsForLogSpy,
   initRequestStub,
   stubResponse,
   stubResponses,
@@ -24,7 +25,10 @@ import {
   isCypressResponse,
 } from "cumulocity-cypress";
 
-import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
+import {
+  C8yAjvJson6SchemaMatcher,
+  C8yAjvSchemaMatcher,
+} from "cumulocity-cypress/contrib/ajv";
 
 const { _, sinon } = Cypress;
 
@@ -439,19 +443,27 @@ describe("c8yclient", () => {
   });
 
   context("schema matching", () => {
+    const schema = {
+      schema: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+          },
+        },
+      },
+    };
+
+    const auth = {
+      user: "admin",
+      password: "mypassword",
+      tenant: "t12345678",
+    };
+
     it("should use schema for matching response", () => {
       const spy = cy.spy(Cypress.c8ypact.schemaMatcher!, "match");
       cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
-        .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
-          schema: {
-            type: "object",
-            properties: {
-              name: {
-                type: "string",
-              },
-            },
-          },
-        })
+        .c8yclient<ICurrentTenant>((c) => c.tenant.current(), { schema })
         .then(() => {
           expect(spy).to.have.been.calledOnce;
         });
@@ -464,7 +476,7 @@ describe("c8yclient", () => {
         done();
       });
 
-      cy.getAuth({ user: "admin", password: "mypwd", tenant: "t12345678" })
+      cy.getAuth(auth)
         .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
           schema: {
             type: "object",
@@ -480,6 +492,47 @@ describe("c8yclient", () => {
           const spy = Cypress.c8ypact.matcher.schemaMatcher
             .match as sinon.SinonSpy;
           expect(spy).to.have.been.calledOnce;
+        });
+    });
+
+    it("should use schema if pact mode is disabled with default schema matcher", () => {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+
+      cy.stub(Cypress.c8ypact, "schemaMatcher").value(undefined);
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+
+      cy.getAuth(auth)
+        .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
+          schema,
+          schemaMatcher: undefined,
+        })
+        .then(() => {
+          const props = getConsolePropsForLogSpy(logSpy, "c8ymatch");
+          expect(props?.matcher).to.not.be.undefined;
+          expect(props.matcher.constructor.name).to.eq(
+            C8yAjvSchemaMatcher.prototype.constructor.name
+          );
+        });
+    });
+
+    it("should use custom schema matcher if pact mode is disabled", () => {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+      cy.stub(Cypress.c8ypact, "schemaMatcher").returns(undefined);
+
+      cy.getAuth(auth)
+        .c8yclient<ICurrentTenant>((c) => c.tenant.current(), {
+          schema,
+          schemaMatcher: new C8yAjvJson6SchemaMatcher(),
+        })
+        .then(() => {
+          const props = getConsolePropsForLogSpy(logSpy, "c8ymatch");
+          expect(props?.matcher).to.not.be.undefined;
+          expect(props.matcher.constructor.name).to.eq(
+            C8yAjvJson6SchemaMatcher.prototype.constructor.name
+          );
         });
     });
   });

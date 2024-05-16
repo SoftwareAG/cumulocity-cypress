@@ -25,6 +25,7 @@ import {
   wrapFetchRequest,
 } from "../../shared/c8yclient";
 import { C8yAuthentication, isAuthOptions } from "../../shared/auth";
+import "../pact/c8ymatch";
 
 declare global {
   namespace Cypress {
@@ -163,6 +164,7 @@ export const defaultClientOptions = () => {
     ignorePact: false,
     failOnPactValidation: true,
     schema: undefined,
+    strictMatching: true,
   } as C8yClientOptions;
 };
 
@@ -397,9 +399,9 @@ function run(
 
     const matchPact = (response: any, schema: any) => {
       if (schema) {
-        cy.c8ymatch(response, schema);
+        cy.c8ymatch(response, schema, undefined, options);
       } else {
-        if (ignore) return;
+        if (ignore || !Cypress.c8ypact.isEnabled()) return;
         if (
           Cypress.c8ypact.current ||
           (Cypress.c8ypact.isEnabled() && !Cypress.c8ypact.isRecordingEnabled())
