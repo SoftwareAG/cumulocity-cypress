@@ -25,6 +25,7 @@ import {
   wrapFetchRequest,
 } from "../../shared/c8yclient";
 import { C8yAuthentication, isAuthOptions } from "../../shared/auth";
+import "../pact/c8ymatch";
 
 declare global {
   namespace Cypress {
