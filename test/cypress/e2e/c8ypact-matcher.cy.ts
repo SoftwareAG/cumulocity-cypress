@@ -312,6 +312,27 @@ describe("c8ypactmatcher", () => {
       expect(matcher.match(obj, pact)).to.be.true;
     });
 
+    it("should fail if managed objects do not match", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const obj: any = _.cloneDeep(obj1);
+      obj.response.body.managedObjects[1].custom = {
+        oeetarget: 80,
+        hierarchy: [
+          {
+            profileID: "",
+            ID: "66115945716",
+          },
+        ],
+      };
+      const pact = _.cloneDeep(obj);
+      pact.response.body.managedObjects[1].custom.hierarchy[0].profileID =
+        "mygtesadas";
+      expect(_.isEqual(obj, pact)).to.be.false;
+      expect(() => matcher.match(obj, pact)).to.throw(
+        'Pact validation failed! Values for "response > body > managedObjects > 1 > custom > hierarchy > 0 > profileID" do not match.'
+      );
+    });
+
     it("should match managed objects with different ids", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = { response: { body: { id: "212123" } } };
@@ -343,10 +364,17 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
       const obj = _.cloneDeep(obj1);
-      const expectedError = `Pact validation failed! Values for "response > body > managedObjects" do not match.`;
+      const expectedError = `Pact validation failed! Values for "response > body > managedObjects > 0 > description`;
 
       obj.response.body.managedObjects[0].description = "Some random text...";
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);
+    });
+
+    it("should not match different managedObjects array lengths", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const pact = _.cloneDeep(obj1);
+      const obj = _.cloneDeep(obj1);
+      const expectedError = `Pact validation failed! Array with key "response > body > managedObjects" has different lengths.`;
 
       obj.response.body.managedObjects.pop();
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);
