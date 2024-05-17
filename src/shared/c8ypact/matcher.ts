@@ -182,14 +182,6 @@ export class C8yDefaultPactMatcher implements C8yPactMatcher {
         ) {
           throwPactError(`Values for "${keyPath(key)}" do not match.`, key);
         }
-      } else if (_.isPlainObject(value) && _.isPlainObject(pact)) {
-        // if strictMatching is disabled, value1 and value2 have been swapped
-        // swap back to ensure swapping in next iteration works as expected
-        this.match(
-          strictMatching ? value : pact,
-          strictMatching ? pact : value,
-          _.extend(options, { parents: [...parents, key] })
-        );
       } else if (isArrayOfPrimitives(value) && isArrayOfPrimitives(pact)) {
         const v = [value, pact].sort(
           (a1: any[], a2: any[]) => a2.length - a1.length
@@ -203,8 +195,30 @@ export class C8yDefaultPactMatcher implements C8yPactMatcher {
             key
           );
         }
+      } else if (_.isArray(value) && _.isArray(pact)) {
+        if (value.length !== pact.length) {
+          throwPactError(
+            `Array with key "${keyPath(key)}" has different lengths.`,
+            key
+          );
+        }
+        for (let i = 0; i < value.length; i++) {
+          this.match(
+            value[i],
+            pact[i],
+            _.extend(options, { parents: [...parents, key, `${i}`] })
+          );
+        }
+      } else if (_.isObjectLike(value) && _.isObjectLike(pact)) {
+        // if strictMatching is disabled, value1 and value2 have been swapped
+        // swap back to ensure swapping in next iteration works as expected
+        this.match(
+          strictMatching ? value : pact,
+          strictMatching ? pact : value,
+          _.extend(options, { parents: [...parents, key] })
+        );
       } else {
-        if (value && pact && !_.isEqual(value, pact)) {
+        if (value != null && pact != null && !_.isEqual(value, pact)) {
           throwPactError(`Values for "${keyPath(key)}" do not match.`, key);
         }
       }
