@@ -69,7 +69,7 @@
         "./lib/commands/index.d.ts"
       ],
       "plugin": [
-        "./plugin.d.ts"
+        "./plugin/index.d.ts"
       ],
       "commands/*": [
         "./lib/commands/*.d.ts"
