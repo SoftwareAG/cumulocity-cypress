@@ -40,16 +40,41 @@
     "packages/*"
   ],
   "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
     "./plugin": {
       "types": "./plugin/index.d.ts",
       "default": "./plugin/index.js"
     },
-    "./lib/commands/*": "./lib/commands/*",
-    "./lib/locale/*": null,
-    "./lib/pact/*": null,
-    "./shared/*": null,
-    "./shared/c8ypact/*": null,
+    "./commands": {
+      "types": "./lib/commands/index.d.ts",
+      "default": "./lib/commands/index.js"
+    },
+    "./c8ypact": {
+      "types": "./lib/commands/c8ypact.d.ts",
+      "default": "./lib/commands/c8ypact.js"
+    },
+    "./commands/*": "./lib/commands/*",
+    "./c8ypact/*": "./lib/pact/*",
     "./*": "./*"
+  },
+  "typesVersions": {
+    "*": {
+      "c8ypact": [
+        "./lib/commands/c8ypact.d.ts"
+      ],
+      "commands": [
+        "./lib/commands/index.d.ts"
+      ],
+      "plugin": [
+        "./plugin/index.d.ts"
+      ],
+      "commands/*": [
+        "./lib/commands/*.d.ts"
+      ]
+    }
   },
   "dependencies": {
     "ajv": "^8.12.0",
