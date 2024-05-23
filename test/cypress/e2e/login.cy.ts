@@ -94,7 +94,7 @@ describe("login", () => {
         .c8yclient()
         .then((client) => {
           expect(client).to.not.be.undefined;
-          expect(cy.state("ccs.client")).to.not.be.undefined;
+          expect(cy.state("c8yclient")).to.not.be.undefined;
         });
 
       let validationCalled = false;
@@ -109,7 +109,7 @@ describe("login", () => {
         expectHttpRequest({ url });
         expect(validationCalled).to.be.true;
         expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("user");
-        expect(cy.state("ccs.client")).to.be.undefined;
+        expect(cy.state("c8yclient")).to.be.undefined;
       });
     });
 
