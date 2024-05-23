@@ -16,10 +16,13 @@ declare global {
        * @example
        * cy.getAuth("admin", "password").login();
        */
-      getAuth(): Chainable<C8yAuthOptions>;
-      getAuth(user: string): Chainable<C8yAuthOptions>;
-      getAuth(user: string, password: string): Chainable<C8yAuthOptions>;
-      getAuth(auth: C8yAuthOptions): Chainable<C8yAuthOptions>;
+      getAuth(): Chainable<C8yAuthOptions | undefined>;
+      getAuth(user: string): Chainable<C8yAuthOptions | undefined>;
+      getAuth(
+        user: string,
+        password: string
+      ): Chainable<C8yAuthOptions | undefined>;
+      getAuth(auth: C8yAuthOptions): Chainable<C8yAuthOptions | undefined>;
 
       /**
        * Use `C8yAuthOptions` for all commands of this library requiring authentication
@@ -30,10 +33,13 @@ declare global {
        * cy.login();
        * cy.createUser(...);
        */
-      useAuth(): Chainable<C8yAuthOptions>;
-      useAuth(user: string): Chainable<C8yAuthOptions>;
-      useAuth(user: string, password: string): Chainable<C8yAuthOptions>;
-      useAuth(auth: C8yAuthOptions): Chainable<C8yAuthOptions>;
+      useAuth(): Chainable<C8yAuthOptions | undefined>;
+      useAuth(user: string): Chainable<C8yAuthOptions | undefined>;
+      useAuth(
+        user: string,
+        password: string
+      ): Chainable<C8yAuthOptions | undefined>;
+      useAuth(auth: C8yAuthOptions): Chainable<C8yAuthOptions | undefined>;
     }
 
     interface SuiteConfigOverrides {
@@ -57,32 +63,45 @@ declare global {
     | [authOptions: C8yAuthOptions];
 }
 
+const authEnvVariables = () => {
+  const env = Cypress.env();
+  const filteredKeysAndValues: any = {};
+  Object.keys(env).forEach((key) => {
+    if (
+      key.endsWith("_username") ||
+      key.endsWith("_password") ||
+      key === "C8Y_USERNAME" ||
+      key === "C8Y_PASSWORD"
+    ) {
+      filteredKeysAndValues[key] = env[key];
+    }
+  });
+  return filteredKeysAndValues;
+};
+
 Cypress.Commands.add("getAuth", { prevSubject: "optional" }, (...args) => {
   const auth = getAuthOptions(...args);
   const consoleProps = {
-    auth,
-    arguments: args,
+    auth: auth || null,
+    arguments: args || null,
+    env: authEnvVariables() || null,
   };
+
   Cypress.log({
     name: "getAuth",
     message: `${auth ? auth.user : ""}`,
     consoleProps: () => consoleProps,
   });
 
-  if (!auth) {
-    throw new Error(
-      `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
-    );
-  }
-
-  return cy.wrap<C8yAuthOptions>(auth, { log: false });
+  return cy.wrap<C8yAuthOptions | undefined>(auth, { log: false });
 });
 
 Cypress.Commands.add("useAuth", { prevSubject: "optional" }, (...args) => {
   const auth = getAuthOptions(...args);
   const consoleProps = {
-    auth,
-    arguments: args,
+    auth: auth || null,
+    arguments: args || null,
+    env: authEnvVariables() || null,
   };
   Cypress.log({
     name: "useAuth",
@@ -92,12 +111,8 @@ Cypress.Commands.add("useAuth", { prevSubject: "optional" }, (...args) => {
   if (auth) {
     const win: Cypress.AUTWindow = cy.state("window");
     win.localStorage.setItem("__auth", JSON.stringify(auth));
-  } else {
-    throw new Error(
-      `No valid C8yAuthOptions found for ${JSON.stringify(args)}.`
-    );
   }
   resetClient();
 
-  return cy.wrap<C8yAuthOptions>(auth, { log: false });
+  return cy.wrap<C8yAuthOptions | undefined>(auth, { log: false });
 });

@@ -21,10 +21,7 @@ declare global {
  * @param {string} baseUrl base URL. if undefined config baseUrl will be used
  * @returns absolute url for the given path
  */
-export function url(
-  path: string,
-  baseUrl: string = getBaseUrlFromEnv()
-): string {
+export function url(path: string, baseUrl = getBaseUrlFromEnv()): string {
   if (baseUrl && !baseUrl.toLowerCase().startsWith("http")) {
     baseUrl = `https://${baseUrl}`;
   }

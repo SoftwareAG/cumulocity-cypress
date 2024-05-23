@@ -548,10 +548,8 @@ function makeErrorMessage(obj: any) {
 }
 
 // from error_utils.ts
-function getDisplayUrl(
-  url: string,
-  baseUrl: string = getBaseUrlFromEnv()
-): string {
+function getDisplayUrl(url: string, baseUrl = getBaseUrlFromEnv()): string {
+  if (!baseUrl) return url;
   return url.replace(baseUrl, "");
 }
 
