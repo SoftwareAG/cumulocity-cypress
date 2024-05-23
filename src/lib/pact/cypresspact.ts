@@ -148,7 +148,7 @@ declare global {
      * cy.mount. If undefined is returned, cy.mount will not register a custom FetchClient provider.
      */
     createFetchClient(
-      auth: C8yAuthOptions | IAuthentication,
+      auth: C8yAuthOptions | IAuthentication | undefined,
       baseUrl: string
     ): FetchClient;
   }
@@ -378,7 +378,7 @@ async function savePact(
         id: Cypress.c8ypact.getCurrentTestId(),
         title: Cypress.currentTest?.titlePath || [],
         tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
-        baseUrl: getBaseUrlFromEnv(),
+        baseUrl: getBaseUrlFromEnv() || "",
         version: Cypress.env("C8Y_VERSION") && {
           system: Cypress.env("C8Y_VERSION"),
         },

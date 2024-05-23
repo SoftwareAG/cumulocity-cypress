@@ -1,5 +1,5 @@
 import { IDeviceCredentials } from "@c8y/client";
-import { url as _url } from "../support/testutils";
+import { url as _url, getConsolePropsForLogSpy } from "../support/testutils";
 
 const { _, $ } = Cypress;
 
@@ -16,17 +16,17 @@ describe("auth", () => {
       expect(Cypress.isCy(auth.getAuth())).to.be.true;
 
       auth.getAuth().then((result) => {
-        expect(result.user).to.eq("admin");
-        expect(result.password).to.eq("password");
-        expect(result.tenant).to.eq("t1234567");
+        expect(result?.user).to.eq("admin");
+        expect(result?.password).to.eq("password");
+        expect(result?.tenant).to.eq("t1234567");
       });
 
       cy.wrap({ user: "admin", password: "password" })
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("admin");
-          expect(result.password).to.eq("password");
-          expect(result.tenant).to.eq("t1234567");
+          expect(result?.user).to.eq("admin");
+          expect(result?.password).to.eq("password");
+          expect(result?.tenant).to.eq("t1234567");
         });
     });
 
@@ -34,24 +34,24 @@ describe("auth", () => {
       cy.wrap(["user", "password"])
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("user");
-          expect(result.password).to.eq("password");
-          expect(result.tenant).to.eq("t1234567");
+          expect(result?.user).to.eq("user");
+          expect(result?.password).to.eq("password");
+          expect(result?.tenant).to.eq("t1234567");
         });
       cy.wrap({ user: "admin", password: "other" })
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("admin");
-          expect(result.password).to.eq("other");
-          expect(result.tenant).to.eq("t1234567");
+          expect(result?.user).to.eq("admin");
+          expect(result?.password).to.eq("other");
+          expect(result?.tenant).to.eq("t1234567");
         });
       Cypress.env("admin_password", "password");
       cy.wrap("admin")
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("admin");
-          expect(result.password).to.eq("password");
-          expect(result.tenant).to.eq("t1234567");
+          expect(result?.user).to.eq("admin");
+          expect(result?.password).to.eq("password");
+          expect(result?.tenant).to.eq("t1234567");
         });
     });
 
@@ -59,9 +59,9 @@ describe("auth", () => {
       cy.wrap({ user: "admin", password: "password", tenant: "t7654321" })
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("admin");
-          expect(result.password).to.eq("password");
-          expect(result.tenant).to.eq("t7654321");
+          expect(result?.user).to.eq("admin");
+          expect(result?.password).to.eq("password");
+          expect(result?.tenant).to.eq("t7654321");
         });
     });
 
@@ -69,11 +69,11 @@ describe("auth", () => {
       cy.wrap({ userAlias: "myauthuser", type: "CookieAuth" })
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("myauthuser");
-          expect(result.password).to.eq("myadminpassword");
-          expect(result.tenant).to.eq("t1234567");
-          expect(result.userAlias).to.eq("myauthuser");
-          expect(result.type).to.eq("CookieAuth");
+          expect(result?.user).to.eq("myauthuser");
+          expect(result?.password).to.eq("myadminpassword");
+          expect(result?.tenant).to.eq("t1234567");
+          expect(result?.userAlias).to.eq("myauthuser");
+          expect(result?.type).to.eq("CookieAuth");
         });
     });
 
@@ -87,13 +87,13 @@ describe("auth", () => {
       })
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("admin");
-          expect(result.password).to.eq("password");
-          expect(result.tenant).to.eq("t7654321");
-          expect(Object.keys(result)).to.have.length(3);
+          expect(result?.user).to.eq("admin");
+          expect(result?.password).to.eq("password");
+          expect(result?.tenant).to.eq("t7654321");
+          expect(Object.keys(result!)).to.have.length(3);
           expect(
             _.isEqual(
-              Object.keys(result).sort(),
+              Object.keys(result!).sort(),
               ["user", "password", "tenant"].sort()
             )
           ).to.be.true;
@@ -105,9 +105,9 @@ describe("auth", () => {
       cy.wrap({ user: "admin", password: "password" })
         .getAuth()
         .then((result) => {
-          expect(result.user).to.eq("admin");
-          expect(result.password).to.eq("password");
-          expect(result.tenant).to.be.undefined;
+          expect(result?.user).to.eq("admin");
+          expect(result?.password).to.eq("password");
+          expect(result?.tenant).to.be.undefined;
         });
     });
 
@@ -116,9 +116,9 @@ describe("auth", () => {
       { auth: { user: "myadmin", password: "mypassword" } },
       () => {
         cy.getAuth().then((result) => {
-          expect(result.user).to.eq("myadmin");
-          expect(result.password).to.eq("mypassword");
-          expect(result.tenant).to.eq("t1234567");
+          expect(result?.user).to.eq("myadmin");
+          expect(result?.password).to.eq("mypassword");
+          expect(result?.tenant).to.eq("t1234567");
         });
       }
     );
@@ -128,10 +128,10 @@ describe("auth", () => {
       { auth: "myauthuser" },
       () => {
         cy.getAuth().then((result) => {
-          expect(result.user).to.eq("myauthuser");
-          expect(result.password).to.eq("myadminpassword");
-          expect(result.tenant).to.eq("t1234567");
-          expect(result.userAlias).to.eq("myauthuser");
+          expect(result?.user).to.eq("myauthuser");
+          expect(result?.password).to.eq("myadminpassword");
+          expect(result?.tenant).to.eq("t1234567");
+          expect(result?.userAlias).to.eq("myauthuser");
         });
       }
     );
@@ -141,11 +141,11 @@ describe("auth", () => {
       { auth: { userAlias: "myauthuser", type: "CookieAuth" } },
       () => {
         cy.getAuth().then((result) => {
-          expect(result.user).to.eq("myauthuser");
-          expect(result.password).to.eq("myadminpassword");
-          expect(result.tenant).to.eq("t1234567");
-          expect(result.userAlias).to.eq("myauthuser");
-          expect(result.type).to.eq("CookieAuth");
+          expect(result?.user).to.eq("myauthuser");
+          expect(result?.password).to.eq("myadminpassword");
+          expect(result?.tenant).to.eq("t1234567");
+          expect(result?.userAlias).to.eq("myauthuser");
+          expect(result?.type).to.eq("CookieAuth");
         });
       }
     );
@@ -159,26 +159,61 @@ describe("auth", () => {
         tenantId: "t1234567890",
       };
       cy.getAuth(dc).then((result) => {
-        expect(result.user).to.eq("myusername");
-        expect(result.password).to.eq("mypassword");
-        expect(result.tenant).to.eq("t1234567890");
-        expect(Object.keys(result)).to.have.length(3);
+        expect(result?.user).to.eq("myusername");
+        expect(result?.password).to.eq("mypassword");
+        expect(result?.tenant).to.eq("t1234567890");
+        expect(Object.keys(result!)).to.have.length(3);
         expect(
           _.isEqual(
-            Object.keys(result).sort(),
+            Object.keys(result!).sort(),
             ["user", "password", "tenant"].sort()
           )
         ).to.be.true;
       });
     });
 
-    it("should throw if no auth options found", (done) => {
+    it("should not throw if no auth options found", () => {
       Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("No valid C8yAuthOptions found");
-        done();
+        throw new Error("getAuth() should not throw for undefined result");
       });
+      cy.getAuth().then((auth) => {
+        expect(auth).to.be.undefined;
+      });
+    });
 
-      cy.getAuth();
+    it("should log auth and auth env variables", () => {
+      cy.stub(Cypress, "env").callsFake((key?: string) => {
+        const env: any = {
+          C8Y_USERNAME: "myusername",
+          C8Y_PASSWORD: "mypassword",
+          admin_username: "admin",
+          admin_password: "password",
+          abc: "def",
+          aca: "def",
+        };
+        if (key != null) return env[key];
+        return env;
+      });
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+
+      cy.getAuth("admin").then((auth) => {
+        const props = getConsolePropsForLogSpy(logSpy, "getAuth");
+        expect(props).to.not.be.undefined;
+        expect(props.env).to.not.be.undefined;
+        expect(props.arguments).to.deep.eq([undefined, "admin"]);
+        expect(props.auth).to.deep.eq({
+          password: "password",
+          user: "admin",
+          userAlias: "admin",
+        });
+        expect(Object.keys(props.env)).to.have.length(4);
+        expect(props.env).to.deep.eq({
+          C8Y_USERNAME: "myusername",
+          C8Y_PASSWORD: "mypassword",
+          admin_username: "admin",
+          admin_password: "password",
+        });
+      });
     });
   });
 
@@ -191,9 +226,9 @@ describe("auth", () => {
       cy.useAuth("admin", "password");
 
       cy.getAuth().then((result) => {
-        expect(result.user).to.eq("admin");
-        expect(result.password).to.eq("password");
-        expect(result.tenant).to.eq("t1234567");
+        expect(result?.user).to.eq("admin");
+        expect(result?.password).to.eq("password");
+        expect(result?.tenant).to.eq("t1234567");
       });
     });
 
@@ -205,9 +240,9 @@ describe("auth", () => {
       });
 
       cy.getAuth().then((result) => {
-        expect(result.user).to.eq("admin");
-        expect(result.password).to.eq("password");
-        expect(result.tenant).to.eq("t7654321");
+        expect(result?.user).to.eq("admin");
+        expect(result?.password).to.eq("password");
+        expect(result?.tenant).to.eq("t7654321");
       });
     });
 
@@ -225,9 +260,9 @@ describe("auth", () => {
       });
 
       cy.getAuth().then((result) => {
-        expect(result.user).to.eq("admin2");
-        expect(result.password).to.eq("password2");
-        expect(result.tenant).to.eq("t76543210");
+        expect(result?.user).to.eq("admin2");
+        expect(result?.password).to.eq("password2");
+        expect(result?.tenant).to.eq("t76543210");
       });
     });
 
@@ -236,9 +271,9 @@ describe("auth", () => {
       { auth: "myauthuser" },
       () => {
         cy.getAuth().then((result) => {
-          expect(result.user).to.eq("myauthuser");
-          expect(result.password).to.eq("myadminpassword");
-          expect(result.tenant).to.eq("t1234567");
+          expect(result?.user).to.eq("myauthuser");
+          expect(result?.password).to.eq("myadminpassword");
+          expect(result?.tenant).to.eq("t1234567");
         });
 
         cy.useAuth({
@@ -248,9 +283,9 @@ describe("auth", () => {
         });
 
         cy.getAuth().then((result) => {
-          expect(result.user).to.eq("admin2");
-          expect(result.password).to.eq("password2");
-          expect(result.tenant).to.eq("t76543210");
+          expect(result?.user).to.eq("admin2");
+          expect(result?.password).to.eq("password2");
+          expect(result?.tenant).to.eq("t76543210");
         });
       }
     );
@@ -260,36 +295,68 @@ describe("auth", () => {
       { auth: "myauthuser" },
       () => {
         cy.getAuth().then((result) => {
-          expect(result.user).to.eq("myauthuser");
-          expect(result.password).to.eq("myadminpassword");
-          expect(result.tenant).to.eq("t1234567");
+          expect(result?.user).to.eq("myauthuser");
+          expect(result?.password).to.eq("myadminpassword");
+          expect(result?.tenant).to.eq("t1234567");
         });
 
         cy.getAuth({ user: "test", password: "test" }).useAuth();
 
         cy.getAuth().then((result) => {
-          expect(result.user).to.eq("test");
-          expect(result.password).to.eq("test");
+          expect(result?.user).to.eq("test");
+          expect(result?.password).to.eq("test");
         });
       }
     );
 
-    it("should throw if no auth options found", (done) => {
+    it("should not throw if no auth options found", () => {
       Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("No valid C8yAuthOptions found");
-        done();
+        throw new Error("useAuth() should not throw for undefined result");
       });
-
       cy.useAuth("userthatdoesnotexist");
     });
 
-    it("should throw for undefined object", (done) => {
+    it("should not throw for undefined object", () => {
       Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("No valid C8yAuthOptions found");
-        done();
+        throw new Error("useAuth() should not throw for undefined result");
       });
+      cy.useAuth(undefined as any);
+    });
 
-      cy.useAuth(undefined);
+    it("should log auth and auth env variables", () => {
+      cy.stub(Cypress, "env").callsFake((key?: string) => {
+        const env: any = {
+          C8Y_USERNAME: "myusername",
+          C8Y_PASSWORD: "mypassword",
+          admin_username: "admin",
+          admin_password: "password",
+          abc: "def",
+          aca: "def",
+        };
+        if (key != null) return env[key];
+        return env;
+      });
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+
+      cy.useAuth("admin");
+      cy.then(() => {
+        const props = getConsolePropsForLogSpy(logSpy, "useAuth");
+        expect(props).to.not.be.undefined;
+        expect(props.env).to.not.be.undefined;
+        expect(props.arguments).to.deep.eq([undefined, "admin"]);
+        expect(props.auth).to.deep.eq({
+          password: "password",
+          user: "admin",
+          userAlias: "admin",
+        });
+        expect(Object.keys(props.env)).to.have.length(4);
+        expect(props.env).to.deep.eq({
+          C8Y_USERNAME: "myusername",
+          C8Y_PASSWORD: "mypassword",
+          admin_username: "admin",
+          admin_password: "password",
+        });
+      });
     });
   });
 });

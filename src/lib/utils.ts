@@ -238,11 +238,12 @@ function authWithTenant(options: C8yAuthOptions) {
   return options;
 }
 
-export function getBaseUrlFromEnv() {
+export function getBaseUrlFromEnv(): string | undefined {
   return (
     Cypress.env(`C8Y_BASEURL`) ||
     Cypress.env(`baseUrl`) ||
-    (Cypress.testingType != "component" ? Cypress.config().baseUrl : undefined)
+    Cypress.config().baseUrl ||
+    undefined
   );
 }
 
