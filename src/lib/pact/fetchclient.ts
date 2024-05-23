@@ -19,7 +19,7 @@ import {
 const { _ } = Cypress;
 
 export class C8yPactFetchClient extends FetchClient {
-  private authentication: IAuthentication;
+  private authentication?: IAuthentication;
   private cypresspact: CypressC8yPact | undefined;
   private authOptions: C8yAuthOptions | undefined;
 
@@ -32,7 +32,7 @@ export class C8yPactFetchClient extends FetchClient {
     cypresspact?: CypressC8yPact;
   }) {
     const auth = getC8yClientAuthentication(options.auth);
-    const url: string = options.baseUrl || getBaseUrlFromEnv();
+    const url = options.baseUrl || getBaseUrlFromEnv();
 
     let authOptions: C8yAuthOptions | undefined;
     if (_.isString(auth)) {
@@ -41,9 +41,6 @@ export class C8yPactFetchClient extends FetchClient {
       authOptions = auth;
     }
 
-    if (!auth) {
-      throw new Error("C8yPactFetchClient Error. No authentication provided.");
-    }
     if (!url) {
       throw new Error("C8yPactFetchClient Error. No baseUrl provided.");
     }
@@ -80,6 +77,7 @@ export class C8yPactFetchClient extends FetchClient {
 
     if (!isRecordingEnabled) {
       const fullUrl: string = this.getUrl(url, fetchOptions);
+      const relativeUrl = fullUrl.replace(this.baseUrl || "", "");
       if (currentPact) {
         const record = currentPact.nextRecordMatchingRequest({
           url: fullUrl?.replace(this.baseUrl || "", ""),
@@ -95,7 +93,13 @@ export class C8yPactFetchClient extends FetchClient {
 
       if (this.cypresspact?.getConfigValue("strictMocking") === true) {
         const error = new Error(
-          `Mocking failed in C8yPactFetchClient. No recording found for request "${fullUrl}". Do re-recording or disable Cypress.c8ypact.strictMocking.`
+          `Mocking failed in C8yPactFetchClient. No recording found for request "${relativeUrl}". Do re-recording or disable Cypress.c8ypact.strictMocking.`
+        );
+        error.name = "C8yPactError";
+        throw error;
+      } else if (this.authentication == null) {
+        const error = new Error(
+          `Mocking failed in C8yPactFetchClient. No recording found for request "${relativeUrl}". If strictMocking is disabled, authentication is required.`
         );
         error.name = "C8yPactError";
         throw error;

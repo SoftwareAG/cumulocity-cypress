@@ -217,4 +217,18 @@ describe("login", () => {
       });
     });
   });
+
+  context("authentication", () => {
+    it("login throws error without auth", (done) => {
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("cy.login() requires authentication");
+        done();
+      });
+
+      cy.getAuth().login({
+        useSession: false,
+        validationFn: cy.stub(() => {}),
+      });
+    });
+  });
 });

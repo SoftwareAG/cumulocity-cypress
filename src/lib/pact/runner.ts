@@ -233,7 +233,7 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
       url = url.replace(info.baseUrl, "");
     }
     const baseUrl = getBaseUrlFromEnv();
-    if (url?.includes(baseUrl)) {
+    if (baseUrl && url?.includes(baseUrl)) {
       url = url.replace(baseUrl, "");
     }
     if (url) {
@@ -259,17 +259,20 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
       return undefined;
     };
 
-    const infoUrl = tenantUrl(info.baseUrl, info?.tenant);
-    const url = tenantUrl(getBaseUrlFromEnv(), Cypress.env("C8Y_TENANT"));
+    const baseUrl = getBaseUrlFromEnv();
+    if (baseUrl && info.baseUrl) {
+      const infoUrl = tenantUrl(info.baseUrl, info?.tenant);
+      const url = tenantUrl(baseUrl, Cypress.env("C8Y_TENANT"));
 
-    if (infoUrl && url) {
-      const regexp = new RegExp(`${infoUrl.href}`, "g");
-      result = result.replace(regexp, url.href);
-    }
+      if (infoUrl && url) {
+        const regexp = new RegExp(`${infoUrl.href}`, "g");
+        result = result.replace(regexp, url.href);
+      }
 
-    if (getBaseUrlFromEnv() && info.baseUrl) {
-      const regexp = new RegExp(`${info.baseUrl}`, "g");
-      result = result.replace(regexp, getBaseUrlFromEnv());
+      if (getBaseUrlFromEnv() && info.baseUrl) {
+        const regexp = new RegExp(`${info.baseUrl}`, "g");
+        result = result.replace(regexp, baseUrl);
+      }
     }
     if (info.tenant && Cypress.env("C8Y_TENANT")) {
       const regexp = new RegExp(`${info.tenant}`, "g");
