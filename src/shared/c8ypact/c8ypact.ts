@@ -7,7 +7,7 @@ import {
 } from "./preprocessor";
 import { C8yClient, C8yClientOptions } from "../c8yclient";
 import { C8ySchemaGenerator } from "./schema";
-import { isURL, removeBaseUrlFromRequestUrl } from "./url";
+import { removeBaseUrlFromRequestUrl } from "./url";
 import {
   C8yAuthOptions,
   C8yPactAuthObject,
@@ -15,6 +15,39 @@ import {
   isAuthOptions,
   isPactAuthObject,
 } from "../auth";
+import { C8yDefaultPact } from "./c8ydefaultpact";
+
+export const C8yPactModeValues = [
+  "record",
+  "recording",
+  "apply",
+  "disabled",
+  "mock",
+] as const;
+/**
+ * The pact mode is used to determine the behavior of the recording and mocking capabilities.
+ * - `record`: Records the requests and responses and stores them in a pact file.
+ * - `apply`: Mocks or matches the requests and responses from the recorded pact file.
+ * - `disabled`: Disables the pact recording and mocking (same as undefined).
+ * - `recording` (deprecated): same as `record`, use `record` instead.
+ * - `mock: (deprecated): same as `apply`, use `apply` instead.
+ */
+export type C8yPactMode = (typeof C8yPactModeValues)[number];
+
+export const C8yPactRecordingModeValues = [
+  "refresh",
+  "append",
+  "new",
+  "latest",
+] as const;
+/**
+ * The pact recording mode is used to determine how or if requests and responses are recorded.
+ * - `refresh` (default): Recreates the pact file with the all requests and responses.
+ * - `append`: Appends the new requests and responses to the existing pact file.
+ * - `new`: Only creates a new pact file if no pact file exists. If pact file exists, only new requests and responses are added.
+ * - `latest`: Overwrites existing records of a pact with new request and response in the order of occurence. Other records are kept as is.
+ */
+export type C8yPactRecordingMode = (typeof C8yPactRecordingModeValues)[number];
 
 /**
  * ID representing a pact object. Should be unique.
@@ -80,6 +113,10 @@ export interface C8yPactConfigOptions {
    * Options to configure the C8yPact request matching.
    */
   requestMatching?: C8yPactRequestMatchingOptions;
+  /**
+   * Recording mode for the pact. Default is `refresh`.
+   */
+  recordingMode?: C8yPactRecordingMode;
 }
 export type C8yPactConfigKeys = keyof C8yPactConfigOptions;
 
@@ -112,6 +149,21 @@ export interface C8yPact {
    * Unique id of the pact.
    */
   id: C8yPactID;
+  /**
+   * Clears all records of the pact. Also resets all indexes internally used for
+   * iterating over the records.
+   */
+  clearRecords(): void;
+  /**
+   * Appends a new record to the pact. If skipIfExists is true, the record is
+   * only appended if no record with the same request exists.
+   */
+  appendRecord(record: C8yPactRecord, skipIfExists?: boolean): void;
+  /**
+   * Replaces an existing record with a new record. If no record with the same
+   * request exists, the record is appended.
+   */
+  replaceRecord(record: C8yPactRecord): void;
   /**
    * Returns the next pact record or null if no more records are available.
    */
@@ -214,206 +266,6 @@ export interface C8yPactRecord {
    * Returns the date of the response.
    */
   date(): Date | null;
-}
-
-/**
- * Default implementation of C8yPact. Use C8yDefaultPact.from to create a C8yPact from
- * a Cypress.Response object, a serialized pact as string or an object implementing the
- * C8yPact interface. Note, objects implementing the C8yPact interface may not provide
- * all required functions and properties.
- */
-export class C8yDefaultPact implements C8yPact {
-  records: C8yPactRecord[];
-  info: C8yPactInfo;
-  id: C8yPactID;
-
-  protected recordIndex = 0;
-  protected iteratorIndex = 0;
-  protected requestIndexMap: { [key: string]: number } = {};
-
-  static strictMatching: boolean;
-
-  constructor(records: C8yPactRecord[], info: C8yPactInfo, id: C8yPactID) {
-    this.records = records;
-    this.info = info;
-    this.id = id;
-  }
-
-  /**
-   * Creates a C8yPact from a Cypress.Response object, a serialized pact as string
-   * or an object containing the pact records and info object. Throws an error if
-   * the input can not be converted to a C8yPact.
-   * @param obj The Cypress.Response, string or object to create a pact from.
-   * @param info The C8yPactInfo object containing additional information for the pact.
-   * @param client The optional C8yClient for options and auth information.
-   */
-  static from(
-    ...args:
-      | [obj: Cypress.Response<any>, info: C8yPactInfo, client?: C8yClient]
-      | [obj: string | C8yPact]
-  ): C8yDefaultPact {
-    const obj = args[0];
-    if (!obj) {
-      throw new Error("Can not create pact from null or undefined.");
-    }
-    if (isCypressResponse(obj)) {
-      const info = args && args.length > 1 ? args[1] : undefined;
-      if (!info) {
-        throw new Error(
-          `Can not create pact from response without C8yPactInfo.`
-        );
-      }
-      const client = args[2];
-      const r = _.cloneDeep(obj);
-      const pactRecord = new C8yDefaultPactRecord(
-        toPactRequest(r) || {},
-        toPactResponse(r) || {},
-        client?._options,
-        client?._auth ? toPactAuthObject(client?._auth) : undefined
-      );
-      removeBaseUrlFromRequestUrl(pactRecord, info.baseUrl);
-      return new C8yDefaultPact([pactRecord], info, info.id);
-    } else {
-      let pact: C8yPact;
-      if (_.isString(obj)) {
-        pact = JSON.parse(obj);
-      } else if (_.isObjectLike(obj)) {
-        pact = obj;
-      } else {
-        throw new Error(`Can not create pact from ${typeof obj}.`);
-      }
-
-      // required to map the record object to a C8yPactRecord here as this can
-      // not be done in the plugin
-      pact.records = pact.records?.map((record) => {
-        return new C8yDefaultPactRecord(
-          record.request,
-          record.response,
-          record.options || {},
-          record.auth,
-          record.createdObject
-        );
-      });
-
-      const result = new C8yDefaultPact(pact.records, pact.info, pact.id);
-      if (!isPact(result)) {
-        throw new Error(
-          `Invalid pact object. Can not create pact from ${typeof obj}.`
-        );
-      }
-      return result;
-    }
-  }
-
-  /**
-   * Returns the next pact record or null if no more records are available.
-   */
-  nextRecord(): C8yPactRecord | null {
-    if (this.recordIndex >= this.records.length) {
-      return null;
-    }
-    return this.records[this.recordIndex++];
-  }
-
-  nextRecordMatchingRequest(
-    request: Partial<Request>,
-    baseUrl?: string
-  ): C8yPactRecord | null {
-    if (!request?.url) return null;
-
-    const matches = this.getRecordsMatchingRequest(request);
-    if (!matches) return null;
-
-    const url = this.normalizeUrl(request.url, undefined, baseUrl);
-    const method = _.lowerCase(request.method || "get");
-
-    const currentIndex = this.requestIndexMap[`${method}:${url}`] || 0;
-    const result = matches[Math.min(currentIndex, matches.length - 1)];
-    this.requestIndexMap[`${method}:${url}`] = currentIndex + 1;
-    return result;
-  }
-
-  protected normalizeUrl(
-    url: string | URL,
-    parametersToRemove?: string[],
-    baseUrl?: string
-  ) {
-    const urlObj = isURL(url)
-      ? url
-      : new URL(decodeURIComponent(url), this.info.baseUrl);
-
-    const p =
-      parametersToRemove ||
-      this.info.requestMatching?.ignoreUrlParameters ||
-      [];
-
-    p.forEach((name) => {
-      urlObj.searchParams.delete(name);
-    });
-    if (!baseUrl) {
-      return decodeURIComponent(urlObj.pathname + urlObj.search + urlObj.hash);
-    }
-    return decodeURIComponent(
-      urlObj.toString()?.replace(this.info.baseUrl, "")?.replace(baseUrl, "")
-    );
-  }
-
-  protected matchUrls(
-    url1: string | URL,
-    url2: string | URL,
-    baseUrl?: string
-  ): boolean {
-    if (!url1 || !url2) return false;
-
-    const ignoreParameters =
-      this.info.requestMatching?.ignoreUrlParameters || [];
-
-    const n1 = this.normalizeUrl(url1, ignoreParameters, baseUrl);
-    const n2 = this.normalizeUrl(url2, ignoreParameters, baseUrl);
-    return _.isEqual(n1, n2);
-  }
-
-  // debugging and test purposes only
-  protected getRequesIndex(key: string): number {
-    return this.requestIndexMap[key] || 0;
-  }
-
-  /**
-   * Returns the pact record for the given request or null if no record is found.
-   * Currently only url and method are used for matching.
-   * @param req The request to use for matching.
-   */
-  getRecordsMatchingRequest(
-    req: Partial<Request>,
-    baseUrl?: string
-  ): C8yPactRecord[] | null {
-    const records = this.records.filter((record) => {
-      return (
-        record.request?.url &&
-        req.url &&
-        this.matchUrls(record.request.url, req.url, baseUrl) &&
-        (req.method != null
-          ? _.lowerCase(req.method) === _.lowerCase(record.request.method)
-          : true)
-      );
-    });
-    return records.length ? records : null;
-  }
-
-  /**
-   * Returns an iterator for the pact records.
-   */
-  [Symbol.iterator](): Iterator<C8yPactRecord | null> {
-    return {
-      next: () => {
-        if (this.iteratorIndex < this.records.length) {
-          return { value: this.records[this.iteratorIndex++], done: false };
-        } else {
-          return { value: null, done: true };
-        }
-      },
-    };
-  }
 }
 
 /**
@@ -536,7 +388,10 @@ export function isPact(obj: any): obj is C8yPact {
     "records" in obj &&
     _.isArray(_.get(obj, "records")) &&
     _.every(_.get(obj, "records"), isPactRecord) &&
-    _.isFunction(_.get(obj, "nextRecord"))
+    _.isFunction(_.get(obj, "nextRecord")) &&
+    _.isFunction(_.get(obj, "nextRecordMatchingRequest")) &&
+    _.isFunction(_.get(obj, "appendRecord")) &&
+    _.isFunction(_.get(obj, "replaceRecord"))
   );
 }
 

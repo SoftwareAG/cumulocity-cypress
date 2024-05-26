@@ -1,5 +1,9 @@
 import { IDeviceCredentials } from "@c8y/client";
-import { url as _url, getConsolePropsForLogSpy } from "../support/testutils";
+import {
+  url as _url,
+  getConsolePropsForLogSpy,
+  stubEnv,
+} from "../support/testutils";
 
 const { _, $ } = Cypress;
 
@@ -182,17 +186,13 @@ describe("auth", () => {
     });
 
     it("should log auth and auth env variables", () => {
-      cy.stub(Cypress, "env").callsFake((key?: string) => {
-        const env: any = {
-          C8Y_USERNAME: "myusername",
-          C8Y_PASSWORD: "mypassword",
-          admin_username: "admin",
-          admin_password: "password",
-          abc: "def",
-          aca: "def",
-        };
-        if (key != null) return env[key];
-        return env;
+      stubEnv({
+        C8Y_USERNAME: "myusername",
+        C8Y_PASSWORD: "mypassword",
+        admin_username: "admin",
+        admin_password: "password",
+        abc: "def",
+        aca: "def",
       });
       const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
 
@@ -324,17 +324,13 @@ describe("auth", () => {
     });
 
     it("should log auth and auth env variables", () => {
-      cy.stub(Cypress, "env").callsFake((key?: string) => {
-        const env: any = {
-          C8Y_USERNAME: "myusername",
-          C8Y_PASSWORD: "mypassword",
-          admin_username: "admin",
-          admin_password: "password",
-          abc: "def",
-          aca: "def",
-        };
-        if (key != null) return env[key];
-        return env;
+      stubEnv({
+        C8Y_USERNAME: "myusername",
+        C8Y_PASSWORD: "mypassword",
+        admin_username: "admin",
+        admin_password: "password",
+        abc: "def",
+        aca: "def",
       });
       const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
 

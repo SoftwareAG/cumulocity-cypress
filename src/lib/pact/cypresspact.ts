@@ -17,6 +17,10 @@ import {
   toPactSerializableObject,
   C8yPactEnv,
   C8yPactSaveKeys,
+  C8yPactMode,
+  C8yPactRecordingMode,
+  C8yPactRecordingModeValues,
+  C8yPactModeValues,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
@@ -64,6 +68,14 @@ declare global {
    */
   interface CypressC8yPact {
     /**
+     * The pact mode for the current tests.
+     */
+    mode: () => C8yPactMode;
+    /**
+     * The pact recording mode for the current tests.
+     */
+    recordingMode: () => C8yPactRecordingMode;
+    /**
      * Create a C8yPactID for the current test case.
      */
     getCurrentTestId(): C8yPactID;
@@ -107,9 +119,13 @@ declare global {
      */
     isEnabled: () => boolean;
     /**
-     * Checks if the C8yPact is enabled and in recording mode.
+     * Checks if the C8yPact is enabled and in recording mode. Use C8Y_PACT_MODE="record" to enable recording.
      */
     isRecordingEnabled: () => boolean;
+    /**
+     * Checks if the C8yPact is enabled and in mocking mode. Use C8Y_PACT_MODE="mock" to enable mocking.
+     */
+    isMockingEnabled: () => boolean;
     /**
      * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
      */
@@ -216,10 +232,13 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
 
   Cypress.c8ypact = {
     current: null,
+    mode,
     getCurrentTestId,
     isRecordingEnabled,
+    isMockingEnabled,
     savePact,
     isEnabled,
+    recordingMode,
     matcher: new C8yDefaultPactMatcher(),
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: undefined,
@@ -351,7 +370,47 @@ function isEnabled(): boolean {
 }
 
 function isRecordingEnabled(): boolean {
-  return isEnabled() && Cypress.env("C8Y_PACT_MODE") === "recording";
+  const values = ["record", "recording"];
+  return isEnabled() && values.includes(Cypress.c8ypact.mode());
+}
+
+function isMockingEnabled(): boolean {
+  const values = ["apply", "mock", "mocking"];
+  return isEnabled() && values.includes(Cypress.c8ypact.mode());
+}
+
+function mode(): C8yPactMode {
+  const mode = Cypress.env("C8Y_PACT_MODE") || "disabled";
+  const values = Object.values(C8yPactModeValues) as string[];
+  if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
+    const error = new Error(
+      `Unsupported pact mode: ${mode}. Supported values are: ${values.join(
+        ", "
+      )}`
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+  return mode.toLowerCase() as C8yPactMode;
+}
+
+function recordingMode() {
+  const keys: string[] = Object.values(C8yPactRecordingModeValues);
+  const mode: string =
+    Cypress.config().c8ypact?.recordingMode ||
+    Cypress.env("C8Y_PACT_RECORDING_MODE") ||
+    C8yPactRecordingModeValues[0];
+
+  if (!mode || !_.isString(mode) || !keys.includes(mode.toLowerCase())) {
+    const error = new Error(
+      `Unsupported recording mode: ${mode}. Supported values are: ${keys.join(
+        ", "
+      )}`
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+  return mode.toLowerCase() as C8yPactRecordingMode;
 }
 
 function getCurrentTestId(): C8yPactID {
@@ -401,6 +460,10 @@ async function savePact(
     }
 
     if (!pact) return;
+    // handle pact recording modes
+    // if (Cypress.c8ypact.recordingMode() !== "refresh") {
+    // }
+
     save(pact, options);
   } catch {
     // no-op

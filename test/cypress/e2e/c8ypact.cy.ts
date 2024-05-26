@@ -1,8 +1,12 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
-import { initRequestStub, stubResponses, url } from "../support/testutils";
+import {
+  initRequestStub,
+  stubEnv,
+  stubResponses,
+  url,
+} from "../support/testutils";
 
 import { defaultClientOptions } from "cumulocity-cypress/lib/commands/c8yclient";
-
 import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
 
 import {
@@ -45,8 +49,8 @@ describe("c8ypact", () => {
     Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", undefined);
     Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", undefined);
 
-    // enabled is just a placeholder so C8Y_PACT_MODE is not undefined
-    Cypress.env("C8Y_PACT_MODE", "enabled");
+    Cypress.env("C8Y_PACT_MODE", "apply");
+    Cypress.env("C8Y_PACT_RECORDING_MODE", undefined);
 
     initRequestStub();
     stubResponses([
@@ -77,7 +81,7 @@ describe("c8ypact", () => {
     });
   });
 
-  context("c8ypact setup", function () {
+  context("c8ypact setup", () => {
     it("Cypress.c8ypact should be initialized with defaults", function () {
       expect(Cypress.c8ypact).to.not.be.null.and.undefined;
       expect(Cypress.c8ypact.debugLog).to.be.false;
@@ -89,6 +93,7 @@ describe("c8ypact", () => {
 
       expect(Cypress.c8ypact.getCurrentTestId).to.be.a("function");
       expect(Cypress.c8ypact.isRecordingEnabled).to.be.a("function");
+      expect(Cypress.c8ypact.isMockingEnabled).to.be.a("function");
       expect(Cypress.c8ypact.savePact).to.be.a("function");
       expect(Cypress.c8ypact.getConfigValue).to.be.a("function");
       expect(Cypress.c8ypact.getConfigValues).to.be.a("function");
@@ -97,6 +102,8 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.matcher).to.be.a("object");
       expect(Cypress.c8ypact.schemaGenerator).to.be.undefined;
       expect(Cypress.c8ypact.schemaMatcher).to.not.be.undefined;
+      expect(Cypress.c8ypact.recordingMode).to.be.a("function");
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
     });
 
     it("should not be enabled if pact mode is undefined", function () {
@@ -104,15 +111,54 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.isEnabled()).to.be.false;
     });
 
+    it("should throw for unsupported pact mode", function (done) {
+      stubEnv({ C8Y_PACT_MODE: "xyz" });
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("Unsupported pact mode");
+        done();
+      });
+      Cypress.c8ypact.mode();
+    });
+
     it("should not be enabled if plugin is not loaded", function () {
-      Cypress.env("C8Y_PLUGIN_LOADED", undefined);
+      stubEnv({ C8Y_PLUGIN_LOADED: undefined });
       expect(Cypress.c8ypact.isEnabled()).to.be.false;
-      Cypress.env("C8Y_PLUGIN_LOADED", "true");
     });
 
     it("should have recording disabled if pact mode is undefined", function () {
-      Cypress.env("C8Y_PACT_MODE", undefined);
+      stubEnv({ C8Y_PACT_MODE: undefined });
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+    });
+
+    it("should use recording mode from env variable", function () {
+      stubEnv({ C8Y_PACT_RECORDING_MODE: "new" });
+      expect(Cypress.c8ypact.recordingMode()).to.eq("new");
+    });
+
+    it(
+      "should use recording mode from config",
+      {
+        c8ypact: {
+          recordingMode: "new",
+        },
+      },
+      function () {
+        expect(Cypress.c8ypact.recordingMode()).to.eq("new");
+      }
+    );
+
+    it("should throw for unsupported recording modes", function (done) {
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("Unsupported recording mode");
+        done();
+      });
+      stubEnv({ C8Y_PACT_RECORDING_MODE: "xyz" });
+      Cypress.c8ypact.recordingMode();
+    });
+
+    it("should use default recording mode for unssuported values", function () {
+      stubEnv({ C8Y_PACT_RECORDING_MODE: undefined });
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
     });
 
     it(
@@ -122,7 +168,7 @@ describe("c8ypact", () => {
         expect(Cypress.c8ypact.isEnabled()).to.be.false;
         expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
 
-        Cypress.env("C8Y_PACT_IGNORE", "false");
+        stubEnv({ C8Y_PACT_IGNORE: "false" });
         expect(Cypress.c8ypact.isEnabled()).to.be.false;
         expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
 
@@ -136,12 +182,12 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.isEnabled()).to.be.true;
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
 
-      Cypress.env("C8Y_PACT_IGNORE", "true");
+      Cypress.c8ypact.config.ignore = true;
       expect(Cypress.c8ypact.isEnabled()).to.be.false;
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
-      Cypress.env("C8Y_PACT_IGNORE", undefined);
+      Cypress.c8ypact.config.ignore = false;
 
-      Cypress.c8ypact.config.ignore = true;
+      stubEnv({ C8Y_PACT_IGNORE: "true" });
       expect(Cypress.c8ypact.isEnabled()).to.be.false;
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
     });
@@ -1356,4 +1402,64 @@ describe("c8ypact", () => {
       expect(obj.requestHeaders?.UseXBasic).to.be.undefined;
     });
   });
+
+  // function getSuiteProperties(suite: any, path: string) {
+  //   if (suite.parent && !_.isEmpty(_.get(suite.parent, path))) {
+  //     return [...getSuiteProperties(suite.parent, path), _.get(suite, path)];
+  //   } else {
+  //     return [_.get(suite, path)];
+  //   }
+  // }
+
+  // function getSuiteTitle(suite: any) {
+  //   if (!suite) return undefined;
+  //   return (
+  //     suite._testConfig?.c8ypact?.id || suite.ctx?.test?.title || suite.title
+  //   );
+  // }
+
+  // function getSuiteTitles(suite) {
+  //   const parentTitle = getSuiteTitle(suite.parent);
+  //   if (suite.parent && !_.isEmpty(parentTitle)) {
+  //     return [...getSuiteTitles(suite.parent), getSuiteTitle(suite)];
+  //   } else {
+  //     return [suite.title];
+  //   }
+  // }
+
+  // context("C8yPactId", { c8ypact: { id: "mytest" } }, function () {
+  //   before(() => {
+  //     cy.log(
+  //       getSuiteProperties(
+  //         (Cypress as any).mocha?.getRunner(),
+  //         "currentRunnable.title"
+  //       )
+  //     );
+  //     cy.log(getSuiteTitles((Cypress as any).mocha?.getRunner().suite));
+  //     debugger;
+  //     const runner = (Cypress as any).mocha?.getRunner();
+  //     const c8ypact = (Cypress as any).mocha?.getRunner()?.suite?._testConfig
+  //       ?.c8ypact as C8yPactConfigOptions;
+  //     const id = c8ypact.id || Cypress.c8ypact.getCurrentTestId();
+  //     expect(id).to.eq("mytest");
+  //   });
+
+  //   it(
+  //     "should create pact id from test name",
+  //     { c8ypact: { id: "myothertest" } },
+  //     function () {
+  //       cy.log(
+  //         getSuiteProperties(
+  //           (Cypress as any).mocha?.getRunner(),
+  //           "currentRunnable.title"
+  //         )
+  //       );
+  //       const id = Cypress.c8ypact.getCurrentTestId();
+  //       expect(id).to.eq(
+  //         "myothertest"
+  //         // "c8ypact__C8yPactId__should_create_pact_id_from_test_name"
+  //       );
+  //     }
+  //   );
+  // });
 });
