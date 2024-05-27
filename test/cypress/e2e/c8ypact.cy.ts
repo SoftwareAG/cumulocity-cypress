@@ -187,19 +187,23 @@ describe("c8ypact", () => {
     });
   });
 
-  context("c8ypact id", { c8ypact: { id: "test_suite_id" } }, function () {
-    it("should use id from suite annotation", function () {
-      expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_suite_id");
-    });
+  context(
+    "c8ypact id annotations",
+    { c8ypact: { id: "test_suite_id" } },
+    function () {
+      it("should use id from suite annotation", function () {
+        expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_suite_id");
+      });
 
-    it(
-      "should use id from test annotation",
-      { c8ypact: { id: "test_case_id" } },
-      function () {
-        expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_case_id");
-      }
-    );
-  });
+      it(
+        "should use id from test annotation",
+        { c8ypact: { id: "test_case_id" } },
+        function () {
+          expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_case_id");
+        }
+      );
+    }
+  );
 
   const modes = ["record", "apply", "mock", "disabled"];
   for (const mode of modes) {
