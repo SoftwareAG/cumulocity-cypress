@@ -352,9 +352,12 @@ export function getMessageForLogSpy(spy: sinon.SinonSpy, name: string): any {
  * env variables in your tests.
  * @param env The env object to stub
  */
-export function stubEnv(env: any): void {
-  cy.stub(Cypress, "env").callsFake((key: string) => {
-    if (key != null) return env[key];
-    return env;
-  });
+export function stubEnv(env: any, log: boolean = false): void {
+  const cypressEnv = Cypress.env();
+  cy.stub(Cypress, "env")
+    .log(log)
+    .callsFake((key: string) => {
+      if (key != null) return key in env ? env[key] : cypressEnv[key];
+      return { ...cypressEnv, ...env };
+    });
 }

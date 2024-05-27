@@ -66,7 +66,7 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
     }
     updatedArgs.push(response);
   } else {
-    response = wrapEmptyRoutHandler();
+    response = wrapEmptyRouteHandler();
     updatedArgs.push(response);
   }
 
@@ -211,10 +211,16 @@ const wrapStaticResponse = (obj: any) => {
   };
 };
 
-const wrapEmptyRoutHandler = () => {
+const wrapEmptyRouteHandler = () => {
   return function (req: any) {
-    if (Cypress.c8ypact.current == null) {
+    let strictMock = true;
+    if (Cypress.c8ypact.isMockingEnabled() && Cypress.c8ypact.current == null) {
       failForStrictMocking();
+      // if we get here, strictMocking is disabled as failForStrictMocking() will throw an error
+      strictMock = false;
+    }
+
+    if (!Cypress.c8ypact.isMockingEnabled() || !strictMock) {
       req.continue((res: any) => {
         emitInterceptionEvent(req, _.cloneDeep(res));
         res.send();
@@ -287,7 +293,7 @@ function responseFromPact(obj: any, req: any): any {
 }
 
 function failForStrictMocking() {
-  if (Cypress.c8ypact.isRecordingEnabled()) return;
+  if (!Cypress.c8ypact.isMockingEnabled()) return;
 
   const strictMocking =
     Cypress.c8ypact?.getConfigValue("strictMocking", true) === true;

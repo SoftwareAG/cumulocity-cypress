@@ -49,6 +49,9 @@ describe("c8ypact", () => {
     Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN", undefined);
     Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE", undefined);
 
+    Cypress.env("admin_username", "admin");
+    Cypress.env("admin_password", "password");
+
     Cypress.env("C8Y_PACT_MODE", "apply");
     Cypress.env("C8Y_PACT_RECORDING_MODE", undefined);
 
@@ -107,17 +110,13 @@ describe("c8ypact", () => {
     });
 
     it("should not be enabled if pact mode is undefined", function () {
-      Cypress.env("C8Y_PACT_MODE", undefined);
+      stubEnv({ C8Y_PACT_MODE: undefined });
       expect(Cypress.c8ypact.isEnabled()).to.be.false;
     });
 
-    it("should throw for unsupported pact mode", function (done) {
+    it("should use disabled if unsupported pact mode", function () {
       stubEnv({ C8Y_PACT_MODE: "xyz" });
-      Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("Unsupported pact mode");
-        done();
-      });
-      Cypress.c8ypact.mode();
+      expect(Cypress.c8ypact.mode()).to.eq("disabled");
     });
 
     it("should not be enabled if plugin is not loaded", function () {
@@ -191,6 +190,65 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.isEnabled()).to.be.false;
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
     });
+  });
+
+  const modes = ["record", "apply", "mock", "disabled"];
+  for (const mode of modes) {
+    context(`c8ypact current - ${mode}`, function () {
+      const pact = new C8yDefaultPact(
+        [{ request: { url: "test" } }] as any,
+        {} as any,
+        "test"
+      );
+
+      let loadSpy: sinon.SinonSpy;
+      let loadCalls = 0;
+
+      const cmd = (cmd: string) => {
+        return [cmd, Cypress.c8ypact.getCurrentTestId(), { log: false }];
+      };
+
+      // stub in before as this is called before beforeEach of c8ypact
+      before(() => {
+        stubEnv({ C8Y_PACT_MODE: mode });
+        Cypress.c8ypact.debugLog = false;
+
+        loadSpy = cy.stub(cy, "task").callsFake((name: string) => {
+          if (name === "c8ypact:get" && loadCalls === 0) {
+            loadCalls++;
+            return cy.wrap(pact);
+          } else {
+            return cy.wrap(null);
+          }
+        });
+      });
+
+      if (mode === "record") {
+        it("should load existing pact and init current", function () {
+          expect(loadSpy).to.be.calledTwice;
+          expect(loadSpy).to.be.calledWith(...cmd("c8ypact:remove"));
+          expect(loadSpy).to.be.calledWith(...cmd("c8ypact:get"));
+          expect(Cypress.c8ypact.current).to.deep.eq(pact);
+          expect(isPact(Cypress.c8ypact.current)).to.be.true;
+        });
+      } else if (mode === "disabled") {
+        it("should load existing pact and init current", function () {
+          expect(loadSpy).to.not.be.called;
+        });
+      } else {
+        it("should load existing pact and init current", function () {
+          expect(loadSpy).to.be.calledOnce;
+          expect(loadSpy).to.be.calledWith(...cmd("c8ypact:get"));
+          expect(Cypress.c8ypact.current).to.deep.eq(pact);
+          expect(isPact(Cypress.c8ypact.current)).to.be.true;
+        });
+      }
+    });
+  }
+
+  context("invalid c8ypact mode", function () {
+    before(() => {});
+    it("should throw error for invalid pact mode", function () {});
   });
 
   context("C8yDefaultPact", function () {
@@ -703,16 +761,24 @@ describe("c8ypact", () => {
     );
   });
 
-  context("c8ypact record and load", function () {
+  context("c8ypact record", function () {
     beforeEach(() => {
       Cypress.env("C8Y_TENANT", undefined);
       Cypress.env("C8Y_PACT_MODE", "recording");
     });
 
-    it("should record c8ypacts if recording is enabled in environment", function () {
-      // cy.spy(Cypress.c8ypact.current, "nextRecord").log(false);
-
+    it("should have required recording setup", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.true;
       expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
+      expect(Cypress.c8ypact.isMockingEnabled()).to.be.false;
+      expect(Cypress.c8ypact.mode()).to.eq("recording");
+    });
+
+    it("should record c8ypacts if recording is enabled in environment", function () {
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
+      expect(Cypress.c8ypact.current).to.be.null;
 
       cy.getAuth({ user: "admin", password: "mypassword" })
         .c8yclient<IManagedObject>((c) => {
@@ -724,10 +790,8 @@ describe("c8ypact", () => {
         })
         .then((response) => {
           expect(response.status).to.eq(202);
-          expect(Cypress.c8ypact.current).to.be.null;
-          // current pact is not required when recording
-          // const spy = Cypress.c8ypact.current.nextRecord as SinonSpy;
-          // expect(spy).to.not.have.been.called;
+          expect(Cypress.c8ypact.current).to.not.be.null;
+          expect(Cypress.c8ypact.current!.records).to.have.length(2);
         });
 
       cy.then(() => {
@@ -743,6 +807,37 @@ describe("c8ypact", () => {
             user: "admin",
             type: "BasicAuth",
           });
+        });
+      });
+    });
+
+    it("should record c8ypact and replace existing records", function () {
+      stubEnv({ C8Y_PACT_RECORDING_MODE: "replace" });
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      expect(Cypress.c8ypact.current).to.be.null;
+      expect(Cypress.c8ypact.recordingMode()).to.eq("replace");
+
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<IManagedObject>((c) => {
+          return c.inventory.detail(1, { withChildren: false });
+        })
+        .c8yclient<IManagedObject>((c, response) => {
+          expect(response.status).to.eq(201);
+          return c.inventory.detail(1, { withChildren: false });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(202);
+          expect(Cypress.c8ypact.current).to.not.be.null;
+          expect(Cypress.c8ypact.current!.records).to.have.length(1);
+          expect(Cypress.c8ypact.current!.records[0].response.status).to.eq(
+            202
+          );
+        });
+
+      cy.then(() => {
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact?.records).to.have.length(1);
+          expect(pact?.records[0].response.status).to.eq(202);
         });
       });
     });
@@ -923,10 +1018,11 @@ describe("c8ypact", () => {
     });
 
     it("should use custom matcher", { auth: "admin" }, function (done) {
+      stubEnv({ C8Y_PACT_MODE: "apply" });
+
       Cypress.c8ypact.current = new C8yDefaultPact(
-        // @ts-expect-error
-        [{ request: { url: "test" } }],
-        {},
+        [{ request: { url: "test" } } as any],
+        {} as any,
         "test"
       );
 
@@ -950,6 +1046,7 @@ describe("c8ypact", () => {
       "should fail for missing pact - failOnMissingPacts enabled",
       { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
       function (done) {
+        stubEnv({ C8Y_PACT_MODE: "apply" });
         Cypress.c8ypact.config.failOnMissingPacts = true;
         Cypress.c8ypact.current = null;
 
@@ -965,6 +1062,33 @@ describe("c8ypact", () => {
           (c) => c.inventory.detail(1, { withChildren: false }),
         ]).then((response) => {
           expect(Cypress.c8ypact.current).to.be.null;
+        });
+      }
+    );
+
+    it(
+      "should not match if mode is not apply",
+      { c8ypact: { id: "non-existing-pact-id" }, auth: "admin" },
+      function () {
+        Cypress.c8ypact.matcher = new AcceptAllMatcher();
+        Cypress.c8ypact.current = new C8yDefaultPact(
+          [{ request: { url: "test" } }, { request: { url: "test2" } } as any],
+          {} as any,
+          "test"
+        );
+
+        stubEnv({ C8Y_PACT_MODE: "mock" });
+        const nextSpy = cy
+          .spy(Cypress.c8ypact.current, "nextRecord")
+          .log(false);
+        const matchSpy = cy.spy(Cypress.c8ypact.matcher, "match").log(false);
+
+        cy.c8yclient<IManagedObject>([
+          (c) => c.inventory.detail(1, { withChildren: false }),
+          (c) => c.inventory.detail(1, { withChildren: false }),
+        ]).then((response) => {
+          expect(nextSpy).to.not.have.been.called;
+          expect(matchSpy).to.not.have.been.called;
         });
       }
     );
@@ -989,9 +1113,8 @@ describe("c8ypact", () => {
     it("should match with existing pact", function () {
       Cypress.c8ypact.matcher = new AcceptAllMatcher();
       Cypress.c8ypact.current = new C8yDefaultPact(
-        // @ts-expect-error
-        [{ request: { url: "test" } }, { request: { url: "test2" } }],
-        {},
+        [{ request: { url: "test" } }, { request: { url: "test2" } } as any],
+        {} as any,
         "test"
       );
 
@@ -1035,9 +1158,8 @@ describe("c8ypact", () => {
 
       Cypress.c8ypact.matcher = new AcceptAllMatcher();
       Cypress.c8ypact.current = new C8yDefaultPact(
-        // @ts-expect-error
-        [{ request: { url: "test" } }, { request: { url: "test2" } }],
-        {},
+        [{ request: { url: "test" } }, { request: { url: "test2" } } as any],
+        {} as any,
         "test"
       );
 
@@ -1257,11 +1379,9 @@ describe("c8ypact", () => {
         ignore: ["request.headers.date", "response.body.creationTime"],
       });
       preprocessor.apply(obj);
-      // @ts-expect-error
-      expect(obj.request.headers.Authorization).to.eq("<abcdefg>");
+      expect((obj.request.headers! as any).Authorization).to.eq("<abcdefg>");
       expect(obj.response.body.password).to.eq("<abcdefg>");
-      // @ts-expect-error
-      expect(obj.request.headers.date).to.be.undefined;
+      expect((obj.request.headers! as any).date).to.be.undefined;
       expect(obj.response.body.creationTime).to.be.undefined;
     });
 

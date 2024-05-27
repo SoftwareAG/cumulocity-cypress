@@ -205,13 +205,16 @@ describe("auth", () => {
           password: "password",
           user: "admin",
           userAlias: "admin",
+          tenant: "t1234567",
         });
-        expect(Object.keys(props.env)).to.have.length(4);
+        expect(Object.keys(props.env)).to.have.length(5);
         expect(props.env).to.deep.eq({
           C8Y_USERNAME: "myusername",
           C8Y_PASSWORD: "mypassword",
           admin_username: "admin",
           admin_password: "password",
+          // from environment / defined in beforeEach
+          myauthuser_password: "myadminpassword",
         });
       });
     });
@@ -344,13 +347,16 @@ describe("auth", () => {
           password: "password",
           user: "admin",
           userAlias: "admin",
+          tenant: "t1234567",
         });
-        expect(Object.keys(props.env)).to.have.length(4);
+        expect(Object.keys(props.env)).to.have.length(5);
         expect(props.env).to.deep.eq({
           C8Y_USERNAME: "myusername",
           C8Y_PASSWORD: "mypassword",
           admin_username: "admin",
           admin_password: "password",
+          // from environment / defined in beforeEach
+          myauthuser_password: "myadminpassword",
         });
       });
     });

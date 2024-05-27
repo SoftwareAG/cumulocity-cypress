@@ -38,14 +38,14 @@ export const C8yPactRecordingModeValues = [
   "refresh",
   "append",
   "new",
-  "latest",
+  "replace",
 ] as const;
 /**
  * The pact recording mode is used to determine how or if requests and responses are recorded.
  * - `refresh` (default): Recreates the pact file with the all requests and responses.
  * - `append`: Appends the new requests and responses to the existing pact file.
  * - `new`: Only creates a new pact file if no pact file exists. If pact file exists, only new requests and responses are added.
- * - `latest`: Overwrites existing records of a pact with new request and response in the order of occurence. Other records are kept as is.
+ * - `replace`: Overwrites existing records of a pact with new request and response in the order of occurence. Other records are kept as is.
  */
 export type C8yPactRecordingMode = (typeof C8yPactRecordingModeValues)[number];
 
