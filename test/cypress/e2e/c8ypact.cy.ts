@@ -1,10 +1,5 @@
 import { BasicAuth, Client, IManagedObject } from "@c8y/client";
-import {
-  initRequestStub,
-  stubEnv,
-  stubResponses,
-  url,
-} from "../support/testutils";
+import { initRequestStub, stubEnv, stubResponses } from "../support/testutils";
 
 import { defaultClientOptions } from "cumulocity-cypress/lib/commands/c8yclient";
 import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
@@ -192,6 +187,20 @@ describe("c8ypact", () => {
     });
   });
 
+  context("c8ypact id", { c8ypact: { id: "test_suite_id" } }, function () {
+    it("should use id from suite annotation", function () {
+      expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_suite_id");
+    });
+
+    it(
+      "should use id from test annotation",
+      { c8ypact: { id: "test_case_id" } },
+      function () {
+        expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_case_id");
+      }
+    );
+  });
+
   const modes = ["record", "apply", "mock", "disabled"];
   for (const mode of modes) {
     context(`c8ypact current - ${mode}`, function () {
@@ -245,279 +254,6 @@ describe("c8ypact", () => {
       }
     });
   }
-
-  context("invalid c8ypact mode", function () {
-    before(() => {});
-    it("should throw error for invalid pact mode", function () {});
-  });
-
-  context("C8yDefaultPact", function () {
-    const response: Cypress.Response<any> = {
-      status: 200,
-      statusText: "OK",
-      headers: { "content-type": "application/json" },
-      body: { name: "t123456789" },
-      duration: 100,
-      requestHeaders: { "content-type": "application/json2" },
-      requestBody: { id: "abc123124" },
-      allRequestResponses: [],
-      isOkStatusCode: false,
-      method: "PUT",
-      url: "http://localhost:4200",
-    };
-
-    it("from() should create C8yDefaultPact from Cypress.Response", function () {
-      const pact = C8yDefaultPact.from(response, {
-        id: "testid",
-        baseUrl: Cypress.config("baseUrl")!,
-      });
-      expect(pact).to.not.be.null;
-      expect(pact.records).to.have.length(1);
-      expect(isPact(pact)).to.be.true;
-    });
-
-    it("from() should create C8yDefaultPact from serialized string", function () {
-      const pact = C8yDefaultPact.from(response, {
-        id: "testid",
-        baseUrl: Cypress.config("baseUrl")!,
-      });
-      const pact2 = C8yDefaultPact.from(JSON.stringify(pact));
-      expect(pact2).to.not.be.undefined.and.not.be.null;
-      expect(pact2.records).to.have.length(1);
-      expect(isPact(pact2)).to.be.true;
-    });
-
-    it("from() should create C8yDefaultPact from C8yPact object", function () {
-      const pactObject = {
-        records: [C8yDefaultPactRecord.from(response)],
-        info: {
-          baseUrl: "http://localhost:4200",
-        },
-        id: "test",
-      };
-      // @ts-expect-error
-      const pact = C8yDefaultPact.from(pactObject);
-      expect(pact).to.not.be.null;
-      expect(pact.records).to.have.length(1);
-      expect(isPact(pact)).to.be.true;
-    });
-
-    // error tests for C8yDefaultPact.from()
-    it("from() should throw error if invalid object", function (done) {
-      Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("Invalid pact object.");
-        done();
-      });
-      // @ts-expect-error
-      C8yDefaultPact.from({ test: "test" });
-    });
-
-    it("from() should throw error if invalid string", function (done) {
-      Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("Invalid pact object.");
-        done();
-      });
-      C8yDefaultPact.from(`{ "test": "test" }`);
-    });
-
-    it("from() should throw error when passing null", function (done) {
-      Cypress.once("fail", (err) => {
-        expect(err.message).to.contain(
-          "Can not create pact from null or undefined."
-        );
-        done();
-      });
-      // @ts-expect-error
-      C8yDefaultPact.from(null);
-    });
-
-    it("nextRecord() should return next record", function () {
-      const pact = C8yDefaultPact.from(response, {
-        id: "testid",
-        baseUrl: Cypress.config("baseUrl")!,
-      });
-      pact.records.push(C8yDefaultPactRecord.from(response));
-      expect(pact.records).to.have.length(2);
-      expect(pact.nextRecord()).to.not.be.null;
-      expect(pact.nextRecord()).to.not.be.null;
-      expect(pact.nextRecord()).to.be.null;
-    });
-
-    it("getRecordsMatchingRequest should return records matching the request", function () {
-      const url1 = "/service/oee-bundle/configurationmanager/2/configuration";
-      const url2 =
-        "/inventory/managedObjects?pageSize=10&fragmentType=isISAObject";
-      const url3 = "/service/oee-bundle/configurationmanager/2/configuration";
-
-      // matching of records is based on url and method
-      const pact = C8yDefaultPact.from(response, {
-        id: "testid",
-        baseUrl: Cypress.config("baseUrl")!,
-      });
-      pact.records.push(C8yDefaultPactRecord.from(response));
-      pact.records.push(C8yDefaultPactRecord.from(response));
-      pact.records[0].request.url = url(url1);
-      pact.records[1].request.url = url(url2);
-      pact.records[2].request.url = url(url3);
-      pact.records[2].request.method = "GET";
-
-      expect(
-        pact.getRecordsMatchingRequest({ url: url(url1), method: "PUT" })
-      ).to.deep.eq([pact.records[0]]);
-      expect(
-        pact.getRecordsMatchingRequest({ url: url(url2), method: "PUT" })
-      ).to.deep.eq([pact.records[1]]);
-      expect(pact.getRecordsMatchingRequest({ url: url(url3) })).to.deep.eq([
-        pact.records[0],
-        pact.records[2],
-      ]);
-      expect(
-        pact.getRecordsMatchingRequest({ url: url("/test"), method: "PUT" })
-      ).to.be.null;
-      expect(pact.getRecordsMatchingRequest({ url: url("/test") })).to.be.null;
-    });
-
-    it("getRecordsMatchingRequest should match requests with different baseUrls", function () {
-      const url1 = "/service/oee-bundle/configurationmanager/2/configuration";
-
-      const r = _.cloneDeep(response);
-      r.url = "https://mytest.com" + url1;
-      r.method = "GET";
-      // pact has been recorded with mytest.com as baseUrl
-      const pact = C8yDefaultPact.from(r, {
-        id: "testid",
-        baseUrl: "https://mytest.com",
-      });
-
-      // matches with baseUrl
-      expect(
-        pact.getRecordsMatchingRequest(
-          { url: url(url1), method: "GET" },
-          Cypress.config().baseUrl!
-        )
-      ).to.deep.eq([pact.records[0]]);
-      expect(
-        pact.getRecordsMatchingRequest(
-          { url: url1, method: "GET" },
-          Cypress.config().baseUrl!
-        )
-      ).to.deep.eq([pact.records[0]]);
-      // does not match as it is has a different baseUrl
-      expect(
-        pact.getRecordsMatchingRequest(
-          {
-            url: `https://xyz.com${url1}`,
-            method: "GET",
-          },
-          Cypress.config().baseUrl!
-        )
-      ).to.be.null;
-
-      // matches without baseUrl
-      expect(
-        pact.getRecordsMatchingRequest({ url: url(url1), method: "GET" })
-      ).to.deep.eq([pact.records[0]]);
-      expect(
-        pact.getRecordsMatchingRequest({ url: url1, method: "GET" })
-      ).to.deep.eq([pact.records[0]]);
-      // does match as without baseUrl relative urls are matched
-      expect(
-        pact.getRecordsMatchingRequest({
-          url: `https://xyz.com${url1}`,
-          method: "GET",
-        })
-      ).to.deep.eq([pact.records[0]]);
-    });
-
-    it("getRecordsMatchingRequest should allow filtering url parameters", function () {
-      const url1 =
-        "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&dateFrom=2024-01-17T14%3A57%3A32.671Z&dateTo=2024-01-17T16%3A57%3A32.671Z&revert=true&valueFragmentSeries=3600s&source=54117556939";
-
-      const pact = C8yDefaultPact.from(response, {
-        id: "testid",
-        baseUrl: Cypress.config("baseUrl")!,
-        requestMatching: {
-          ignoreUrlParameters: ["dateFrom", "dateTo", "_"],
-        },
-      });
-      pact.records[0].request.url = url(url1);
-      pact.records[0].request.method = "GET";
-
-      const url1WithoutParams =
-        "/measurement/measurements?valueFragmentType=OEE&withTotalPages=false&pageSize=2&revert=true&valueFragmentSeries=3600s&source=54117556939";
-
-      expect(
-        pact.getRecordsMatchingRequest({ url: url(url1WithoutParams) })
-      ).to.deep.eq([pact.records[0]]);
-    });
-
-    it("getRecordsMatchingRequest should not fail for undefined url", function () {
-      const pact = C8yDefaultPact.from(response, {
-        id: "testid",
-        baseUrl: Cypress.config("baseUrl")!,
-      });
-      pact.records[0].request.method = "GET";
-
-      expect(pact.getRecordsMatchingRequest({ url: undefined })).to.be.null;
-      // @ts-expect-error
-      expect(pact.getRecordsMatchingRequest({ url: null })).to.be.null;
-      expect(pact.getRecordsMatchingRequest({ url: "" })).to.be.null;
-      expect(pact.getRecordsMatchingRequest({ method: "GET" })).to.be.null;
-    });
-
-    it("getNextRecordMatchingRequest should work with series of get and put requests", function () {
-      const record1 = C8yDefaultPactRecord.from({
-        ...response,
-        method: "GET",
-        url: url("/test1"),
-        body: { name: "noname" },
-      });
-      const record2 = C8yDefaultPactRecord.from({
-        ...response,
-        method: "PUT",
-        url: url("/test1"),
-        body: { name: "abcdefghij" },
-        requestBody: { name: "abcdefghij" },
-      });
-      const record3 = C8yDefaultPactRecord.from({
-        ...response,
-        method: "GET",
-        url: url("/test1"),
-        body: { name: "abcdefghij" },
-      });
-
-      const pact = new C8yDefaultPact(
-        [record1, record2, record3],
-        {
-          id: "testid",
-          baseUrl: Cypress.config("baseUrl")!,
-        },
-        "testid"
-      );
-
-      const r1 = pact.nextRecordMatchingRequest({
-        url: "/test1",
-        method: "GET",
-      });
-      expect(r1?.request).to.have.property("body", record1.request.body);
-      const r2 = pact.nextRecordMatchingRequest({
-        url: "/test1",
-        method: "PUT",
-      });
-      expect(r2?.request).to.have.property("body", record2.request.body);
-      expect(r2?.response).to.have.property("body", record2.response.body);
-      const r3 = pact.nextRecordMatchingRequest({
-        url: "/test1",
-        method: "GET",
-      });
-      expect(r3?.request).to.have.property("body", record3.request.body);
-
-      // @ts-expect-error
-      expect(pact.getRequesIndex("get:/test1")).to.equal(2);
-      // @ts-expect-error
-      expect(pact.getRequesIndex("put:/test1")).to.equal(1);
-    });
-  });
 
   context("C8yDefaultPactRecord", function () {
     it("from() should create C8yDefaultPactRecord from Cypress.Response", function () {
@@ -761,7 +497,7 @@ describe("c8ypact", () => {
     );
   });
 
-  context("c8ypact record", function () {
+  context("c8ypact recording", function () {
     beforeEach(() => {
       Cypress.env("C8Y_TENANT", undefined);
       Cypress.env("C8Y_PACT_MODE", "recording");
@@ -952,7 +688,7 @@ describe("c8ypact", () => {
     });
   });
 
-  context("c8ypact record failing last request", function () {
+  context("c8ypact recording of failing last request", function () {
     // requires afterEach to check recorded pact as in Cypress.once("fail")
     // Cypress.c8ypact.loadCurrent() can not be used
     it("should record last failing request", function (done) {
@@ -1522,64 +1258,4 @@ describe("c8ypact", () => {
       expect(obj.requestHeaders?.UseXBasic).to.be.undefined;
     });
   });
-
-  // function getSuiteProperties(suite: any, path: string) {
-  //   if (suite.parent && !_.isEmpty(_.get(suite.parent, path))) {
-  //     return [...getSuiteProperties(suite.parent, path), _.get(suite, path)];
-  //   } else {
-  //     return [_.get(suite, path)];
-  //   }
-  // }
-
-  // function getSuiteTitle(suite: any) {
-  //   if (!suite) return undefined;
-  //   return (
-  //     suite._testConfig?.c8ypact?.id || suite.ctx?.test?.title || suite.title
-  //   );
-  // }
-
-  // function getSuiteTitles(suite) {
-  //   const parentTitle = getSuiteTitle(suite.parent);
-  //   if (suite.parent && !_.isEmpty(parentTitle)) {
-  //     return [...getSuiteTitles(suite.parent), getSuiteTitle(suite)];
-  //   } else {
-  //     return [suite.title];
-  //   }
-  // }
-
-  // context("C8yPactId", { c8ypact: { id: "mytest" } }, function () {
-  //   before(() => {
-  //     cy.log(
-  //       getSuiteProperties(
-  //         (Cypress as any).mocha?.getRunner(),
-  //         "currentRunnable.title"
-  //       )
-  //     );
-  //     cy.log(getSuiteTitles((Cypress as any).mocha?.getRunner().suite));
-  //     debugger;
-  //     const runner = (Cypress as any).mocha?.getRunner();
-  //     const c8ypact = (Cypress as any).mocha?.getRunner()?.suite?._testConfig
-  //       ?.c8ypact as C8yPactConfigOptions;
-  //     const id = c8ypact.id || Cypress.c8ypact.getCurrentTestId();
-  //     expect(id).to.eq("mytest");
-  //   });
-
-  //   it(
-  //     "should create pact id from test name",
-  //     { c8ypact: { id: "myothertest" } },
-  //     function () {
-  //       cy.log(
-  //         getSuiteProperties(
-  //           (Cypress as any).mocha?.getRunner(),
-  //           "currentRunnable.title"
-  //         )
-  //       );
-  //       const id = Cypress.c8ypact.getCurrentTestId();
-  //       expect(id).to.eq(
-  //         "myothertest"
-  //         // "c8ypact__C8yPactId__should_create_pact_id_from_test_name"
-  //       );
-  //     }
-  //   );
-  // });
 });
