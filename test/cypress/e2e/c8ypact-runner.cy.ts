@@ -49,7 +49,7 @@ describe("c8ypactrunner", () => {
     let runner: C8yTestPactRunner;
 
     beforeEach(() => {
-      Cypress.env("C8Y_PACT_MODE", "runner");
+      Cypress.env("C8Y_PACT_MODE", "apply");
       runner = new C8yTestPactRunner();
       runner.addReplacementId("68124542292", "57124692250");
       runner.addReplacementId("75117556935", "87117556934");

@@ -17,6 +17,10 @@ import {
   toPactSerializableObject,
   C8yPactEnv,
   C8yPactSaveKeys,
+  C8yPactMode,
+  C8yPactRecordingMode,
+  C8yPactRecordingModeValues,
+  C8yPactModeValues,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
@@ -64,6 +68,14 @@ declare global {
    */
   interface CypressC8yPact {
     /**
+     * The pact mode for the current tests.
+     */
+    mode: () => C8yPactMode;
+    /**
+     * The pact recording mode for the current tests.
+     */
+    recordingMode: () => C8yPactRecordingMode;
+    /**
      * Create a C8yPactID for the current test case.
      */
     getCurrentTestId(): C8yPactID;
@@ -107,9 +119,13 @@ declare global {
      */
     isEnabled: () => boolean;
     /**
-     * Checks if the C8yPact is enabled and in recording mode.
+     * Checks if the C8yPact is enabled and in recording mode. Use C8Y_PACT_MODE="record" to enable recording.
      */
     isRecordingEnabled: () => boolean;
+    /**
+     * Checks if the C8yPact is enabled and in mocking mode. Use C8Y_PACT_MODE="mock" to enable mocking.
+     */
+    isMockingEnabled: () => boolean;
     /**
      * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
      */
@@ -210,16 +226,21 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
   }
 }
 
-if (_.get(Cypress, "c8ypact.initialized") === undefined) {
-  _.set(Cypress, "c8ypact.initialized", true);
+// initialize the following only once. note, cypresspact.ts could be imported multiple times
+// resulting in multiple initializations of the c8ypact object as well as before and beforeEach hooks.
+if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
+  _.set(Cypress, "__c8ypact.initialized", true);
   const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
 
   Cypress.c8ypact = {
     current: null,
+    mode,
     getCurrentTestId,
     isRecordingEnabled,
+    isMockingEnabled,
     savePact,
     isEnabled,
+    recordingMode,
     matcher: new C8yDefaultPactMatcher(),
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: undefined,
@@ -306,36 +327,39 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
       });
     },
   };
+
+  before(() => {
+    if (isEnabled()) {
+      cy.task("c8ypact:load", Cypress.config().fixturesFolder, debugLogger());
+    }
+  });
+
+  beforeEach(() => {
+    Cypress.c8ypact.current = null;
+    validatePactMode();
+
+    if (isEnabled()) {
+      if (isRecordingEnabled() && recordingMode() === "refresh") {
+        cy.task(
+          "c8ypact:remove",
+          Cypress.c8ypact.getCurrentTestId(),
+          debugLogger()
+        );
+      }
+      Cypress.c8ypact.loadCurrent().then((pact) => {
+        Cypress.c8ypact.current = pact;
+      });
+    }
+  });
 }
 
 function debugLogger(): Cypress.Loggable {
   return { log: Cypress.c8ypact.debugLog };
 }
 
-before(() => {
-  if (!Cypress.c8ypact.isRecordingEnabled()) {
-    cy.task("c8ypact:load", Cypress.config().fixturesFolder, debugLogger());
-  }
-});
-
-beforeEach(() => {
-  Cypress.c8ypact.current = null;
-  if (Cypress.c8ypact.isRecordingEnabled()) {
-    cy.task(
-      "c8ypact:remove",
-      Cypress.c8ypact.getCurrentTestId(),
-      debugLogger()
-    );
-  } else if (isEnabled()) {
-    Cypress.c8ypact.loadCurrent().then((pact) => {
-      Cypress.c8ypact.current = pact;
-    });
-  }
-});
-
 function isEnabled(): boolean {
   if (Cypress.env("C8Y_PLUGIN_LOADED") == null) return false;
-  if (Cypress.env("C8Y_PACT_MODE") == null) return false;
+  if (mode() === "disabled") return false;
 
   if (Cypress.config().c8ypact?.ignore === true) {
     return false;
@@ -351,7 +375,58 @@ function isEnabled(): boolean {
 }
 
 function isRecordingEnabled(): boolean {
-  return isEnabled() && Cypress.env("C8Y_PACT_MODE") === "recording";
+  const values = ["record", "recording"];
+  return isEnabled() && values.includes(Cypress.c8ypact.mode());
+}
+
+function isMockingEnabled(): boolean {
+  const values = ["apply", "mock", "mocking"];
+  return isEnabled() && values.includes(Cypress.c8ypact.mode());
+}
+
+/**
+ * Validates the pact mode and throws an error if the mode is not supported.
+ */
+function validatePactMode() {
+  const mode = Cypress.env("C8Y_PACT_MODE") || "disabled";
+  const values = Object.values(C8yPactModeValues) as string[];
+  if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
+    const error = new Error(
+      `Unsupported pact mode: ${mode}. Supported values are: ${values.join(
+        ", "
+      )}`
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+}
+
+function mode(): C8yPactMode {
+  let mode = Cypress.env("C8Y_PACT_MODE") || "disabled";
+  const values = Object.values(C8yPactModeValues) as string[];
+  if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
+    mode = "disabled";
+  }
+  return mode.toLowerCase() as C8yPactMode;
+}
+
+function recordingMode() {
+  const keys: string[] = Object.values(C8yPactRecordingModeValues);
+  const mode: string =
+    Cypress.config().c8ypact?.recordingMode ||
+    Cypress.env("C8Y_PACT_RECORDING_MODE") ||
+    C8yPactRecordingModeValues[0];
+
+  if (!mode || !_.isString(mode) || !keys.includes(mode.toLowerCase())) {
+    const error = new Error(
+      `Unsupported recording mode: ${mode}. Supported values are: ${keys.join(
+        ", "
+      )}`
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+  return mode.toLowerCase() as C8yPactRecordingMode;
 }
 
 function getCurrentTestId(): C8yPactID {
@@ -401,9 +476,35 @@ async function savePact(
     }
 
     if (!pact) return;
-    save(pact, options);
-  } catch {
-    // no-op
+
+    if (Cypress.c8ypact.current == null) {
+      Cypress.c8ypact.current = new C8yDefaultPact(
+        pact.records,
+        pact.info,
+        pact.id
+      );
+    } else {
+      const recordingMode = Cypress.c8ypact.recordingMode();
+      // should contain only one record, but making sure we append all
+      if (
+        recordingMode === "append" ||
+        recordingMode === "new" ||
+        // refresh is the same as append as for refresh we remove the pact in each tests beforeEach
+        recordingMode === "refresh"
+      ) {
+        for (const record of pact.records) {
+          Cypress.c8ypact.current.appendRecord(record, recordingMode === "new");
+        }
+      } else if (recordingMode === "replace") {
+        for (const record of pact.records) {
+          Cypress.c8ypact.current.replaceRecord(record);
+        }
+      }
+    }
+
+    save(Cypress.c8ypact.current, options);
+  } catch (error) {
+    console.error("Failed to save pact. ", error);
   }
 }
 

@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 
+import { C8yDefaultPact } from "./c8ydefaultpact";
 import {
-  C8yDefaultPact,
   C8yDefaultPactRecord,
   C8yPact,
   isPact,

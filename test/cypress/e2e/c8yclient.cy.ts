@@ -422,16 +422,7 @@ describe("c8yclient", () => {
         .c8yclient<ICurrentTenant>((client) => client.tenant.current())
         .then((response) => {
           const spy = Cypress.log as sinon.SinonSpy;
-          // last log is the one from fetchStub, get the last c8yclient log
-          const args: any = _.findLast(
-            _.flatten(spy.args),
-            (arg: any) => arg.name === "c8yclient"
-          );
-          expect(args).to.not.be.undefined;
-          expect(args.consoleProps).to.not.be.undefined;
-          expect(_.isFunction(args.consoleProps)).to.be.true;
-
-          const consoleProps = args.consoleProps.call();
+          const consoleProps = getConsolePropsForLogSpy(spy, "c8yclient");
           expect(consoleProps.CookieAuth).to.eq(
             "XSRF-TOKEN fsETfgIBdAnEyOLbADTu22 (testuser)"
           );
