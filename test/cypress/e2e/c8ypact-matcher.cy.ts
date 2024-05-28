@@ -8,7 +8,11 @@ import {
   C8ySchemaMatcher,
 } from "cumulocity-cypress";
 
-import { C8yAjvJson6SchemaMatcher } from "cumulocity-cypress/contrib/ajv";
+import {
+  C8yAjvJson6SchemaMatcher,
+  C8yAjvSchemaMatcher,
+} from "cumulocity-cypress/contrib/ajv";
+import { getConsolePropsForLogSpy } from "cypress/support/testutils";
 
 const { _ } = Cypress;
 
@@ -16,6 +20,8 @@ describe("c8ypactmatcher", () => {
   let obj1: C8yPactRecord, obj2: C8yPactRecord;
 
   beforeEach(() => {
+    Cypress.env("C8Y_PACT_MODE", "apply");
+
     Cypress.c8ypact.config.strictMatching = true;
     cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
       obj1 = C8yDefaultPactRecord.from(pacts[0]);
@@ -220,6 +226,128 @@ describe("c8ypactmatcher", () => {
         { failOnPactValidation: true }
       );
     });
+
+    it("should call matchingError callback", function (done) {
+      const response: Cypress.Response<any> = {
+        status: 201,
+        requestBody: "test",
+      } as any;
+      const pact = C8yDefaultPactRecord.from(response);
+      pact.response.status = 200;
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("My custom error!");
+        done();
+      });
+
+      Cypress.c8ypact.on.matchingError = (matcher, error, options) => {
+        expect(matcher).to.not.be.undefined;
+        expect(matcher).to.eq(Cypress.c8ypact.matcher);
+        expect(error).to.not.be.undefined;
+        expect(options).to.not.be.undefined;
+        throw new Error("My custom error!");
+      };
+
+      cy.c8ymatch(
+        response,
+        pact,
+        { id: "123" },
+        { failOnPactValidation: true }
+      );
+    });
+  });
+
+  context("cy.c8ymatch schema with pact disabled", function () {
+    // @ts-expect-error
+    const obj: Cypress.Response<any> = {
+      body: {
+        xyz: "abasasapksasas",
+      },
+    };
+    const schema = {
+      type: "object",
+      properties: {
+        xyz: {
+          type: "string",
+        },
+      },
+    };
+
+    beforeEach(() => {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
+    it("should match schema", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      expect(Cypress.c8ypact.schemaMatcher).to.not.be.undefined;
+
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+      const spy: sinon.SinonSpy = cy.spy(
+        Cypress.c8ypact.schemaMatcher!,
+        "match"
+      );
+
+      cy.c8ymatch(obj, schema as any, { id: "123" }).then(() => {
+        expect(spy).to.have.been.calledOnce;
+        expect(spy.getCall(0).args).to.have.length(3);
+      });
+
+      cy.wrap(null).then(() => {
+        const props = getConsolePropsForLogSpy(logSpy, "c8ymatch");
+        expect(props).to.not.be.undefined;
+        expect(props).to.have.property("isSchemaMatching", true);
+        expect(props).to.have.property("response", obj);
+        expect(props).to.have.property("schema", schema);
+      });
+    });
+
+    it("should use schema matcher from options", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      const schemaMatcher = new C8yAjvJson6SchemaMatcher();
+      const spy = cy.spy(schemaMatcher, "match").log(false);
+      cy.c8ymatch(obj, schema as any, { id: "123" }, { schemaMatcher }).then(
+        () => {
+          expect(spy).to.have.been.calledOnce;
+        }
+      );
+    });
+
+    it("should use fallback schema matcher if none is provided", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+      cy.stub(Cypress.c8ypact, "schemaMatcher").value(undefined);
+      expect(Cypress.c8ypact.schemaMatcher).to.be.undefined;
+      // should not throw error even if option.schemaMatcher and Cypress.c8ypact.schemaMatcher is undefined
+      cy.c8ymatch(obj, schema as any, { id: "123" }, { strictMatching: false });
+      cy.then(() => {
+        const props = getConsolePropsForLogSpy(logSpy, "c8ymatch");
+        expect(props).to.not.be.undefined;
+        expect(props).to.have.property("isSchemaMatching", true);
+        expect(props.matcher.constructor.name).to.eq(
+          C8yAjvSchemaMatcher.prototype.constructor.name
+        );
+        expect(props.options).to.have.property("strictMatching", false);
+      });
+    });
+
+    it("should fail with error if no schema is provided", function (done) {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      const schemaMatcher = new C8yAjvJson6SchemaMatcher();
+      const spy = cy.spy(schemaMatcher, "match").log(false);
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain(
+          "Matching requires object or schema to match"
+        );
+        done();
+      });
+
+      cy.c8ymatch(obj, undefined as any, { id: "123" }, { schemaMatcher }).then(
+        () => {
+          expect(spy).to.not.have.been.called;
+        }
+      );
+    });
   });
 
   context("C8yDefaultPactMatcher", function () {
@@ -312,6 +440,27 @@ describe("c8ypactmatcher", () => {
       expect(matcher.match(obj, pact)).to.be.true;
     });
 
+    it("should fail if managed objects do not match", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const obj: any = _.cloneDeep(obj1);
+      obj.response.body.managedObjects[1].custom = {
+        oeetarget: 80,
+        hierarchy: [
+          {
+            profileID: "",
+            ID: "66115945716",
+          },
+        ],
+      };
+      const pact = _.cloneDeep(obj);
+      pact.response.body.managedObjects[1].custom.hierarchy[0].profileID =
+        "mygtesadas";
+      expect(_.isEqual(obj, pact)).to.be.false;
+      expect(() => matcher.match(obj, pact)).to.throw(
+        'Pact validation failed! Values for "response > body > managedObjects > 1 > custom > hierarchy > 0 > profileID" do not match.'
+      );
+    });
+
     it("should match managed objects with different ids", function () {
       const matcher = new C8yDefaultPactMatcher();
       const pact = { response: { body: { id: "212123" } } };
@@ -343,10 +492,17 @@ describe("c8ypactmatcher", () => {
       const matcher = new C8yDefaultPactMatcher();
       const pact = _.cloneDeep(obj1);
       const obj = _.cloneDeep(obj1);
-      const expectedError = `Pact validation failed! Values for "response > body > managedObjects" do not match.`;
+      const expectedError = `Pact validation failed! Values for "response > body > managedObjects > 0 > description`;
 
       obj.response.body.managedObjects[0].description = "Some random text...";
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);
+    });
+
+    it("should not match different managedObjects array lengths", function () {
+      const matcher = new C8yDefaultPactMatcher();
+      const pact = _.cloneDeep(obj1);
+      const obj = _.cloneDeep(obj1);
+      const expectedError = `Pact validation failed! Array with key "response > body > managedObjects" has different lengths.`;
 
       obj.response.body.managedObjects.pop();
       expect(() => matcher.match(obj, pact)).to.throw(expectedError);

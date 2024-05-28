@@ -21,10 +21,7 @@ declare global {
  * @param {string} baseUrl base URL. if undefined config baseUrl will be used
  * @returns absolute url for the given path
  */
-export function url(
-  path: string,
-  baseUrl: string = getBaseUrlFromEnv()
-): string {
+export function url(path: string, baseUrl = getBaseUrlFromEnv()): string {
   if (baseUrl && !baseUrl.toLowerCase().startsWith("http")) {
     baseUrl = `https://${baseUrl}`;
   }
@@ -326,4 +323,48 @@ function expectCallsWithArgs(
   });
 
   return expected;
+}
+
+/**
+ * Gets the console props passed as arguments to given Cypress.log spy.
+ * @param spy The spy created using cy.spy(Cypress, "log")
+ * @param name The name of the custom command to get console props for
+ * @returns console props object passed to the spy
+ */
+export function getConsolePropsForLogSpy(
+  spy: sinon.SinonSpy,
+  name: string
+): any {
+  const arg = _.findLast(_.flatten(spy.args), (arg: any) => arg.name === name);
+  if (!arg) return undefined;
+  if (!_.isFunction(arg.consoleProps)) return undefined;
+  return arg.consoleProps();
+}
+
+export function getMessageForLogSpy(spy: sinon.SinonSpy, name: string): any {
+  const arg = _.findLast(_.flatten(spy.args), (arg: any) => arg.name === name);
+  if (!arg) return undefined;
+  return arg.message;
+}
+
+/**
+ * Stub Cypress.env() with the given env object. Use when testing different values of
+ * env variables in your tests.
+ * @param env The env object to stub
+ */
+export function stubEnv(env: any, log: boolean = false): void {
+  const cypressEnv = Cypress.env();
+  cy.stub(Cypress, "env")
+    .log(log)
+    .callsFake((key: string) => {
+      if (key != null) return key in env ? env[key] : cypressEnv[key];
+      return { ...cypressEnv, ...env };
+    });
+}
+
+export function stubCypressPactConfig(config: any, log: boolean = false): void {
+  const c = Cypress.c8ypact.config;
+  cy.stub(Cypress.c8ypact, "config")
+    .log(log)
+    .value({ ...c, ...config });
 }

@@ -294,7 +294,7 @@ export class C8yPactHttpController {
           (_.isEmpty(clear) || clear.toLowerCase() === "true") &&
           this.currentPact
         ) {
-          this.currentPact.reset();
+          this.currentPact.clearRecords();
           await this.savePact(this.currentPact);
         }
       }

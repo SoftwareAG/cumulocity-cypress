@@ -10,7 +10,7 @@ import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 /**
  * Default implementation of C8ySchemaMatcher using AJV. By default
  * json-schema-draft-07 meta schema is used. Other meta schema can be added
- * by passing in constructor. If Cypress.c8ypact.strictMatching is disabled,
+ * by passing in constructor. If options.strictMatching is disabled for match,
  * additionalProperties will be set to true allowing additional properties
  * in the object to match the schema.
  */

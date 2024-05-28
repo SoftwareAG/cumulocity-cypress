@@ -38,7 +38,11 @@ Cypress.Commands.add(
       consoleProps: () => consoleProps,
     });
 
-    const baseUrl = getBaseUrlFromEnv();
+    let baseUrl = getBaseUrlFromEnv();
+    if (!baseUrl && !Cypress.c8ypact.isRecordingEnabled()) {
+      baseUrl = Cypress.c8ypact.current?.info.baseUrl;
+    }
+
     const auth = subject || getAuthOptionsFromEnv();
     consoleProps.baseUrl = baseUrl;
     consoleProps.auth = auth || null;
@@ -53,17 +57,12 @@ Cypress.Commands.add(
       throw error;
     }
 
-    if (!auth || !auth.user || !auth.password) {
-      logger.end();
-      const error = new Error(
-        "Missing authentication. cy.mount requires C8yAuthOptions with user and password."
+    const registerFetchClient = (auth?: C8yAuthOptions) => {
+      const fetchClient = Cypress.c8ypact.createFetchClient(
+        auth,
+        // might use window.location if baseUrl is relative (does not start with http)
+        baseUrl || ""
       );
-      error.name = "C8yPactError";
-      throw error;
-    }
-
-    const registerFetchClient = (auth: C8yAuthOptions) => {
-      const fetchClient = Cypress.c8ypact.createFetchClient(auth, baseUrl);
       if (!fetchClient) {
         return;
       }
@@ -82,11 +81,12 @@ Cypress.Commands.add(
     consoleProps.strictMocking = Cypress.c8ypact.config.strictMocking;
 
     return (
-      Cypress.c8ypact.isRecordingEnabled() ||
-      Cypress.c8ypact.config?.strictMocking === false
+      auth != null &&
+      (Cypress.c8ypact.isRecordingEnabled() ||
+        Cypress.c8ypact.config?.strictMocking === false)
         ? cy.oauthLogin(auth)
-        : cy.wrap<C8yAuthOptions>(auth)
-    ).then((a: C8yAuthOptions) => {
+        : cy.wrap<C8yAuthOptions | undefined>(auth)
+    ).then((a) => {
       registerFetchClient(a);
       logger.end();
 

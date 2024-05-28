@@ -238,24 +238,25 @@ function authWithTenant(options: C8yAuthOptions) {
   return options;
 }
 
-export function getBaseUrlFromEnv() {
+export function getBaseUrlFromEnv(): string | undefined {
   return (
     Cypress.env(`C8Y_BASEURL`) ||
     Cypress.env(`baseUrl`) ||
-    (Cypress.testingType != "component" ? Cypress.config().baseUrl : undefined)
+    Cypress.config().baseUrl ||
+    undefined
   );
 }
 
 export function storeClient(client: C8yClient) {
-  cy.state("ccs.client", client);
+  cy.state("c8yclient", client);
 }
 
 export function restoreClient() {
-  return cy.state("ccs.client");
+  return cy.state("c8yclient");
 }
 
 export function resetClient() {
-  cy.state("ccs.client", undefined);
+  cy.state("c8yclient", undefined);
 }
 
 export function throwError(message: string): never {

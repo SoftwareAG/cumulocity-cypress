@@ -17,6 +17,10 @@ import {
   toPactSerializableObject,
   C8yPactEnv,
   C8yPactSaveKeys,
+  C8yPactMode,
+  C8yPactRecordingMode,
+  C8yPactRecordingModeValues,
+  C8yPactModeValues,
   pactId,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
@@ -65,6 +69,14 @@ declare global {
    */
   interface CypressC8yPact {
     /**
+     * The pact mode for the current tests.
+     */
+    mode: () => C8yPactMode;
+    /**
+     * The pact recording mode for the current tests.
+     */
+    recordingMode: () => C8yPactRecordingMode;
+    /**
      * Create a C8yPactID for the current test case.
      */
     getCurrentTestId(): C8yPactID;
@@ -108,9 +120,13 @@ declare global {
      */
     isEnabled: () => boolean;
     /**
-     * Checks if the C8yPact is enabled and in recording mode.
+     * Checks if the C8yPact is enabled and in recording mode. Use C8Y_PACT_MODE="record" to enable recording.
      */
     isRecordingEnabled: () => boolean;
+    /**
+     * Checks if the C8yPact is enabled and in mocking mode. Use C8Y_PACT_MODE="mock" to enable mocking.
+     */
+    isMockingEnabled: () => boolean;
     /**
      * Runtime used to run the pact objects. Default is C8yDefaultPactRunner.
      */
@@ -149,9 +165,56 @@ declare global {
      * cy.mount. If undefined is returned, cy.mount will not register a custom FetchClient provider.
      */
     createFetchClient(
-      auth: C8yAuthOptions | IAuthentication,
+      auth: C8yAuthOptions | IAuthentication | undefined,
       baseUrl: string
     ): FetchClient;
+    /**
+     * Callbacks for hooking into the pact object lifecycle.
+     */
+    on: CypressC8yPactCallbackOptions;
+  }
+
+  export interface CypressC8yPactCallbackOptions {
+    /**
+     * Called before a request and its response are saved. By returning `undefined`, the
+     * request is ignored and not saved. Use for custom preprocessing or filtering of records.
+     * @param record The request and response to be saved as `C8yPactRecord`.
+     * @returns C8yPactRecord or undefined if the record should be ignored.
+     */
+    saveRecord?: (record: C8yPactRecord) => C8yPactRecord | undefined;
+    /**
+     * Called before a record is mocked. By returning `undefined`, the pact is ignored and not mocked.
+     * @param record The record to use for creating a mock response.
+     * @returns C8yPactRecord or undefined if the record should be ignored.
+     */
+    mockRecord?: (
+      record: C8yPactRecord | undefined
+    ) => C8yPactRecord | undefined;
+    /**
+     * Called before a pact is saved. By returning `undefined`, the pact is ignored and not saved.
+     * @param pact The pact to be saved.
+     * @returns C8yPact or undefined if the pact should be ignored.
+     */
+    savePact?: (pact: C8yPact) => C8yPact | undefined;
+    /**
+     * Called after a pact has been loaded and initialized as `Cypress.c8ypact.current`.
+     * @param pact The pact that has been loaded.
+     * @returns C8yPact now used as `Cypress.c8ypact.current`.
+     */
+    loadPact?: (pact: C8yPact) => void;
+    /**
+     * Called for matching errors from `cy.c8ymatch` for custom error handling. By providing a custom
+     * error handler, the default error handling is disabled. To fail tests for matching errors, you
+     * must throw an error in the custom error handler.
+     * @param matcher The matcher used to match the request and response.
+     * @param record The pact record used for matching.
+     * @param options The options used for matching.
+     */
+    matchingError?: (
+      matcher: C8yPactMatcher | C8ySchemaMatcher,
+      error: Error,
+      options: any
+    ) => void;
   }
 
   /**
@@ -211,16 +274,21 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
   }
 }
 
-if (_.get(Cypress, "c8ypact.initialized") === undefined) {
-  _.set(Cypress, "c8ypact.initialized", true);
+// initialize the following only once. note, cypresspact.ts could be imported multiple times
+// resulting in multiple initializations of the c8ypact object as well as before and beforeEach hooks.
+if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
+  _.set(Cypress, "__c8ypact.initialized", true);
   const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
 
   Cypress.c8ypact = {
     current: null,
+    mode,
     getCurrentTestId,
     isRecordingEnabled,
+    isMockingEnabled,
     savePact,
     isEnabled,
+    recordingMode,
     matcher: new C8yDefaultPactMatcher(),
     pactRunner: new C8yDefaultPactRunner(),
     schemaGenerator: undefined,
@@ -229,6 +297,7 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
     preprocessor: new C8yCypressEnvPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
     }),
+    on: {},
     config: {
       log: false,
       ignore: globalIgnore === "true" || globalIgnore === true,
@@ -307,35 +376,43 @@ if (_.get(Cypress, "c8ypact.initialized") === undefined) {
       });
     },
   };
+
+  before(() => {
+    if (isEnabled()) {
+      cy.task("c8ypact:load", Cypress.config().fixturesFolder, debugLogger());
+    }
+  });
+
+  beforeEach(() => {
+    Cypress.c8ypact.current = null;
+    validatePactMode();
+
+    if (isEnabled()) {
+      if (isRecordingEnabled() && recordingMode() === "refresh") {
+        cy.task(
+          "c8ypact:remove",
+          Cypress.c8ypact.getCurrentTestId(),
+          debugLogger()
+        );
+      }
+      Cypress.c8ypact.loadCurrent().then((pact) => {
+        Cypress.c8ypact.current = pact;
+        if (pact != null && _.isFunction(Cypress.c8ypact.on.loadPact)) {
+          Cypress.c8ypact.on.loadPact(pact);
+        }
+      });
+    }
+  });
 }
 
 function debugLogger(): Cypress.Loggable {
   return { log: Cypress.c8ypact.debugLog };
 }
 
-before(() => {
-  if (!Cypress.c8ypact.isRecordingEnabled()) {
-    cy.task("c8ypact:load", Cypress.config().fixturesFolder, debugLogger());
-  }
-});
-
-beforeEach(() => {
-  Cypress.c8ypact.current = null;
-  if (Cypress.c8ypact.isRecordingEnabled()) {
-    cy.task(
-      "c8ypact:remove",
-      Cypress.c8ypact.getCurrentTestId(),
-      debugLogger()
-    );
-  } else if (isEnabled()) {
-    Cypress.c8ypact.loadCurrent().then((pact) => {
-      Cypress.c8ypact.current = pact;
-    });
-  }
-});
-
 function isEnabled(): boolean {
   if (Cypress.env("C8Y_PLUGIN_LOADED") == null) return false;
+  if (mode() === "disabled") return false;
+
   if (Cypress.config().c8ypact?.ignore === true) {
     return false;
   } else {
@@ -350,7 +427,58 @@ function isEnabled(): boolean {
 }
 
 function isRecordingEnabled(): boolean {
-  return isEnabled() && Cypress.env("C8Y_PACT_MODE") === "recording";
+  const values = ["record", "recording"];
+  return isEnabled() && values.includes(Cypress.c8ypact.mode());
+}
+
+function isMockingEnabled(): boolean {
+  const values = ["apply", "mock", "mocking"];
+  return isEnabled() && values.includes(Cypress.c8ypact.mode());
+}
+
+/**
+ * Validates the pact mode and throws an error if the mode is not supported.
+ */
+function validatePactMode() {
+  const mode = Cypress.env("C8Y_PACT_MODE") || "disabled";
+  const values = Object.values(C8yPactModeValues) as string[];
+  if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
+    const error = new Error(
+      `Unsupported pact mode: ${mode}. Supported values are: ${values.join(
+        ", "
+      )}`
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+}
+
+function mode(): C8yPactMode {
+  let mode = Cypress.env("C8Y_PACT_MODE") || "disabled";
+  const values = Object.values(C8yPactModeValues) as string[];
+  if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
+    mode = "disabled";
+  }
+  return mode.toLowerCase() as C8yPactMode;
+}
+
+function recordingMode() {
+  const keys: string[] = Object.values(C8yPactRecordingModeValues);
+  const mode: string =
+    Cypress.config().c8ypact?.recordingMode ||
+    Cypress.env("C8Y_PACT_RECORDING_MODE") ||
+    C8yPactRecordingModeValues[0];
+
+  if (!mode || !_.isString(mode) || !keys.includes(mode.toLowerCase())) {
+    const error = new Error(
+      `Unsupported recording mode: ${mode}. Supported values are: ${keys.join(
+        ", "
+      )}`
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+  return mode.toLowerCase() as C8yPactRecordingMode;
 }
 
 function getCurrentTestId(): C8yPactID {
@@ -379,7 +507,7 @@ async function savePact(
         id: Cypress.c8ypact.getCurrentTestId(),
         title: Cypress.currentTest?.titlePath || [],
         tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
-        baseUrl: getBaseUrlFromEnv(),
+        baseUrl: getBaseUrlFromEnv() || "",
         version: Cypress.env("C8Y_VERSION") && {
           system: Cypress.env("C8Y_VERSION"),
         },
@@ -399,10 +527,48 @@ async function savePact(
       });
     }
 
-    if (!pact) return;
-    save(pact, options);
-  } catch {
-    // no-op
+    if (!pact || !_.isArray(pact.records) || _.isEmpty(pact.records)) return;
+    if (_.isFunction(Cypress.c8ypact.on.saveRecord)) {
+      let r = _.first(pact.records);
+      if (r) {
+        r = Cypress.c8ypact.on.saveRecord(r);
+      }
+      if (!r) return;
+    }
+
+    if (Cypress.c8ypact.current == null) {
+      Cypress.c8ypact.current = new C8yDefaultPact(
+        pact.records,
+        pact.info,
+        pact.id
+      );
+    } else {
+      const recordingMode = Cypress.c8ypact.recordingMode();
+      // should contain only one record, but making sure we append all
+      if (
+        recordingMode === "append" ||
+        recordingMode === "new" ||
+        // refresh is the same as append as for refresh we remove the pact in each tests beforeEach
+        recordingMode === "refresh"
+      ) {
+        for (const record of pact.records) {
+          Cypress.c8ypact.current.appendRecord(record, recordingMode === "new");
+        }
+      } else if (recordingMode === "replace") {
+        for (const record of pact.records) {
+          Cypress.c8ypact.current.replaceRecord(record);
+        }
+      }
+    }
+
+    let pactToSave: C8yPact | undefined = Cypress.c8ypact.current;
+    if (_.isFunction(Cypress.c8ypact.on?.savePact)) {
+      pactToSave = Cypress.c8ypact.on.savePact(Cypress.c8ypact.current);
+    }
+    if (pactToSave == null) return;
+    save(Cypress.c8ypact.current, options);
+  } catch (error) {
+    console.error("Failed to save pact. ", error);
   }
 }
 

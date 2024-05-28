@@ -71,7 +71,7 @@ export function configureC8yPlugin(
 
   function savePact(pact: C8yPact): null {
     const { id, info, records } = pact;
-    log(`savePact() - ${pact.id} (${pact.records?.length || 0} records)`);
+    log(`savePact() - ${pact.id} (${records?.length || 0} records)`);
     validateId(id);
 
     const version = getVersion();
@@ -83,18 +83,7 @@ export function configureC8yPlugin(
       info.version.c8ypact = "1";
     }
 
-    if (!pacts[id]) {
-      pacts[id] = pact;
-    } else {
-      if (!pacts[id].records) {
-        pacts[id].records = records;
-      } else if (Array.isArray(records)) {
-        Array.prototype.push.apply(pacts[id].records, records);
-      } else {
-        pacts[id].records.push(records);
-      }
-    }
-
+    pacts[id] = pact;
     adapter?.savePact(pacts[id]);
     return null;
   }

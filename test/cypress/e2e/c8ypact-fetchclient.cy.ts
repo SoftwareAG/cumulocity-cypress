@@ -9,6 +9,7 @@ import {
   url as _url,
   initLoginRequestStub,
   initRequestStub,
+  stubCypressPactConfig,
   stubResponse,
 } from "../support/testutils";
 
@@ -163,20 +164,26 @@ describe("c8ypact fetchclient", () => {
       userAlias: "admin",
     };
 
+    const createFetchClient = () => {
+      return new C8yPactFetchClient({
+        cypresspact: Cypress.c8ypact,
+        auth: new BasicAuth(user),
+      });
+    };
+
+    const log = { log: false };
+
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
       Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", user.userAlias);
     });
 
     it("should record pact objects", () => {
-      const client = new C8yPactFetchClient({
-        cypresspact: Cypress.c8ypact,
-        auth: new BasicAuth(user),
-      });
       cy.wrap(
-        client.fetch("/inventory/managedObjects?fragmentType=abcd", {
-          log: false,
-        })
+        createFetchClient().fetch(
+          "/inventory/managedObjects?fragmentType=abcd",
+          log
+        )
       ).then(() => {
         Cypress.c8ypact.loadCurrent().then((pact) => {
           expect(pact?.info).to.have.property(
@@ -206,6 +213,88 @@ describe("c8ypact fetchclient", () => {
       });
     });
 
+    it("should record pact object and call savePact callback", () => {
+      Cypress.c8ypact.on.savePact = (pact) => {
+        pact.records[0].response.status = 299;
+        return pact;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "savePact");
+      cy.wrap(
+        createFetchClient().fetch(
+          "/inventory/managedObjects?fragmentType=abcd",
+          log
+        )
+      ).then(() => {
+        Cypress.c8ypact.on = {};
+
+        expect(callbackSpy).to.be.calledOnce;
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact?.records[0].response).to.have.property("status", 299);
+        });
+      });
+    });
+
+    it("should record pact object and call saveRecord callback", () => {
+      Cypress.c8ypact.on.saveRecord = (record) => {
+        record.response.status = 299;
+        return record;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "saveRecord");
+      cy.wrap(
+        createFetchClient().fetch(
+          "/inventory/managedObjects?fragmentType=abcd",
+          log
+        )
+      ).then(() => {
+        Cypress.c8ypact.on = {};
+
+        expect(callbackSpy).to.be.calledOnce;
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact?.records[0].response).to.have.property("status", 299);
+        });
+      });
+    });
+
+    it("should not record pact object if savePact callback returns undefined", () => {
+      Cypress.c8ypact.on.savePact = (pact) => {
+        return undefined;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "savePact");
+      cy.wrap(
+        createFetchClient().fetch(
+          "/inventory/managedObjects?fragmentType=abcd",
+          log
+        )
+      ).then(() => {
+        Cypress.c8ypact.on = {};
+
+        expect(callbackSpy).to.be.calledOnce;
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact).to.be.null;
+        });
+      });
+    });
+
+    it("should not record pact object if saveRecordcallback returns undefined", () => {
+      Cypress.c8ypact.on.saveRecord = (pact) => {
+        return undefined;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "saveRecord");
+      cy.wrap(
+        createFetchClient().fetch(
+          "/inventory/managedObjects?fragmentType=abcd",
+          log
+        )
+      ).then(() => {
+        Cypress.c8ypact.on = {};
+
+        expect(callbackSpy).to.be.calledOnce;
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact).to.be.null;
+        });
+      });
+    });
+
     it("should record only required auth properties", () => {
       const auth = new BasicAuth(user);
       // @ts-expect-error - additional property should not be stored in auth
@@ -215,9 +304,7 @@ describe("c8ypact fetchclient", () => {
         auth,
       });
       cy.wrap(
-        client.fetch("/inventory/managedObjects?fragmentType=abcd", {
-          log: false,
-        })
+        client.fetch("/inventory/managedObjects?fragmentType=abcd", log)
       ).then(() => {
         Cypress.c8ypact.loadCurrent().then((pact) => {
           const r = pact?.records[0];
@@ -278,36 +365,54 @@ describe("c8ypact fetchclient", () => {
       userAlias: "admin",
     };
 
+    const createFetchClient = () => {
+      return new C8yPactFetchClient({
+        cypresspact: Cypress.c8ypact,
+        auth: new BasicAuth(user),
+      });
+    };
+
+    const response: Cypress.Response<any> = {
+      status: 201,
+      statusText: "OK",
+      headers: { "content-type": "application/json1" },
+      body: { name: "t123456789" },
+      duration: 100,
+      requestHeaders: { "content-type": "application/json2" },
+      requestBody: { id: "abc123124" },
+      allRequestResponses: [],
+      isOkStatusCode: false,
+      method: "POST",
+      url: _url("/inventory/managedObjects?fragmentType=abcd"),
+    };
+
+    const errorResponse: Cypress.Response<any> = {
+      status: 404,
+      statusText: "Not Found",
+      headers: { "content-type": "application/json1" },
+      body: "Resource not found",
+      duration: 100,
+      requestHeaders: { "content-type": "application/json2" },
+      allRequestResponses: [],
+      isOkStatusCode: false,
+      method: "GET",
+      url: _url("/inventory/notfound"),
+    };
+
     beforeEach(() => {
-      Cypress.env("C8Y_PACT_MODE", undefined);
+      Cypress.env("C8Y_PACT_MODE", "apply");
+      expect(Cypress.c8ypact.isMockingEnabled()).to.be.true;
       Cypress.env("C8Y_LOGGED_IN_USER_ALIAS", user.userAlias);
-    });
-
-    it("should return recorded response", () => {
-      const response: Cypress.Response<any> = {
-        status: 201,
-        statusText: "OK",
-        headers: { "content-type": "application/json1" },
-        body: { name: "t123456789" },
-        duration: 100,
-        requestHeaders: { "content-type": "application/json2" },
-        requestBody: { id: "abc123124" },
-        allRequestResponses: [],
-        isOkStatusCode: false,
-        method: "POST",
-        url: _url("/inventory/managedObjects?fragmentType=abcd"),
-      };
-
       Cypress.c8ypact.current = C8yDefaultPact.from(response, {
         id: "123",
         baseUrl: Cypress.config("baseUrl") || "",
       });
+    });
 
-      const client = new C8yPactFetchClient({
-        cypresspact: Cypress.c8ypact,
-        auth: new BasicAuth(user),
-      });
-      cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
+    it("should return recorded response", () => {
+      cy.wrap(
+        createFetchClient().fetch("/inventory/managedObjects?fragmentType=abcd")
+      ).then(
         // @ts-expect-error
         async (response: IFetchResponse) => {
           expect(response.status).to.eq(201);
@@ -320,29 +425,12 @@ describe("c8ypact fetchclient", () => {
     });
 
     it("should return failed response", () => {
-      const response: Cypress.Response<any> = {
-        status: 404,
-        statusText: "Not Found",
-        headers: { "content-type": "application/json1" },
-        body: "Resource not found",
-        duration: 100,
-        requestHeaders: { "content-type": "application/json2" },
-        allRequestResponses: [],
-        isOkStatusCode: false,
-        method: "GET",
-        url: _url("/inventory/notfound"),
-      };
-
-      Cypress.c8ypact.current = C8yDefaultPact.from(response, {
+      Cypress.c8ypact.current = C8yDefaultPact.from(errorResponse, {
         id: "123",
         baseUrl: Cypress.config("baseUrl") || "",
       });
 
-      const client = new C8yPactFetchClient({
-        cypresspact: Cypress.c8ypact,
-        auth: new BasicAuth(user),
-      });
-      cy.wrap(client.fetch("/inventory/notfound")).then(
+      cy.wrap(createFetchClient().fetch("/inventory/notfound")).then(
         // @ts-expect-error
         async (response: IFetchResponse) => {
           expect(response.status).to.eq(404);
@@ -355,44 +443,34 @@ describe("c8ypact fetchclient", () => {
       );
     });
 
-    it("should throw error if there is no recorded response is found for request", (done) => {
+    it("should throw error if no recorded response is found for request", (done) => {
       Cypress.once("fail", (err) => {
         expect(err.name).to.eq("C8yPactError");
         expect(err.message).to.contain("Mocking failed in C8yPactFetchClient.");
         done();
       });
 
-      const client = new C8yPactFetchClient({
-        cypresspact: Cypress.c8ypact,
-        auth: new BasicAuth(user),
-      });
-      cy.wrap(client.fetch("/inventory/notfound"));
+      stubCypressPactConfig({ strictMocking: true });
+      expect(Cypress.c8ypact.config.strictMocking).to.be.true;
+      cy.wrap(createFetchClient().fetch("/inventory/notfound"));
+    });
+
+    it("should not throw error if strictMocking is disabled", () => {
+      stubCypressPactConfig({ strictMocking: false }, true);
+      expect(Cypress.c8ypact.config.strictMocking).to.be.false;
+      Cypress.c8ypact.current = null;
+      cy.wrap(
+        createFetchClient().fetch("/inventory/managedObjects?fragmentType=abcd")
+      ).then(
+        // @ts-expect-error
+        async (response: IFetchResponse) => {
+          expect(response.status).to.eq(200);
+        }
+      );
     });
 
     it("should return recorded response with different baseUrl", () => {
-      const response: Cypress.Response<any> = {
-        status: 201,
-        statusText: "OK",
-        headers: { "content-type": "application/json1" },
-        body: { name: "t123456789" },
-        duration: 100,
-        requestHeaders: { "content-type": "application/json2" },
-        requestBody: { id: "abc123124" },
-        allRequestResponses: [],
-        isOkStatusCode: false,
-        method: "POST",
-        url: "https://mytest.com/inventory/managedObjects?fragmentType=abcd",
-      };
-
-      Cypress.c8ypact.current = C8yDefaultPact.from(response, {
-        id: "123",
-        baseUrl: "https://mytest.com",
-      });
-
-      const client = new C8yPactFetchClient({
-        cypresspact: Cypress.c8ypact,
-        auth: new BasicAuth(user),
-      });
+      const client = createFetchClient();
       cy.wrap(client.fetch("/inventory/managedObjects?fragmentType=abcd")).then(
         // @ts-expect-error
         async (response: IFetchResponse) => {
@@ -402,6 +480,58 @@ describe("c8ypact fetchclient", () => {
           expect(response.headers.get("content-type")).to.eq(
             "application/json1"
           );
+        }
+      );
+    });
+
+    it("should call mockRecord callback", () => {
+      Cypress.c8ypact.on.mockRecord = (record) => {
+        expect(record).to.not.be.null;
+        if (record) {
+          record.response.status = 208;
+        }
+        return record;
+      };
+
+      const mockSpy = cy.spy(Cypress.c8ypact.on, "mockRecord");
+
+      cy.wrap(
+        createFetchClient().fetch("/inventory/managedObjects?fragmentType=abcd")
+      ).then(
+        // @ts-expect-error
+        async (response: IFetchResponse) => {
+          expect(mockSpy).to.be.calledOnce;
+          expect(response.status).to.eq(208);
+        }
+      );
+    });
+
+    it("should not mock if mockRecord callback returns undefined", () => {
+      Cypress.c8ypact.on.mockRecord = (record) => {
+        return undefined;
+      };
+
+      const mockSpy = cy.spy(Cypress.c8ypact.on, "mockRecord");
+      cy.wrap(
+        createFetchClient().fetch("/inventory/managedObjects?fragmentType=abcd")
+      ).then(
+        // @ts-expect-error
+        (response: IFetchResponse) => {
+          expect(mockSpy).to.be.calledOnce;
+          expect(response.status).to.eq(200);
+        }
+      );
+    });
+
+    it("should mock if mockRecord callback is undefined", () => {
+      Cypress.c8ypact.on.mockRecord = undefined;
+
+      cy.wrap(
+        createFetchClient().fetch("/inventory/managedObjects?fragmentType=abcd")
+      ).then(
+        // @ts-expect-error
+        (response: IFetchResponse) => {
+          expect(response.status).to.eq(201);
         }
       );
     });

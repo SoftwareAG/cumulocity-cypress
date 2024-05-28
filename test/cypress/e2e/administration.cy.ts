@@ -88,10 +88,9 @@ describe("administration", () => {
       const spy = cy.spy(Cypress, "log").log(false);
 
       Cypress.once("fail", (err) => {
-        expect(err.message).to.contain("Missing argument. Requiring IUser");
-        // expect(Cypress.log).to.be.calledWithMatch(
-        //   sinon.match({ message: `{user: test}` })
-        // );
+        expect(err.message).to.contain(
+          "Missing argument. deleteUser() requires IUser object"
+        );
         done();
       });
 

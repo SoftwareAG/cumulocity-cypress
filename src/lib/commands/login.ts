@@ -73,14 +73,24 @@ export const defaultLoginOptions = () => {
 
 Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
   const auth = getAuthOptions(...args);
-  expect(auth).to.not.be.undefined;
-
-  const consoleProps: any = {};
-  Cypress.log({
+  const consoleProps: any = {
+    auth: auth || null,
+    arguments: args || null,
+  };
+  const logger = Cypress.log({
+    autoEnd: false,
     name: "login",
     message: auth,
     consoleProps: () => consoleProps,
   });
+  if (!auth) {
+    logger.end();
+    throw new Error(
+      "Missing authentication. cy.login() requires authentication. Pass auth using cy.getAuth().login() " +
+        "or cy.useAuth() and make sure a valid auth object was created from environment or arguments."
+    );
+  }
+
   (Cypress.isCy(auth) ? auth : cy.wrap(auth, { log: false })).then(
     (auth: C8yAuthOptions) => {
       let options: C8yLoginOptions = {};
@@ -151,5 +161,10 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
       resetClient();
     }
   );
+
+  cy.then(() => {
+    logger.end();
+  });
+
   cy.wrap(auth, { log: false });
 });

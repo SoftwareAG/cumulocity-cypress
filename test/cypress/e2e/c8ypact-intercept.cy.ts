@@ -1,5 +1,5 @@
 import { C8yDefaultPact } from "cumulocity-cypress";
-import { url } from "../support/testutils";
+import { stubCypressPactConfig, url } from "../support/testutils";
 
 import { C8yQicktypeSchemaGenerator } from "cumulocity-cypress/contrib/quicktype";
 
@@ -85,6 +85,11 @@ describe("c8ypact intercept", () => {
     beforeEach(() => {
       Cypress.env("C8Y_PACT_MODE", "recording");
       cy.spy(Cypress.c8ypact, "savePact").log(false);
+    });
+
+    it("should have required recording setup", () => {
+      expect(Cypress.c8ypact.isEnabled()).to.be.true;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
     });
 
     it("should intercept static string response", () => {
@@ -368,11 +373,108 @@ describe("c8ypact intercept", () => {
           });
         });
     });
+
+    it("should intercept and call savePact callback", () => {
+      Cypress.c8ypact.on.savePact = (pact) => {
+        pact.records[0].response.status = 299;
+        return pact;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "savePact");
+
+      cy.intercept("/inventory/managedObjects*", testBody)
+        .as("inventory")
+        .then(fetchInventory)
+        .wait("@inventory")
+        .then(() => {
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+          expect(callbackSpy).to.have.been.calledOnce;
+        })
+        .then(() => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.response.status).to.eq(299);
+          });
+        });
+    });
+
+    it("should intercept and call saveRecord callback", () => {
+      Cypress.c8ypact.on.saveRecord = (record) => {
+        record.response.status = 299;
+        return record;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "saveRecord");
+
+      cy.intercept("/inventory/managedObjects*", testBody)
+        .as("inventory")
+        .then(fetchInventory)
+        .wait("@inventory")
+        .then(() => {
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+          expect(callbackSpy).to.have.been.calledOnce;
+        })
+        .then(() => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
+            expect(pact?.records).to.have.length(1);
+            const r = pact?.records[0];
+            expect(r?.response.status).to.eq(299);
+          });
+        });
+    });
+
+    it("should intercept but not record pact object when savePact callback returns undefined", () => {
+      Cypress.c8ypact.on.savePact = (record) => {
+        return undefined;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "savePact");
+
+      cy.intercept("/inventory/managedObjects*", testBody)
+        .as("inventory")
+        .then(fetchInventory)
+        .wait("@inventory")
+        .then(() => {
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+          expect(callbackSpy).to.have.been.calledOnce;
+        })
+        .then(() => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
+            expect(pact).to.be.null;
+          });
+        });
+    });
+
+    it("should intercept but not record pact object when saveRecord callback returns undefined", () => {
+      Cypress.c8ypact.on.saveRecord = (record) => {
+        return undefined;
+      };
+      const callbackSpy = cy.spy(Cypress.c8ypact.on, "saveRecord");
+
+      cy.intercept("/inventory/managedObjects*", testBody)
+        .as("inventory")
+        .then(fetchInventory)
+        .wait("@inventory")
+        .then(() => {
+          const spy = Cypress.c8ypact.savePact as sinon.SinonSpy;
+          expect(spy).to.have.been.calledOnce;
+          expect(callbackSpy).to.have.been.calledOnce;
+        })
+        .then(() => {
+          Cypress.c8ypact.loadCurrent().then((pact) => {
+            expect(pact).to.be.null;
+          });
+        });
+    });
   });
 
-  context("recording disabled", () => {
+  context("recording and mocking disabled", () => {
     beforeEach(() => {
-      Cypress.env("C8Y_PACT_MODE", undefined);
+      Cypress.env("C8Y_PACT_MODE", "disabled");
+      expect(Cypress.c8ypact.mode()).to.eq("disabled");
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      expect(Cypress.c8ypact.isMockingEnabled()).to.be.false;
       cy.spy(Cypress.c8ypact, "savePact").log(false);
     });
 
@@ -492,7 +594,7 @@ describe("c8ypact intercept", () => {
   context("mock interceptions", () => {
     beforeEach(() => {
       cy.spy(Cypress.c8ypact, "savePact").log(false);
-      Cypress.env("C8Y_PACT_MODE", undefined);
+      Cypress.env("C8Y_PACT_MODE", "apply");
     });
 
     const response: Cypress.Response<any> = {
@@ -510,6 +612,12 @@ describe("c8ypact intercept", () => {
         Cypress.config().baseUrl +
         "/inventory/managedObjects?fragmentType=abcd",
     };
+
+    it("should have required mock setup", () => {
+      expect(Cypress.c8ypact.isEnabled()).to.be.true;
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.false;
+      expect(Cypress.c8ypact.isMockingEnabled()).to.be.true;
+    });
 
     it("should ignore pact for static RouteHandlers", () => {
       // @ts-expect-error
@@ -611,6 +719,69 @@ describe("c8ypact intercept", () => {
           expect(data).to.deep.eq(response.body);
         })
         .wait("@inventory")
+        .then(expectSavePactNotCalled);
+    });
+
+    it("should call mockRecord callback for empty route handler", () => {
+      Cypress.c8ypact.on.mockRecord = (record) => {
+        expect(record).to.not.be.null;
+        record!.response.status = 299;
+        return record;
+      };
+      const mockSpy = cy.spy(Cypress.c8ypact.on, "mockRecord");
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {} as any);
+      cy.intercept("/inventory/managedObjects*")
+        .as("inventory")
+        .then(postInventory)
+        .wait("@inventory")
+        .then((intercept) => {
+          expect(mockSpy).to.have.been.calledOnce;
+          expect(intercept.response!.statusCode).to.equal(299);
+        })
+        .then(expectSavePactNotCalled);
+    });
+
+    it("should call mockRecord callback RouteHandler continue function", () => {
+      Cypress.c8ypact.on.mockRecord = (record) => {
+        expect(record).to.not.be.null;
+        record!.response.status = 299;
+        return record;
+      };
+      const mockSpy = cy.spy(Cypress.c8ypact.on, "mockRecord");
+      Cypress.c8ypact.current = C8yDefaultPact.from(response, {} as any);
+      cy.intercept("/inventory/managedObjects*", (req) => {
+        req.continue((res) => {
+          res.body.test = "test2";
+          res.send();
+        });
+      })
+        .as("inventory")
+        .then(postInventory)
+        .wait("@inventory")
+        .then((intercept) => {
+          expectSavePactNotCalled();
+          expect(mockSpy).to.have.been.calledOnce;
+          expect(intercept.response!.statusCode).to.equal(299);
+        });
+    });
+
+    it("should not mock if mockRecord callback returns undefined", () => {
+      Cypress.c8ypact.on.mockRecord = () => undefined;
+      const mockSpy = cy.spy(Cypress.c8ypact.on, "mockRecord");
+      stubCypressPactConfig({ strictMocking: false });
+      Cypress.c8ypact.current = C8yDefaultPact.from(
+        { ...response, ...{ method: "GET" } },
+        {} as any
+      );
+
+      cy.intercept("/inventory/managedObjects*")
+        .as("inventory")
+        .then(fetchInventory)
+        .wait("@inventory")
+        .then((intercept) => {
+          expect(mockSpy).to.have.been.calledOnce;
+          expect(intercept.response!.statusCode).to.equal(200);
+        })
         .then(expectSavePactNotCalled);
     });
   });
