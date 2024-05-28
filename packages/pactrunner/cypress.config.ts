@@ -12,7 +12,7 @@ module.exports = defineConfig({
         config.env.pactFolder ||
         config.fixturesFolder;
 
-      const adapter = new C8yPactDefaultFileAdapter(`${fixture}/c8ypact`);
+      const adapter = new C8yPactDefaultFileAdapter(`${fixture}`);
       config.env._pacts = adapter.readJsonFiles();
 
       const baseUrl = config.env.baseUrl || null;

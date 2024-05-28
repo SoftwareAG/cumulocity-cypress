@@ -101,11 +101,14 @@ export class C8yDefaultPactRunner implements C8yPactRunner {
       const titles = pact.info.title;
 
       let currentNode = tree;
+      const protectedKeys = ["__proto__", "constructor", "prototype"];
       titles?.forEach((title, index) => {
-        if (!currentNode[title]) {
-          currentNode[title] = index === titles.length - 1 ? pact : {};
+        if (!protectedKeys.includes(title)) {
+          if (!currentNode[title]) {
+            currentNode[title] = index === titles.length - 1 ? pact : {};
+          }
+          currentNode = currentNode[title] as TestHierarchyTree<C8yPact>;
         }
-        currentNode = currentNode[title] as TestHierarchyTree<C8yPact>;
       });
     });
     return tree;
