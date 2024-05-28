@@ -87,7 +87,7 @@ export class C8yPactFetchClient extends FetchClient {
         });
         if (record) {
           if (_.isFunction(this.cypresspact?.on.mockRecord)) {
-            record = this.cypresspact.on.mockRecord(record) || null;
+            record = this.cypresspact?.on.mockRecord(record) || null;
           }
           if (record) {
             const response = toWindowFetchResponse(record);
