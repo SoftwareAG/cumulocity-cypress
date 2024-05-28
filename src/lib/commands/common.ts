@@ -23,9 +23,12 @@ declare global {
 
 if (!Cypress.c8ypact) {
   Cypress.c8ypact = {
+    mode: () => "disabled",
+    recordingMode: () => "refresh",
     current: null,
     getCurrentTestId: () => "-",
     isRecordingEnabled: () => false,
+    isMockingEnabled: () => false,
     savePact: () => new Promise((resolve) => resolve()),
     isEnabled: () => false,
     matcher: undefined,
@@ -39,6 +42,7 @@ if (!Cypress.c8ypact) {
     getConfigValues: () => ({}),
     loadCurrent: () => cy.wrap<C8yPact | null>(null, { log: false }),
     env: () => ({}),
+    on: {},
     createFetchClient: (auth: C8yAuthOptions, baseUrl: string) =>
       new FetchClient(getC8yClientAuthentication(auth), baseUrl),
   };

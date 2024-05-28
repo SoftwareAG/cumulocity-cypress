@@ -1,3 +1,4 @@
+import { C8yPactRecord } from "cumulocity-cypress";
 import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,
@@ -66,7 +67,7 @@ Cypress.Commands.overwrite("intercept", (originalFn, ...args) => {
     }
     updatedArgs.push(response);
   } else {
-    response = wrapEmptyRoutHandler();
+    response = wrapEmptyRouteHandler();
     updatedArgs.push(response);
   }
 
@@ -80,9 +81,9 @@ Cypress.on("log:intercept", (options) => {
   if (!Cypress.c8ypact.isRecordingEnabled()) return;
   const { req, res, modified } = options;
 
-  const cypressResponse = toCypressResponse(req, res);
+  const cypressResponse = responseFrom(req, res);
   const modifiedResponse =
-    modified != null ? toCypressResponse(req, modified) : undefined;
+    modified != null ? responseFrom(req, modified) : undefined;
 
   Cypress.c8ypact.savePact(
     cypressResponse,
@@ -91,7 +92,7 @@ Cypress.on("log:intercept", (options) => {
   );
 });
 
-function toCypressResponse(req: any, res: any): Cypress.Response<any> {
+function responseFrom(req: any, res: any): Cypress.Response<any> {
   const isBody = res != null && !("body" in res);
   const statusCode = isBody ? 200 : res?.statusCode;
   const result: Cypress.Response<any> = {
@@ -149,10 +150,28 @@ const wrapFunctionRouteHandler = (fn: any) => {
         });
       }
 
-      if (Cypress.c8ypact.current == null) {
+      if (
+        Cypress.c8ypact.current == null ||
+        !Cypress.c8ypact.isMockingEnabled()
+      ) {
         reqContinue(resFn);
       } else {
-        const response = responseFromPact({}, req);
+        // eslint-disable-next-line prefer-const
+        let [record, response] = responseFromPact({}, req);
+        if (_.isFunction(Cypress.c8ypact.on?.mockRecord)) {
+          record = Cypress.c8ypact.on.mockRecord(record || undefined);
+          if (record) {
+            response = {
+              body: record.response.body,
+              headers: record.response.headers,
+              statusCode: record.response.status,
+            };
+          } else {
+            reqContinue(resFn);
+            return;
+          }
+        }
+
         if (resFn) {
           response.send = () => {};
           resFn(response);
@@ -211,17 +230,43 @@ const wrapStaticResponse = (obj: any) => {
   };
 };
 
-const wrapEmptyRoutHandler = () => {
+const wrapEmptyRouteHandler = () => {
   return function (req: any) {
-    if (Cypress.c8ypact.current == null) {
+    let strictMock = true;
+    if (Cypress.c8ypact.isMockingEnabled() && Cypress.c8ypact.current == null) {
       failForStrictMocking();
+      // if we get here, strictMocking is disabled as failForStrictMocking() did not throw an error
+      strictMock = false;
+    }
+
+    if (!Cypress.c8ypact.isMockingEnabled() || !strictMock) {
       req.continue((res: any) => {
         emitInterceptionEvent(req, _.cloneDeep(res));
         res.send();
       });
     } else {
-      const response = responseFromPact({}, req);
-      req.reply(response);
+      // eslint-disable-next-line prefer-const
+      let [record, response] = responseFromPact({}, req);
+      if (_.isFunction(Cypress.c8ypact.on?.mockRecord)) {
+        record = Cypress.c8ypact.on.mockRecord(record || undefined);
+        if (record) {
+          response = {
+            body: record.response.body,
+            headers: record.response.headers,
+            statusCode: record.response.status,
+          };
+        } else {
+          response = undefined;
+        }
+      }
+      if (!response) {
+        req.continue((res: any) => {
+          res.send();
+        });
+      } else {
+        // GenericStaticResponse
+        req.reply(response);
+      }
     }
   };
 };
@@ -262,7 +307,10 @@ function processReply(req: any, obj: any, replyFn: any, continueFn: any) {
   }
 }
 
-function responseFromPact(obj: any, req: any): any {
+function responseFromPact(
+  obj: any,
+  req: any
+): [C8yPactRecord | undefined | null, any] {
   const p = Cypress.c8ypact?.current;
   const record = p?.nextRecordMatchingRequest(req, getBaseUrlFromEnv());
   if (record) {
@@ -283,11 +331,11 @@ function responseFromPact(obj: any, req: any): any {
   } else {
     failForStrictMocking();
   }
-  return obj;
+  return [record, obj];
 }
 
 function failForStrictMocking() {
-  if (Cypress.c8ypact.isRecordingEnabled()) return;
+  if (!Cypress.c8ypact.isMockingEnabled()) return;
 
   const strictMocking =
     Cypress.c8ypact?.getConfigValue("strictMocking", true) === true;

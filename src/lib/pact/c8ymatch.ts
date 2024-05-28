@@ -44,7 +44,21 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
   let matcher: Matcher = Cypress.c8ypact.matcher;
   if (!matcher && Cypress.c8ypact?.isEnabled() === true) return;
 
+  const consoleProps: any = {
+    response: response || null,
+    matcher: matcher || null,
+    options,
+    info,
+  };
+  const logger = Cypress.log({
+    autoEnd: false,
+    name: "c8ymatch",
+    consoleProps: () => consoleProps,
+    message: matcher?.constructor.name || "-",
+  });
+
   if (!pact || !_.isObjectLike(pact)) {
+    logger.end();
     throwError(
       `Matching requires object or schema to match. Received: ${pact}`
     );
@@ -58,20 +72,13 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
       new C8yAjvSchemaMatcher();
     options.failOnPactValidation = true;
   }
+  consoleProps.isSchemaMatching = isSchemaMatching;
+  consoleProps.matcher = matcher;
 
-  const consoleProps: any = {
-    response: response || null,
-    matcher: matcher || null,
-    options,
-    info,
-    isSchemaMatching,
-  };
-  const logger = Cypress.log({
-    autoEnd: false,
-    name: "c8ymatch",
-    consoleProps: () => consoleProps,
-    message: matcher?.constructor.name || "-",
-  });
+  if (matcher == null) {
+    logger.end();
+    return;
+  }
 
   try {
     let strictMatching: boolean =
@@ -83,7 +90,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
     if (isSchemaMatching) {
       const schema = pact;
       _.extend(consoleProps, { response }, { schema });
-      matcher?.match(response.body, schema, strictMatching);
+      matcher.match(response.body, schema, strictMatching);
     } else {
       const matchingProperties = ["request", "response"];
       const pactToMatch = _.pick(pact, matchingProperties);
@@ -106,7 +113,9 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
       });
     }
   } catch (error: any) {
-    if (options.failOnPactValidation === true) {
+    if (_.isFunction(Cypress.c8ypact.on?.matchingError)) {
+      Cypress.c8ypact.on.matchingError(matcher, error, options);
+    } else if (options.failOnPactValidation === true) {
       if (isCypressError(error) || isPactError(error)) {
         throw error;
       } else {

@@ -20,7 +20,7 @@ describe("c8ypactmatcher", () => {
   let obj1: C8yPactRecord, obj2: C8yPactRecord;
 
   beforeEach(() => {
-    Cypress.env("C8Y_PACT_MODE", "enabled");
+    Cypress.env("C8Y_PACT_MODE", "apply");
 
     Cypress.c8ypact.config.strictMatching = true;
     cy.fixture("c8ypact-managedobject-01.json").then((pacts) => {
@@ -224,6 +224,128 @@ describe("c8ypactmatcher", () => {
         pact,
         { id: "123" },
         { failOnPactValidation: true }
+      );
+    });
+
+    it("should call matchingError callback", function (done) {
+      const response: Cypress.Response<any> = {
+        status: 201,
+        requestBody: "test",
+      } as any;
+      const pact = C8yDefaultPactRecord.from(response);
+      pact.response.status = 200;
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("My custom error!");
+        done();
+      });
+
+      Cypress.c8ypact.on.matchingError = (matcher, error, options) => {
+        expect(matcher).to.not.be.undefined;
+        expect(matcher).to.eq(Cypress.c8ypact.matcher);
+        expect(error).to.not.be.undefined;
+        expect(options).to.not.be.undefined;
+        throw new Error("My custom error!");
+      };
+
+      cy.c8ymatch(
+        response,
+        pact,
+        { id: "123" },
+        { failOnPactValidation: true }
+      );
+    });
+  });
+
+  context("cy.c8ymatch schema with pact disabled", function () {
+    // @ts-expect-error
+    const obj: Cypress.Response<any> = {
+      body: {
+        xyz: "abasasapksasas",
+      },
+    };
+    const schema = {
+      type: "object",
+      properties: {
+        xyz: {
+          type: "string",
+        },
+      },
+    };
+
+    beforeEach(() => {
+      Cypress.env("C8Y_PACT_MODE", undefined);
+    });
+
+    it("should match schema", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      expect(Cypress.c8ypact.schemaMatcher).to.not.be.undefined;
+
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+      const spy: sinon.SinonSpy = cy.spy(
+        Cypress.c8ypact.schemaMatcher!,
+        "match"
+      );
+
+      cy.c8ymatch(obj, schema as any, { id: "123" }).then(() => {
+        expect(spy).to.have.been.calledOnce;
+        expect(spy.getCall(0).args).to.have.length(3);
+      });
+
+      cy.wrap(null).then(() => {
+        const props = getConsolePropsForLogSpy(logSpy, "c8ymatch");
+        expect(props).to.not.be.undefined;
+        expect(props).to.have.property("isSchemaMatching", true);
+        expect(props).to.have.property("response", obj);
+        expect(props).to.have.property("schema", schema);
+      });
+    });
+
+    it("should use schema matcher from options", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      const schemaMatcher = new C8yAjvJson6SchemaMatcher();
+      const spy = cy.spy(schemaMatcher, "match").log(false);
+      cy.c8ymatch(obj, schema as any, { id: "123" }, { schemaMatcher }).then(
+        () => {
+          expect(spy).to.have.been.calledOnce;
+        }
+      );
+    });
+
+    it("should use fallback schema matcher if none is provided", function () {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      const logSpy: sinon.SinonSpy = cy.spy(Cypress, "log").log(false);
+      cy.stub(Cypress.c8ypact, "schemaMatcher").value(undefined);
+      expect(Cypress.c8ypact.schemaMatcher).to.be.undefined;
+      // should not throw error even if option.schemaMatcher and Cypress.c8ypact.schemaMatcher is undefined
+      cy.c8ymatch(obj, schema as any, { id: "123" }, { strictMatching: false });
+      cy.then(() => {
+        const props = getConsolePropsForLogSpy(logSpy, "c8ymatch");
+        expect(props).to.not.be.undefined;
+        expect(props).to.have.property("isSchemaMatching", true);
+        expect(props.matcher.constructor.name).to.eq(
+          C8yAjvSchemaMatcher.prototype.constructor.name
+        );
+        expect(props.options).to.have.property("strictMatching", false);
+      });
+    });
+
+    it("should fail with error if no schema is provided", function (done) {
+      expect(Cypress.c8ypact.isEnabled()).to.be.false;
+      const schemaMatcher = new C8yAjvJson6SchemaMatcher();
+      const spy = cy.spy(schemaMatcher, "match").log(false);
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain(
+          "Matching requires object or schema to match"
+        );
+        done();
+      });
+
+      cy.c8ymatch(obj, undefined as any, { id: "123" }, { schemaMatcher }).then(
+        () => {
+          expect(spy).to.not.have.been.called;
+        }
       );
     });
   });

@@ -5,7 +5,8 @@
     "resolveJsonModule": true,
     "lib": ["dom", "dom.iterable", "ES2020"],
     "types": ["cypress", "node", "semver", "cookie-parser", "debug"],
-    "outDir": "../dist/"
+    "outDir": "../dist/",
+    "allowSyntheticDefaultImports": true
   },
-  "exclude": ["**/*.spec.ts", "**/*.spec.tsx"],
+  "exclude": ["**/*.spec.ts", "**/*.spec.tsx"]
 }

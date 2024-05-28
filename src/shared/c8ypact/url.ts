@@ -18,7 +18,10 @@ export function removeBaseUrlFromString(url: string, baseUrl?: string): string {
   if (!url || !baseUrl) {
     return url;
   }
-  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+  let normalizedBaseUrl = _.clone(baseUrl);
+  while (normalizedBaseUrl.endsWith("/")) {
+    normalizedBaseUrl = normalizedBaseUrl.slice(0, -1);
+  }
   let result = url.replace(normalizedBaseUrl, "");
   if (_.isEmpty(result)) {
     result = "/";
