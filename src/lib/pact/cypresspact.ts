@@ -167,6 +167,53 @@ declare global {
       auth: C8yAuthOptions | IAuthentication | undefined,
       baseUrl: string
     ): FetchClient;
+    /**
+     * Callbacks for hooking into the pact object lifecycle.
+     */
+    on: CypressC8yPactCallbackOptions;
+  }
+
+  export interface CypressC8yPactCallbackOptions {
+    /**
+     * Called before a request and its response are saved. By returning `undefined`, the
+     * request is ignored and not saved. Use for custom preprocessing or filtering of records.
+     * @param record The request and response to be saved as `C8yPactRecord`.
+     * @returns C8yPactRecord or undefined if the record should be ignored.
+     */
+    saveRecord?: (record: C8yPactRecord) => C8yPactRecord | undefined;
+    /**
+     * Called before a record is mocked. By returning `undefined`, the pact is ignored and not mocked.
+     * @param record The record to use for creating a mock response.
+     * @returns C8yPactRecord or undefined if the record should be ignored.
+     */
+    mockRecord?: (
+      record: C8yPactRecord | undefined
+    ) => C8yPactRecord | undefined;
+    /**
+     * Called before a pact is saved. By returning `undefined`, the pact is ignored and not saved.
+     * @param pact The pact to be saved.
+     * @returns C8yPact or undefined if the pact should be ignored.
+     */
+    savePact?: (pact: C8yPact) => C8yPact | undefined;
+    /**
+     * Called after a pact has been loaded and initialized as `Cypress.c8ypact.current`.
+     * @param pact The pact that has been loaded.
+     * @returns C8yPact now used as `Cypress.c8ypact.current`.
+     */
+    loadPact?: (pact: C8yPact) => void;
+    /**
+     * Called for matching errors from `cy.c8ymatch` for custom error handling. By providing a custom
+     * error handler, the default error handling is disabled. To fail tests for matching errors, you
+     * must throw an error in the custom error handler.
+     * @param matcher The matcher used to match the request and response.
+     * @param record The pact record used for matching.
+     * @param options The options used for matching.
+     */
+    matchingError?: (
+      matcher: C8yPactMatcher | C8ySchemaMatcher,
+      error: Error,
+      options: any
+    ) => void;
   }
 
   /**
@@ -249,6 +296,7 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     preprocessor: new C8yCypressEnvPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
     }),
+    on: {},
     config: {
       log: false,
       ignore: globalIgnore === "true" || globalIgnore === true,
@@ -348,6 +396,9 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
       }
       Cypress.c8ypact.loadCurrent().then((pact) => {
         Cypress.c8ypact.current = pact;
+        if (pact != null && _.isFunction(Cypress.c8ypact.on.loadPact)) {
+          Cypress.c8ypact.on.loadPact(pact);
+        }
       });
     }
   });
@@ -475,7 +526,14 @@ async function savePact(
       });
     }
 
-    if (!pact) return;
+    if (!pact || !_.isArray(pact.records) || _.isEmpty(pact.records)) return;
+    if (_.isFunction(Cypress.c8ypact.on.saveRecord)) {
+      let r = _.first(pact.records);
+      if (r) {
+        r = Cypress.c8ypact.on.saveRecord(r);
+      }
+      if (!r) return;
+    }
 
     if (Cypress.c8ypact.current == null) {
       Cypress.c8ypact.current = new C8yDefaultPact(
@@ -502,6 +560,11 @@ async function savePact(
       }
     }
 
+    let pactToSave: C8yPact | undefined = Cypress.c8ypact.current;
+    if (_.isFunction(Cypress.c8ypact.on?.savePact)) {
+      pactToSave = Cypress.c8ypact.on.savePact(Cypress.c8ypact.current);
+    }
+    if (pactToSave == null) return;
     save(Cypress.c8ypact.current, options);
   } catch (error) {
     console.error("Failed to save pact. ", error);

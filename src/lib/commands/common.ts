@@ -42,6 +42,7 @@ if (!Cypress.c8ypact) {
     getConfigValues: () => ({}),
     loadCurrent: () => cy.wrap<C8yPact | null>(null, { log: false }),
     env: () => ({}),
+    on: {},
     createFetchClient: (auth: C8yAuthOptions, baseUrl: string) =>
       new FetchClient(getC8yClientAuthentication(auth), baseUrl),
   };

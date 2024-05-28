@@ -361,3 +361,10 @@ export function stubEnv(env: any, log: boolean = false): void {
       return { ...cypressEnv, ...env };
     });
 }
+
+export function stubCypressPactConfig(config: any, log: boolean = false): void {
+  const c = Cypress.c8ypact.config;
+  cy.stub(Cypress.c8ypact, "config")
+    .log(log)
+    .value({ ...c, ...config });
+}
