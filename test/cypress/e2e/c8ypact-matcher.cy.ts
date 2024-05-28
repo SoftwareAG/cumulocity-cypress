@@ -226,6 +226,35 @@ describe("c8ypactmatcher", () => {
         { failOnPactValidation: true }
       );
     });
+
+    it("should call matchingError callback", function (done) {
+      const response: Cypress.Response<any> = {
+        status: 201,
+        requestBody: "test",
+      } as any;
+      const pact = C8yDefaultPactRecord.from(response);
+      pact.response.status = 200;
+
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain("My custom error!");
+        done();
+      });
+
+      Cypress.c8ypact.on.matchingError = (matcher, error, options) => {
+        expect(matcher).to.not.be.undefined;
+        expect(matcher).to.eq(Cypress.c8ypact.matcher);
+        expect(error).to.not.be.undefined;
+        expect(options).to.not.be.undefined;
+        throw new Error("My custom error!");
+      };
+
+      cy.c8ymatch(
+        response,
+        pact,
+        { id: "123" },
+        { failOnPactValidation: true }
+      );
+    });
   });
 
   context("cy.c8ymatch schema with pact disabled", function () {

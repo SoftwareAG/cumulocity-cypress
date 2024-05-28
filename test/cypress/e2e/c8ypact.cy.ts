@@ -49,6 +49,7 @@ describe("c8ypact", () => {
 
     Cypress.env("C8Y_PACT_MODE", "apply");
     Cypress.env("C8Y_PACT_RECORDING_MODE", undefined);
+    Cypress.c8ypact.on = {};
 
     initRequestStub();
     stubResponses([
@@ -687,6 +688,110 @@ describe("c8ypact", () => {
             expect(pact?.records).to.have.length(2);
             expect(pact?.records[0].response.$body).to.be.undefined;
             expect(pact?.records[1].response.$body).to.be.undefined;
+          });
+        });
+    });
+
+    it("should call savePact callback", function () {
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
+      expect(Cypress.c8ypact.current).to.be.null;
+
+      Cypress.c8ypact.on.savePact = (pact) => {
+        pact.records[0].response.status = 299;
+        return pact;
+      };
+
+      const savePactSpy = cy.spy(Cypress.c8ypact.on, "savePact");
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<IManagedObject>((c) => {
+          return c.inventory.detail(1, { withChildren: false });
+        })
+        .c8yclient<IManagedObject>((c, response) => {
+          expect(response.status).to.eq(201);
+          return c.inventory.detail(2, { withChildren: false });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(202);
+          expect(savePactSpy).to.have.been.calledTwice;
+        });
+
+      cy.then(() => {
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact?.records[0].response.status).to.eq(299);
+          expect(pact?.records[1].response.status).to.eq(202);
+        });
+      });
+    });
+
+    it("should call saveRecord callback", function () {
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
+      expect(Cypress.c8ypact.current).to.be.null;
+
+      Cypress.c8ypact.on.saveRecord = (record) => {
+        record.response.status = 299;
+        return record;
+      };
+
+      const saveRecordSpy = cy.spy(Cypress.c8ypact.on, "saveRecord");
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<IManagedObject>((c) => {
+          return c.inventory.detail(1, { withChildren: false });
+        })
+        .c8yclient<IManagedObject>((c, response) => {
+          expect(response.status).to.eq(201);
+          return c.inventory.detail(2, { withChildren: false });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(202);
+          expect(saveRecordSpy).to.have.been.calledTwice;
+        });
+
+      cy.then(() => {
+        Cypress.c8ypact.loadCurrent().then((pact) => {
+          expect(pact?.records[0].response.status).to.eq(299);
+          expect(pact?.records[1].response.status).to.eq(299);
+        });
+      });
+    });
+
+    it("should not record pact if saveRecord callback returns undefined", function () {
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
+      expect(Cypress.c8ypact.current).to.be.null;
+
+      Cypress.c8ypact.on.saveRecord = () => undefined;
+      const saveRecordSpy = cy.spy(Cypress.c8ypact.on, "saveRecord");
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<IManagedObject>((c) => {
+          return c.inventory.detail(1, { withChildren: false });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(201);
+          expect(saveRecordSpy).to.have.been.calledOnce;
+          Cypress.c8ypact.loadCurrent().then((pact) => {
+            expect(pact).to.be.null;
+          });
+        });
+    });
+
+    it("should not record pact if savePact callback returns undefined", function () {
+      expect(Cypress.c8ypact.isRecordingEnabled()).to.be.true;
+      expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
+      expect(Cypress.c8ypact.current).to.be.null;
+
+      Cypress.c8ypact.on.savePact = () => undefined;
+      const savePactSpy = cy.spy(Cypress.c8ypact.on, "savePact");
+      cy.getAuth({ user: "admin", password: "mypassword" })
+        .c8yclient<IManagedObject>((c) => {
+          return c.inventory.detail(1, { withChildren: false });
+        })
+        .then((response) => {
+          expect(response.status).to.eq(201);
+          expect(savePactSpy).to.have.been.calledOnce;
+          Cypress.c8ypact.loadCurrent().then((pact) => {
+            expect(pact).to.be.null;
           });
         });
     });

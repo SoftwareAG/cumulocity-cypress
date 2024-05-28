@@ -73,25 +73,34 @@ export class C8yPactFetchClient extends FetchClient {
     };
 
     const isRecordingEnabled = this.cypresspact?.isRecordingEnabled() === true;
+    const isMockingEnabled = this.cypresspact?.isMockingEnabled() === true;
     const currentPact = this.cypresspact?.current;
-
-    if (!isRecordingEnabled) {
+    if (!isRecordingEnabled && isMockingEnabled) {
       const fullUrl: string = this.getUrl(url, fetchOptions);
       const relativeUrl = fullUrl.replace(this.baseUrl || "", "");
+      let strictMocking =
+        this.cypresspact?.getConfigValue("strictMocking") === true;
       if (currentPact) {
-        const record = currentPact.nextRecordMatchingRequest({
+        let record = currentPact.nextRecordMatchingRequest({
           url: fullUrl?.replace(this.baseUrl || "", ""),
           method: fetchOptions?.method,
         });
         if (record) {
-          const response = toWindowFetchResponse(record);
-          if (response) {
-            return Promise.resolve(response);
+          if (_.isFunction(this.cypresspact?.on.mockRecord)) {
+            record = this.cypresspact?.on.mockRecord(record) || null;
+          }
+          if (record) {
+            const response = toWindowFetchResponse(record);
+            if (response) {
+              return Promise.resolve(response);
+            }
+          } else {
+            strictMocking = false;
           }
         }
       }
 
-      if (this.cypresspact?.getConfigValue("strictMocking") === true) {
+      if (strictMocking) {
         const error = new Error(
           `Mocking failed in C8yPactFetchClient. No recording found for request "${relativeUrl}". Do re-recording or disable Cypress.c8ypact.strictMocking.`
         );
@@ -167,7 +176,7 @@ export class C8yPactFetchClient extends FetchClient {
       delete response.responseObj;
     }
 
-    await Cypress.c8ypact.savePact(
+    await this.cypresspact?.savePact(
       responseObj,
       {
         _auth: this.authentication,
