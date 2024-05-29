@@ -1,10 +1,11 @@
 import { IUserGroup } from "@c8y/client";
 import {
   expectC8yClientRequest,
-  getMessageForLogSpy,
   initRequestStub,
+  stubEnv,
   stubResponses,
 } from "../support/testutils";
+import { C8yDefaultPact } from "cumulocity-cypress/index";
 const { _, sinon } = Cypress;
 
 declare global {
@@ -19,6 +20,8 @@ describe("administration", () => {
     Cypress.env("C8Y_PASSWORD", undefined);
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_PLUGIN_LOADED", undefined);
+    Cypress.env("C8Y_VERSION", undefined);
+    Cypress.c8ypact.current = null;
 
     initRequestStub();
     stubResponses([
@@ -549,6 +552,48 @@ describe("administration", () => {
           expect(id).to.eq("t324678");
           expect(window.fetchStub.callCount).to.equal(0);
         });
+    });
+
+    it("should use tenant id from pact recording when mocking", function () {
+      stubEnv({ C8Y_PACT_MODE: "mock", C8Y_PLUGIN_LOADED: "true" });
+      Cypress.c8ypact.current = new C8yDefaultPact(
+        [{ request: { url: "/tenant/currentTenant" } } as any],
+        {
+          tenant: "t987654321",
+        } as any,
+        "test"
+      );
+      cy.getTenantId().then((id) => {
+        expect(id).to.equal("t987654321");
+        expect(window.fetchStub.callCount).to.equal(0);
+        expect(Cypress.env("C8Y_TENANT")).to.equal("t987654321");
+      });
+    });
+  });
+
+  context("getSystemVersion", () => {
+    it("should use system version from env variable", function () {
+      Cypress.env("C8Y_VERSION", "10.6.0");
+      cy.getSystemVersion().then((version) => {
+        expect(version).to.equal("10.6.0");
+        expect(window.fetchStub.callCount).to.equal(0);
+      });
+    });
+
+    it("should use system version from pact recording when mocking", function () {
+      stubEnv({ C8Y_PACT_MODE: "mock", C8Y_PLUGIN_LOADED: "true" });
+      Cypress.c8ypact.current = new C8yDefaultPact(
+        [{ request: { url: "/tenant/system/options" } } as any],
+        {
+          version: { system: "10.7.0" },
+        } as any,
+        "test"
+      );
+      cy.getSystemVersion().then((version) => {
+        expect(version).to.equal("10.7.0");
+        expect(window.fetchStub.callCount).to.equal(0);
+        expect(Cypress.env("C8Y_VERSION")).to.equal("10.7.0");
+      });
     });
   });
 });
