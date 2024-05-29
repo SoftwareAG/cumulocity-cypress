@@ -397,6 +397,19 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
       }
       Cypress.c8ypact.loadCurrent().then((pact) => {
         Cypress.c8ypact.current = pact;
+        // set tenant and baseUrl from pact info if not configured
+        // this is needed to not require tenant and baseUrl for fully mocked tests
+        if (!Cypress.env("C8Y_TENANT") && pact?.info?.tenant) {
+          Cypress.env("C8Y_TENANT", pact?.info?.tenant);
+        }
+        if (
+          !Cypress.env("C8Y_BASEURL") &&
+          !Cypress.env("baseUrl") &&
+          pact?.info?.baseUrl
+        ) {
+          Cypress.env("C8Y_BASEURL", pact?.info?.baseUrl);
+        }
+
         if (pact != null && _.isFunction(Cypress.c8ypact.on.loadPact)) {
           Cypress.c8ypact.on.loadPact(pact);
         }

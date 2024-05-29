@@ -244,14 +244,12 @@ const c8yclientFn = (...args: any[]) => {
       $args[$args.length - 1].auth,
       ...($args[0] === undefined ? $args.slice(1) : $args),
     ];
-    if ($args[0]) {
-      if ($args[0].user) {
-        basicAuth = $args[0];
-      } else {
-        cookieAuth = $args[0];
-      }
+    if ($args[0]?.user) {
+      basicAuth = $args[0];
+    } else {
+      cookieAuth = $args[0];
     }
-  } else if (!_.isEmpty($args) && $args[0].user) {
+  } else if (!_.isEmpty($args) && $args[0]?.user) {
     authOptions = $args[0];
     basicAuth = new BasicAuth({
       user: authOptions.user,
