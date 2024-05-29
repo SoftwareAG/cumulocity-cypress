@@ -543,7 +543,10 @@ Cypress.Commands.add(
       consoleProps: () => consoleProps,
     });
 
-    consoleProps.auth = auth;
+    if (Cypress.env("C8Y_VERSION")) {
+      consoleProps.C8Y_VERSION = Cypress.env("C8Y_VERSION");
+      return cy.wrap<string>(Cypress.env("C8Y_VERSION"));
+    }
 
     cy.wrap(auth, { log: false })
       .c8yclient((c) => c.core.fetch("/tenant/system/options"), clientOptions)
