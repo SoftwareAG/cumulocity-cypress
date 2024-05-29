@@ -555,8 +555,9 @@ Cypress.Commands.add(
     });
 
     if (Cypress.env("C8Y_VERSION")) {
-      consoleProps.C8Y_VERSION = Cypress.env("C8Y_VERSION");
-      return cy.wrap<string>(Cypress.env("C8Y_VERSION"));
+      const version: string | undefined = Cypress.env("C8Y_VERSION");
+      consoleProps.C8Y_VERSION = version;
+      return cy.wrap(version);
     }
 
     // isMockingEnabled() also includes apply for matching of pacts with cy.c8ymatch
@@ -565,11 +566,12 @@ Cypress.Commands.add(
       Cypress.c8ypact?.isEnabled() === true &&
       Cypress.c8ypact.mode() === "mock"
     ) {
-      const tenant =
+      const version: string | undefined =
         Cypress.env("C8Y_VERSION") ||
         Cypress.c8ypact.current?.info.version?.system;
-      Cypress.env("C8Y_VERSION", tenant);
-      return cy.wrap<string>(Cypress.env("C8Y_VERSION"));
+
+      Cypress.env("C8Y_VERSION", version);
+      return cy.wrap(version);
     }
 
     cy.wrap(auth, { log: false })
@@ -582,7 +584,7 @@ Cypress.Commands.add(
             (o: any) => o.category === "system" && o.key === "version"
           );
           if (!_.isEmpty(versionOptions)) {
-            const version: string = _.first(versionOptions).value;
+            const version: string | undefined = _.first(versionOptions).value;
             Cypress.env("C8Y_VERSION", version);
             return cy.wrap(version);
           }
