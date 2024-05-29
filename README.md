@@ -9,7 +9,7 @@ Contribute by raising pull requests. All commands must be documented and, if pos
 - [Overview of commands](#overview-of-commands)
 - [Installation and setup](#installation-and-setup)
   - [Peer dependencies](#peer-dependencies)
-- [Load plugin](#load-plugin)
+  - [Load plugin](#load-plugin)
   - [Import commands](#import-commands)
   - [Environment variables](#environment-variables)
 - [Additional frameworks](#additional-frameworks)
@@ -96,7 +96,7 @@ Make sure the following dependencies are installed in your project:
 - `angular-core`
 - `angular-common`
 
-## Load plugin
+### Load plugin
 
 `cumulocity-cypress` comes with a Cypress plugin that needs to be loaded in your `cypress.config.ts` file. Currently, this is only required for recording and mocking of requests and responses, but it is recommended to load the plugin in any case.
 
@@ -120,18 +120,16 @@ module.exports = defineConfig({
 To use the `cumulocity-cypress` commands in your Cypress tests, import the commands in  your projects `e2e.supportFile` (e.g. `cypress/support/e2e.ts`).
 
 ```typescript
-import "cumulocity-cypress/lib/commands/";
+import "cumulocity-cypress/lib/commands";
 ```
 
 This will import the standard commands, including for example login, authentication, date conversion, administration. 
 
-Import optional commands:
+Optional commands for import (only import if really needed):
 
 ```typescript
 // Import extension for cy.request() to support authentication
 import "cumulocity-cypress/lib/commands/request";
-// Import c8yclient command for API testing
-import "cumulocity-cypress/lib/commands/c8yclient";
 // Import commands for recording and mocking of requests and responses
 import "cumulocity-cypress/lib/commands/c8ypact";
 // Enable recording and mocking for cy.intercept()
@@ -139,7 +137,6 @@ import "cumulocity-cypress/lib/commands/intercept";
 ```
 
 See [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md) for more information on how to enable recording and matching of requests and responses using `cy.c8yclient` and `cy.intercept`.
-
 
 Import the `mount` command for component testing of Cumulocity Angular components.
 
@@ -162,7 +159,7 @@ The easiest way to configure environment variables is to create a `cypress.env.j
 
 A list of supported environment variables can be found in Environment variables section of the [API and Integration Testing](./doc/API%20and%20Integration%20Testing.md#environment-variables) documentation.
 
-It is also recommended to init certain environment variables in a global before hook of your tests. This could be for example the current tenant and instance for the `baseUrl` configured for your tests. `C8Y_TENANT` for example is used by `cumulocity-cypress` if a tenant id is required. Some commands like `login` require a tenant id to be passed. Setting the tenant id once in global before hook will make sure it is available for all tests.
+It is also recommended to init certain environment variables in a global before hook of your tests. `C8Y_TENANT` for example is used by `cumulocity-cypress` if a tenant id is required. Some commands like `login`, `c8yclient` or all administration commands require a tenant id. Setting the tenant id once in global before hook will make sure it is available for all tests.
 
 ```typescript
 before(() => {
@@ -170,19 +167,14 @@ before(() => {
     .getCurrentTenant()
     .then((tenant) => {
       Cypress.env("C8Y_TENANT", tenant.body.name);
-      Cypress.env(
-        "C8Y_INSTANCE",
-        tenant.body.domainName?.split(".").slice(1).join(".")
-      );
     })
     .then(() => {
       expect(Cypress.env("C8Y_TENANT")).not.be.undefined;
-      expect(Cypress.env("C8Y_INSTANCE")).not.be.undefined;
     });
+  // or just simply call getTenantId() as this sets the tenant id env variable automatically
+  cy.getAuth("admin").getTenantId();
 });
 ```
-
-`C8Y_INSTANCE` is just an example of any other environment variable that might be needed in your tests.
 
 ## Additional frameworks
 
