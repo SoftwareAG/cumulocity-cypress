@@ -356,8 +356,13 @@ export function stubEnv(env: any, log: boolean = false): void {
   const cypressEnv = Cypress.env();
   cy.stub(Cypress, "env")
     .log(log)
-    .callsFake((key: string) => {
-      if (key != null) return key in env ? env[key] : cypressEnv[key];
+    .callsFake((key: string, value: any) => {
+      if (key != null && value == null) {
+        return key in env ? env[key] : cypressEnv[key];
+      } else if (key != null && value != null) {
+        cypressEnv[key] = value;
+        return;
+      }
       return { ...cypressEnv, ...env };
     });
 }

@@ -510,11 +510,22 @@ Cypress.Commands.add("getTenantId", { prevSubject: "optional" }, (...args) => {
     name: "getTenantId",
     consoleProps: () => consoleProps,
   });
-  consoleProps.auth = auth;
 
   if (Cypress.env("C8Y_TENANT") && !auth.tenant) {
     consoleProps.C8Y_TENANT = Cypress.env("C8Y_TENANT");
     return cy.wrap<string>(Cypress.env("C8Y_TENANT"));
+  }
+
+  // isMockingEnabled() also includes apply for matching of pacts with cy.c8ymatch
+  // for matching we might not want use tenant id from recordings
+  if (
+    Cypress.c8ypact?.isEnabled() === true &&
+    Cypress.c8ypact.mode() === "mock"
+  ) {
+    const tenant =
+      Cypress.env("C8Y_TENANT") || Cypress.c8ypact.current?.info.tenant;
+    Cypress.env("C8Y_TENANT", tenant);
+    return cy.wrap<string>(tenant);
   }
 
   cy.wrap(auth, { log: false })
@@ -545,6 +556,19 @@ Cypress.Commands.add(
 
     if (Cypress.env("C8Y_VERSION")) {
       consoleProps.C8Y_VERSION = Cypress.env("C8Y_VERSION");
+      return cy.wrap<string>(Cypress.env("C8Y_VERSION"));
+    }
+
+    // isMockingEnabled() also includes apply for matching of pacts with cy.c8ymatch
+    // for matching we might not want use tenant id from recordings
+    if (
+      Cypress.c8ypact?.isEnabled() === true &&
+      Cypress.c8ypact.mode() === "mock"
+    ) {
+      const tenant =
+        Cypress.env("C8Y_VERSION") ||
+        Cypress.c8ypact.current?.info.version?.system;
+      Cypress.env("C8Y_VERSION", tenant);
       return cy.wrap<string>(Cypress.env("C8Y_VERSION"));
     }
 
@@ -579,6 +603,7 @@ Cypress.Commands.add(
       args: args || null,
       auth: auth || null,
       clientOptions: clientOptions || null,
+      id: id || null,
     };
     Cypress.log({
       name: "bootstrapDeviceCredentials",
