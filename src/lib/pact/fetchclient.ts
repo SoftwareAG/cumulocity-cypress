@@ -102,7 +102,7 @@ export class C8yPactFetchClient extends FetchClient {
 
       if (strictMocking) {
         const error = new Error(
-          `Mocking failed in C8yPactFetchClient. No recording found for request "${relativeUrl}". Do re-recording or disable Cypress.c8ypact.strictMocking.`
+          `Mocking failed in C8yPactFetchClient. No recording found for request "${relativeUrl}". Do re-recording or disable Cypress.c8ypact.config.strictMocking.`
         );
         error.name = "C8yPactError";
         throw error;

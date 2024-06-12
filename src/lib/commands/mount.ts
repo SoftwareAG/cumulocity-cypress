@@ -82,12 +82,14 @@ Cypress.Commands.add(
     };
 
     consoleProps.isRecordingEnabled = Cypress.c8ypact.isRecordingEnabled();
-    consoleProps.strictMocking = Cypress.c8ypact.config.strictMocking;
+    const strictMocking =
+      Cypress.c8ypact?.getConfigValue("strictMocking") === true;
+
+    consoleProps.strictMocking = strictMocking;
 
     return (
       auth != null &&
-      (Cypress.c8ypact.isRecordingEnabled() ||
-        Cypress.c8ypact.config?.strictMocking === false)
+      (Cypress.c8ypact.isRecordingEnabled() || strictMocking === false)
         ? cy.oauthLogin(auth)
         : cy.wrap<C8yAuthOptions | undefined>(auth)
     ).then((a) => {
