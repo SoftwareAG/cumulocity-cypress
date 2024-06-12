@@ -82,7 +82,7 @@ Cypress.Commands.add("c8ymatch", (response, pact, info = {}, options = {}) => {
 
   try {
     let strictMatching: boolean =
-      Cypress.c8ypact?.getConfigValue<boolean>("strictMatching") || true;
+      Cypress.c8ypact?.getConfigValue("strictMatching") === true;
     if (options.strictMatching != null) {
       strictMatching = options.strictMatching;
     }
