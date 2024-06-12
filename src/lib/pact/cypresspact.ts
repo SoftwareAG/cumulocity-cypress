@@ -376,12 +376,6 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     },
   };
 
-  before(() => {
-    if (isEnabled()) {
-      cy.task("c8ypact:load", Cypress.config().fixturesFolder, debugLogger());
-    }
-  });
-
   beforeEach(() => {
     Cypress.c8ypact.current = null;
     validatePactMode();
