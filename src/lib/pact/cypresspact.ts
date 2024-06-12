@@ -386,6 +386,39 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     Cypress.c8ypact.current = null;
     validatePactMode();
 
+    const env = Cypress.env();
+    const filteredKeysAndValues: any = {};
+    Object.keys(env).forEach((key) => {
+      if (key.startsWith("C8Y_")) filteredKeysAndValues[key] = env[key];
+    });
+
+    const consoleProps: any = {
+      current: Cypress.c8ypact.current || null,
+      isEnabled: Cypress.c8ypact.isEnabled(),
+      isRecordingEnabled: Cypress.c8ypact.isRecordingEnabled(),
+      isMockingEnabled: Cypress.c8ypact.isMockingEnabled(),
+      mode: Cypress.c8ypact.mode(),
+      recordingMode: Cypress.c8ypact.recordingMode(),
+      matcher: Cypress.c8ypact.matcher || null,
+      pactRunner: Cypress.c8ypact.pactRunner || null,
+      schemaGenerator: Cypress.c8ypact.schemaGenerator || null,
+      schemaMatcher: Cypress.c8ypact.schemaMatcher || null,
+      debugLog: Cypress.c8ypact.debugLog,
+      preprocessor: Cypress.c8ypact.preprocessor || null,
+      on: Cypress.c8ypact.on || null,
+      config: Cypress.c8ypact.getConfigValues(),
+      annotations: Cypress.config().c8ypact,
+      currentTestId: Cypress.c8ypact.getCurrentTestId(),
+      env: Cypress.c8ypact.env(),
+      c8yEnv: filteredKeysAndValues,
+      allEnv: Cypress.env(),
+    };
+
+    Cypress.log({
+      name: "c8ypact",
+      consoleProps: () => consoleProps,
+    });
+
     if (isEnabled()) {
       if (isRecordingEnabled() && recordingMode() === "refresh") {
         cy.task(
@@ -396,6 +429,8 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
       }
       Cypress.c8ypact.loadCurrent().then((pact) => {
         Cypress.c8ypact.current = pact;
+        consoleProps.current = pact;
+
         // set tenant and baseUrl from pact info if not configured
         // this is needed to not require tenant and baseUrl for fully mocked tests
         if (!Cypress.env("C8Y_TENANT") && pact?.info?.tenant) {
