@@ -310,7 +310,8 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     },
     getConfigValue: (key: C8yPactConfigKeys, defaultValue?: any) => {
       const value =
-        _.get(Cypress.config(), key) ?? _.get(Cypress.c8ypact.config, key);
+        _.get(Cypress.config().c8ypact, key) ??
+        _.get(Cypress.c8ypact.config, key);
       return value != null ? value : defaultValue;
     },
     getConfigValues: () => {
