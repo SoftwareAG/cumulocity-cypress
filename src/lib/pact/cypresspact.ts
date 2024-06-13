@@ -381,69 +381,73 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     Cypress.c8ypact.current = null;
     validatePactMode();
 
-    const env = Cypress.env();
-    const filteredKeysAndValues: any = {};
-    Object.keys(env).forEach((key) => {
-      if (key.startsWith("C8Y_")) filteredKeysAndValues[key] = env[key];
-    });
+    let consoleProps: any = {};
+    let logger: Cypress.Log | undefined = undefined;
+    if (Cypress.c8ypact.debugLog === true) {
+      consoleProps = {
+        current: Cypress.c8ypact.current || null,
+        isEnabled: Cypress.c8ypact.isEnabled(),
+        isRecordingEnabled: Cypress.c8ypact.isRecordingEnabled(),
+        isMockingEnabled: Cypress.c8ypact.isMockingEnabled(),
+        mode: Cypress.c8ypact.mode(),
+        recordingMode: Cypress.c8ypact.recordingMode(),
+        matcher: Cypress.c8ypact.matcher || null,
+        pactRunner: Cypress.c8ypact.pactRunner || null,
+        schemaGenerator: Cypress.c8ypact.schemaGenerator || null,
+        schemaMatcher: Cypress.c8ypact.schemaMatcher || null,
+        debugLog: Cypress.c8ypact.debugLog,
+        preprocessor: Cypress.c8ypact.preprocessor || null,
+        on: Cypress.c8ypact.on || null,
+        config: Cypress.c8ypact.getConfigValues(),
+        annotations: Cypress.config().c8ypact,
+        currentTestId: Cypress.c8ypact.getCurrentTestId(),
+        env: Cypress.c8ypact.env(),
+        cypressEnv: Cypress.env(),
+      };
 
-    const consoleProps: any = {
-      current: Cypress.c8ypact.current || null,
-      isEnabled: Cypress.c8ypact.isEnabled(),
-      isRecordingEnabled: Cypress.c8ypact.isRecordingEnabled(),
-      isMockingEnabled: Cypress.c8ypact.isMockingEnabled(),
-      mode: Cypress.c8ypact.mode(),
-      recordingMode: Cypress.c8ypact.recordingMode(),
-      matcher: Cypress.c8ypact.matcher || null,
-      pactRunner: Cypress.c8ypact.pactRunner || null,
-      schemaGenerator: Cypress.c8ypact.schemaGenerator || null,
-      schemaMatcher: Cypress.c8ypact.schemaMatcher || null,
-      debugLog: Cypress.c8ypact.debugLog,
-      preprocessor: Cypress.c8ypact.preprocessor || null,
-      on: Cypress.c8ypact.on || null,
-      config: Cypress.c8ypact.getConfigValues(),
-      annotations: Cypress.config().c8ypact,
-      currentTestId: Cypress.c8ypact.getCurrentTestId(),
-      env: Cypress.c8ypact.env(),
-      c8yEnv: filteredKeysAndValues,
-      allEnv: Cypress.env(),
-    };
-
-    Cypress.log({
-      name: "c8ypact",
-      consoleProps: () => consoleProps,
-    });
-
-    if (isEnabled()) {
-      if (isRecordingEnabled() && recordingMode() === "refresh") {
-        cy.task(
-          "c8ypact:remove",
-          Cypress.c8ypact.getCurrentTestId(),
-          debugLogger()
-        );
-      }
-      Cypress.c8ypact.loadCurrent().then((pact) => {
-        Cypress.c8ypact.current = pact;
-        consoleProps.current = pact;
-
-        // set tenant and baseUrl from pact info if not configured
-        // this is needed to not require tenant and baseUrl for fully mocked tests
-        if (!Cypress.env("C8Y_TENANT") && pact?.info?.tenant) {
-          Cypress.env("C8Y_TENANT", pact?.info?.tenant);
-        }
-        if (
-          !Cypress.env("C8Y_BASEURL") &&
-          !Cypress.env("baseUrl") &&
-          pact?.info?.baseUrl
-        ) {
-          Cypress.env("C8Y_BASEURL", pact?.info?.baseUrl);
-        }
-
-        if (pact != null && _.isFunction(Cypress.c8ypact.on.loadPact)) {
-          Cypress.c8ypact.on.loadPact(pact);
-        }
+      logger = Cypress.log({
+        autoEnd: false,
+        name: "c8ypact",
+        message: "init",
+        consoleProps: () => consoleProps,
       });
     }
+
+    if (!isEnabled()) {
+      logger?.end();
+      return;
+    }
+
+    if (isRecordingEnabled() && recordingMode() === "refresh") {
+      cy.task(
+        "c8ypact:remove",
+        Cypress.c8ypact.getCurrentTestId(),
+        debugLogger()
+      );
+    }
+
+    Cypress.c8ypact.loadCurrent().then((pact) => {
+      Cypress.c8ypact.current = pact;
+      consoleProps.current = pact;
+      logger?.end();
+
+      // set tenant and baseUrl from pact info if not configured
+      // this is needed to not require tenant and baseUrl for fully mocked tests
+      if (!Cypress.env("C8Y_TENANT") && pact?.info?.tenant) {
+        Cypress.env("C8Y_TENANT", pact?.info?.tenant);
+      }
+      if (
+        !Cypress.env("C8Y_BASEURL") &&
+        !Cypress.env("baseUrl") &&
+        pact?.info?.baseUrl
+      ) {
+        Cypress.env("C8Y_BASEURL", pact?.info?.baseUrl);
+      }
+
+      if (pact != null && _.isFunction(Cypress.c8ypact.on.loadPact)) {
+        Cypress.c8ypact.on.loadPact(pact);
+      }
+    });
   });
 }
 
@@ -539,17 +543,28 @@ async function savePact(
 ): Promise<void> {
   if (!isEnabled()) return;
 
+  const baseUrl = getBaseUrlFromEnv() || "";
+  const consoleProps: any = {
+    response,
+    client,
+    options,
+  };
+  let logger: Cypress.Log | undefined = undefined;
+  let pactDesc = "";
+
   try {
     let pact: Pick<C8yPact, C8yPactSaveKeys>;
     if ("records" in response && "info" in response) {
       pact = response;
+      consoleProps.pact = pact;
+      pactDesc = `${pact.id} (${pact.records.length} records)`;
     } else {
       const info: C8yPactInfo = {
         ...Cypress.c8ypact.getConfigValues(),
         id: Cypress.c8ypact.getCurrentTestId(),
         title: Cypress.currentTest?.titlePath || [],
         tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
-        baseUrl: getBaseUrlFromEnv() || "",
+        baseUrl,
         version: Cypress.env("C8Y_VERSION") && {
           system: Cypress.env("C8Y_VERSION"),
         },
@@ -567,15 +582,32 @@ async function savePact(
         preprocessor: Cypress.c8ypact.preprocessor,
         schemaGenerator: Cypress.c8ypact.schemaGenerator,
       });
+      pactDesc = `${response.url?.replace(baseUrl, "") || ""}`;
     }
 
-    if (!pact || !_.isArray(pact.records) || _.isEmpty(pact.records)) return;
+    if (Cypress.c8ypact.debugLog === true) {
+      logger = Cypress.log({
+        autoEnd: false,
+        name: "c8ypact",
+        message: `record ${recordingMode()} ${pactDesc}`,
+        consoleProps: () => consoleProps,
+      });
+    }
+
+    if (!pact || !_.isArray(pact.records) || _.isEmpty(pact.records)) {
+      logger?.end();
+      return;
+    }
+
     if (_.isFunction(Cypress.c8ypact.on.saveRecord)) {
       let r = _.first(pact.records);
       if (r) {
         r = Cypress.c8ypact.on.saveRecord(r);
       }
-      if (!r) return;
+      if (!r) {
+        consoleProps.discarded = "on.saveRecord()";
+        return;
+      }
     }
 
     if (Cypress.c8ypact.current == null) {
@@ -607,11 +639,18 @@ async function savePact(
     if (_.isFunction(Cypress.c8ypact.on?.savePact)) {
       pactToSave = Cypress.c8ypact.on.savePact(Cypress.c8ypact.current);
     }
-    if (pactToSave == null) return;
+    if (pactToSave == null) {
+      consoleProps.discarded = "on.savePact()";
+      logger?.end();
+      return;
+    }
+    consoleProps.pact = Cypress.c8ypact.current;
     save(Cypress.c8ypact.current, options);
   } catch (error) {
+    consoleProps.error = error;
     console.error("Failed to save pact. ", error);
   }
+  logger?.end();
 }
 
 function save(pact: any, options: C8yPactSaveOptions) {

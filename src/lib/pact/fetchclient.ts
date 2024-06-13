@@ -75,23 +75,48 @@ export class C8yPactFetchClient extends FetchClient {
     const isRecordingEnabled = this.cypresspact?.isRecordingEnabled() === true;
     const isMockingEnabled = this.cypresspact?.isMockingEnabled() === true;
     const currentPact = this.cypresspact?.current;
+
     if (!isRecordingEnabled && isMockingEnabled) {
       const fullUrl: string = this.getUrl(url, fetchOptions);
       const relativeUrl = fullUrl.replace(this.baseUrl || "", "");
       let strictMocking =
         this.cypresspact?.getConfigValue("strictMocking") === true;
+
+      const consoleProps: any = {
+        pact: currentPact,
+        url: fullUrl,
+        relativeUrl,
+        strictMocking,
+        fetchOptions,
+        baseUrl: this.baseUrl,
+        authentication: this.authentication,
+      };
+      let logger: Cypress.Log | undefined = undefined;
+      if (this.cypresspact?.debugLog === true) {
+        logger = Cypress.log({
+          autoEnd: false,
+          name: "c8ypact",
+          message: `mock ${relativeUrl || null}`,
+          consoleProps: () => consoleProps,
+        });
+      }
+
       if (currentPact) {
         let record = currentPact.nextRecordMatchingRequest({
           url: fullUrl?.replace(this.baseUrl || "", ""),
           method: fetchOptions?.method,
         });
+        consoleProps.record = record;
         if (record) {
           if (_.isFunction(this.cypresspact?.on.mockRecord)) {
             record = this.cypresspact?.on.mockRecord(record) || null;
+            consoleProps.record = record;
           }
           if (record) {
             const response = toWindowFetchResponse(record);
+            consoleProps.mockedResponse = response || null;
             if (response) {
+              logger?.end();
               return Promise.resolve(response);
             }
           } else {
@@ -99,6 +124,8 @@ export class C8yPactFetchClient extends FetchClient {
           }
         }
       }
+
+      logger?.end();
 
       if (strictMocking) {
         const error = new Error(
