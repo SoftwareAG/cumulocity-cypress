@@ -57,8 +57,6 @@ export function configureC8yPlugin(
     log(`Using adapter from options ${adapter}`);
   }
 
-  let pacts: { [key: string]: C8yPact } = {};
-
   // use C8Y_PLUGIN_LOADED to see if the plugin has been loaded
   config.env.C8Y_PLUGIN_LOADED = "true";
   // use C8Y_PACT_FOLDER to find out where the pact files have been loaded from
@@ -78,41 +76,22 @@ export function configureC8yPlugin(
       info.version.c8ypact = "1";
     }
 
-    pacts[id] = pact;
-    adapter?.savePact(pacts[id]);
+    adapter?.savePact(pact);
     return null;
   }
 
   function getPact(pact: string): C8yPact | null {
     log(`getPact() - ${pact}`);
     validateId(pact);
-    return pacts[pact] || null;
-  }
-
-  function loadPacts(): { [key: string]: C8yPact } | undefined {
-    const p = adapter?.loadPacts();
-    log(`loadPacts() - loaded ${p?.length}`);
-    if (p) {
-      pacts = p;
-    }
-    return p;
+    return adapter?.loadPact(pact) || null;
   }
 
   function removePact(pact: string): boolean {
     log(`removePact() - ${pact}`);
     validateId(pact);
 
-    if (!pacts[pact]) return false;
-    delete pacts[pact];
-
     adapter?.deletePact(pact);
     return true;
-  }
-
-  function clearAll(): { [key: string]: C8yPact } {
-    log(`clearAll()`);
-    pacts = {};
-    return pacts;
   }
 
   function validateId(id: string): void {
@@ -137,9 +116,7 @@ export function configureC8yPlugin(
     on("task", {
       "c8ypact:save": savePact,
       "c8ypact:get": getPact,
-      "c8ypact:load": loadPacts,
       "c8ypact:remove": removePact,
-      "c8ypact:clearAll": clearAll,
       "c8ypact:oauthLogin": login,
     });
   }

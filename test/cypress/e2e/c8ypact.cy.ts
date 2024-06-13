@@ -49,6 +49,7 @@ describe("c8ypact", () => {
 
     Cypress.env("C8Y_PACT_MODE", "apply");
     Cypress.env("C8Y_PACT_RECORDING_MODE", undefined);
+    Cypress.env("C8Y_BASEURL", undefined);
     Cypress.c8ypact.on = {};
 
     initRequestStub();
@@ -219,6 +220,26 @@ describe("c8ypact", () => {
           expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_case_id");
         }
       );
+
+      it(
+        "should use config values from test annotation",
+        {
+          c8ypact: {
+            strictMocking: false,
+            strictMatching: false,
+            recordingMode: "new",
+            ignore: true,
+            consumer: "test_consumer",
+            producer: "test_producer",
+            log: true,
+          },
+        },
+        function () {
+          expect(Cypress.c8ypact.getConfigValue("strictMocking")).to.be.false;
+          expect(Cypress.c8ypact.getConfigValue("strictMatching")).to.be.false;
+          expect(Cypress.c8ypact.recordingMode()).to.eq("new");
+        }
+      );
     }
   );
 
@@ -227,7 +248,11 @@ describe("c8ypact", () => {
     context(`c8ypact current - ${mode}`, function () {
       const pact = new C8yDefaultPact(
         [{ request: { url: "test" } }] as any,
-        {} as any,
+        {
+          id: "12345",
+          tenant: "t987654321",
+          baseUrl: "http://mytenant.cumulocity.com",
+        },
         "test"
       );
 
@@ -270,6 +295,8 @@ describe("c8ypact", () => {
           expect(loadSpy).to.be.calledOnce;
           expect(loadSpy).to.be.calledWith(...cmd("c8ypact:get"));
           expect(Cypress.c8ypact.current).to.deep.eq(pact);
+          expect(Cypress.env("C8Y_TENANT")).to.eq(pact.info.tenant);
+          expect(Cypress.env("C8Y_BASEURL")).to.eq(pact.info.baseUrl);
           expect(isPact(Cypress.c8ypact.current)).to.be.true;
         });
       }
