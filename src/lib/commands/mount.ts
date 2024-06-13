@@ -28,8 +28,12 @@ Cypress.Commands.add(
   // @ts-expect-error
   { prevSubject: "optional" },
   (subject: C8yAuthOptions, ...args) => {
-    const consoleProps: any = {};
     const [component, options = {}] = args;
+    if (Cypress.c8ypact == null || Cypress.c8ypact.isEnabled() === false) {
+      return mount(component, options);
+    }
+
+    const consoleProps: any = {};
     const logger = Cypress.log({
       autoEnd: false,
       name: "mount",
@@ -78,12 +82,14 @@ Cypress.Commands.add(
     };
 
     consoleProps.isRecordingEnabled = Cypress.c8ypact.isRecordingEnabled();
-    consoleProps.strictMocking = Cypress.c8ypact.config.strictMocking;
+    const strictMocking =
+      Cypress.c8ypact?.getConfigValue("strictMocking") === true;
+
+    consoleProps.strictMocking = strictMocking;
 
     return (
       auth != null &&
-      (Cypress.c8ypact.isRecordingEnabled() ||
-        Cypress.c8ypact.config?.strictMocking === false)
+      (Cypress.c8ypact.isRecordingEnabled() || strictMocking === false)
         ? cy.oauthLogin(auth)
         : cy.wrap<C8yAuthOptions | undefined>(auth)
     ).then((a) => {

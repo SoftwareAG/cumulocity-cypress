@@ -34,7 +34,7 @@ export interface C8yPactMatcherOptions {
  * Default implementation of C8yPactMatcher to match C8yPactRecord objects. Pacts
  * are matched by comparing the properties of the objects using property matchers.
  * If no property matcher is configured for a property, the property will be matched
- * by equality. Disable Cypress.c8ypact.strictMatching to ignore properties that are
+ * by equality. Disable Cypress.c8ypact.config.strictMatching to ignore properties that are
  * missing in matched objects. In case objects do not match an C8yPactError is thrown.
  */
 export class C8yDefaultPactMatcher implements C8yPactMatcher {

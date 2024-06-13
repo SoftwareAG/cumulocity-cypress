@@ -100,9 +100,8 @@ export interface C8yPactConfigOptions {
    */
   strictMatching?: boolean;
   /**
-   * If strictMocking is enabled, a 404 / Resource not found response will be returned if
-   * no pact record matches the current request. If disabled, the request will be passed
-   * through to the configured baseUrl.
+   * If strictMocking is enabled, an error will be thrown if no pact record matches the
+   * current request. If disabled, the request will be passed through to the configured baseUrl.
    */
   strictMocking?: boolean;
   /**
