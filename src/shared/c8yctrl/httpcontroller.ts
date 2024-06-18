@@ -397,10 +397,16 @@ export class C8yPactHttpController {
 
     if (!record && !response) {
       if (this._isStrictMocking) {
-        if (this.options.mockNotFoundResponse) {
+        if (_.isFunction(this.options.on.mockNotFound)) {
+          const r = this.options.on.mockNotFound(this, req);
+          if (r) {
+            response = r;
+          }
+        }
+        if (response == null && this.options.mockNotFoundResponse) {
           const r = this.options.mockNotFoundResponse;
           response = _.isFunction(r) ? r(req) : r;
-        } else {
+        } else if (response == null) {
           response = {
             status: 404,
             statusText: "Not Found",

@@ -139,8 +139,8 @@ export interface C8yPactHttpControllerCallbackOptions {
    * **Note**: return `record.response` to use the recorded response as mock.
    *
    * @param ctrl The controller instance.
-   * @param record The record used for mocking.
    * @param req The request to mock.
+   * @param record The record used for mocking.
    * @returns A response to use as mock or null/undefined to pass the request to the proxy handler.
    */
   mockRequest?: (
