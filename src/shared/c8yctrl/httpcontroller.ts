@@ -399,7 +399,7 @@ export class C8yPactHttpController {
       if (this._isStrictMocking) {
         if (_.isFunction(this.options.on.mockNotFound)) {
           const r = this.options.on.mockNotFound(this, req);
-          if (r) {
+          if (r != null) {
             response = r;
           }
         }

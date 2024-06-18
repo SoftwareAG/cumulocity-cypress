@@ -149,6 +149,19 @@ export interface C8yPactHttpControllerCallbackOptions {
     record: C8yPactRecord | undefined | null
   ) => C8yPactHttpResponse | undefined | null;
   /**
+   * Called when a request is not found in the recorded pacts. Use to return a custom response
+   * for the request or `undefined` if `mockNotFoundResponse` or default 404 response should
+   * be returned for the given request. To access the pact, the response was not found in, use
+   * `c8yctl.currentPact`.
+   * @param ctrl The controller instance.
+   * @param req The request to be mocked.
+   * @returns A response to use as mock for the request or `undefined` to use the default 404 response.
+   */
+  mockNotFound?: (
+    ctrl: C8yPactHttpController,
+    req: Request
+  ) => C8yPactHttpResponse | undefined;
+  /**
    * Called before a request is proxied. Use to modify the request before it
    * is proxied, e.g. to add or remove headers, etc. or to abort the request
    * by returning a custom or error response to send back to the client.
