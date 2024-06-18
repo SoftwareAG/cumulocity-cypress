@@ -231,13 +231,14 @@ export class C8yPactHttpController {
   }
 
   protected registerC8yctrlInterface() {
+    // head endpoint can be used to check if the server is running, e.g. by start-server-and-test package
+    this.app.head("/c8yctrl", (req, res) => {
+      res.status(200).send();
+    });
     this.app.get("/c8yctrl/current", (req, res) => {
       if (!this.currentPact) {
-        res
-          .status(404)
-          .send(
-            "No current pact set. Set current pact using POST /c8yctrl/current."
-          );
+        // return 204 instead of 404 to indicate that no pact is set
+        res.status(204).send();
         return;
       }
       res.send(this.stringifyPact(this.currentPact));
@@ -281,7 +282,7 @@ export class C8yPactHttpController {
           if (!current) {
             res
               .status(404)
-              .send(`Not found. Enable recording to create a new pact.`);
+              .send(`Not found. Could not find pact with id ${id}.`);
             return;
           } else {
             this.currentPact = C8yDefaultPact.from(current);
@@ -312,11 +313,7 @@ export class C8yPactHttpController {
     });
     this.app.get("/c8yctrl/current/request", (req, res) => {
       if (!this.currentPact) {
-        res
-          .status(404)
-          .send(
-            "No current pact set. Set current pact using POST /c8yctrl/current."
-          );
+        res.send(204);
         return;
       }
       const result = this.getObjectWithKeys(
@@ -327,11 +324,7 @@ export class C8yPactHttpController {
     });
     this.app.get("/c8yctrl/current/response", (req, res) => {
       if (!this.currentPact) {
-        res
-          .status(404)
-          .send(
-            "No current pact set. Set current pact using POST /c8yctrl/current."
-          );
+        res.send(204);
         return;
       }
       const result = this.getObjectWithKeys(
