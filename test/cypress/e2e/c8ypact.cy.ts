@@ -204,6 +204,26 @@ describe("c8ypact", () => {
           expect(Cypress.c8ypact.getCurrentTestId()).to.equal("test_case_id");
         }
       );
+
+      it(
+        "should use config values from test annotation",
+        {
+          c8ypact: {
+            strictMocking: false,
+            strictMatching: false,
+            recordingMode: "new",
+            ignore: true,
+            consumer: "test_consumer",
+            producer: "test_producer",
+            log: true,
+          },
+        },
+        function () {
+          expect(Cypress.c8ypact.getConfigValue("strictMocking")).to.be.false;
+          expect(Cypress.c8ypact.getConfigValue("strictMatching")).to.be.false;
+          expect(Cypress.c8ypact.recordingMode()).to.eq("new");
+        }
+      );
     }
   );
 

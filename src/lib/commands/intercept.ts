@@ -341,7 +341,7 @@ function failForStrictMocking() {
     Cypress.c8ypact?.getConfigValue("strictMocking", true) === true;
   if (strictMocking) {
     const error = new Error(
-      "Mocking failed in intercept. No recording found for request. Do re-recording or disable Cypress.c8ypact.strictMocking."
+      "Mocking failed in intercept. No recording found for request. Do re-recording or disable Cypress.c8ypact.config.strictMocking."
     );
     error.name = "C8yPactError";
     throw error;
