@@ -1,11 +1,13 @@
 /// <reference types="jest" />
 
 import {
+  isAbsoluteURL,
   isURL,
   relativeURL,
   removeBaseUrlFromString,
   tenantUrl,
   updateURLs,
+  validateBaseUrl,
 } from "./url";
 
 describe("url", () => {
@@ -63,6 +65,29 @@ describe("url", () => {
     expect(tenantUrl("http://example.com", "")).toBe(undefined);
     expect(tenantUrl("", "my-tenant")).toBe(undefined);
     expect(tenantUrl("", "")).toBe(undefined);
+  });
+
+  it("isAbsoluteURL", () => {
+    expect(isAbsoluteURL("HTTPS://example.com///")).toBeTruthy();
+    expect(isAbsoluteURL("http://example.com")).toBeTruthy();
+    expect(isAbsoluteURL("https://example.com")).toBeTruthy();
+    expect(isAbsoluteURL("ftp://example.com")).toBeFalsy();
+    expect(isAbsoluteURL("example.com")).toBeFalsy();
+    expect(isAbsoluteURL("")).toBeFalsy();
+    expect(isAbsoluteURL(null as any)).toBeFalsy();
+    expect(isAbsoluteURL(undefined as any)).toBeFalsy();
+  });
+
+  it("validateBaseUrl", () => {
+    expect(() => validateBaseUrl("example.com")).toThrow();
+    expect(() => validateBaseUrl(undefined as any)).not.toThrow();
+    expect(() => validateBaseUrl(null as any)).not.toThrow();
+    expect(() => validateBaseUrl("")).toThrow();
+    expect(() => validateBaseUrl("http://example.com")).not.toThrow();
+
+    const x: any = undefined,
+      y: any = "https://example.com";
+    expect(() => validateBaseUrl(x || y)).not.toThrow();
   });
 
   describe("updateURLs", () => {
