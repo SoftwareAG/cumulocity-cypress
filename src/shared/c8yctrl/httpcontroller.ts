@@ -27,9 +27,14 @@ import {
   toPactSerializableObject,
   oauthLogin,
   C8yPactFileAdapter,
+  C8yPactRecordingMode,
+  C8yPactMode,
+  isOneOfStrings,
+  C8yPactRecordingModeValues,
 } from "cumulocity-cypress/node";
 
 import {
+  C8yCtrlHeader,
   C8yPactHttpControllerOptions,
   C8yPactHttpResponse,
 } from "./httpcontroller-options";
@@ -39,23 +44,25 @@ export * from "./httpcontroller-options";
 export class C8yPactHttpController {
   currentPact?: C8yDefaultPact;
 
-  protected port: number;
-  protected hostname: string;
+  readonly port: number;
+  readonly hostname: string;
 
   protected _baseUrl?: string;
   protected _staticRoot?: string;
-  protected tenant?: string;
+  readonly tenant?: string;
 
   adapter?: C8yPactFileAdapter;
   protected _isRecordingEnabled: boolean = false;
+  protected _recordingMode: C8yPactRecordingMode = "append";
+  protected _mode: C8yPactMode = "apply";
   protected _isStrictMocking: boolean = true;
 
   protected authOptions?: C8yAuthOptions;
-  app: Express;
   protected server?: Server;
-  options: C8yPactHttpControllerOptions;
+  readonly app: Express;
+  readonly options: C8yPactHttpControllerOptions;
 
-  logger: winston.Logger;
+  readonly logger: winston.Logger;
 
   protected mockHandler?: RequestHandler;
   protected proxyHandler?: RequestHandler;
@@ -74,15 +81,13 @@ export class C8yPactHttpController {
     this.currentPact = undefined;
     this.tenant = options.tenant;
 
-    this.logger =
-      this.options.logger ||
-      winston.createLogger({
-        format: winston.format.simple(),
-        transports: [new winston.transports.Console()],
-      });
+    const loggerOptions = {
+      format: winston.format.simple(),
+      transports: [new winston.transports.Console()],
+    };
+    this.logger = this.options.logger || winston.createLogger(loggerOptions);
     this.logger.level = options.logLevel || "info";
-
-    const stream = {
+    const loggerStream = {
       write: (message: string) => {
         this.logger.info(message.trim());
       },
@@ -104,11 +109,15 @@ export class C8yPactHttpController {
       }
       rls.forEach((h) => this.app.use(h));
     } else {
-      this.app.use(morgan((options.logFormat || "short") as any, { stream }));
+      this.app.use(
+        morgan((options.logFormat || "short") as any, { stream: loggerStream })
+      );
     }
 
+    // register cookie parser
     this.app.use(cookieParser());
 
+    // register static root
     if (this.staticRoot) {
       this.app.use(express.static(this.staticRoot));
       this.logger.info(`Static Root: ${this.staticRoot}`);
@@ -122,6 +131,14 @@ export class C8yPactHttpController {
 
   get staticRoot(): string | undefined {
     return this._staticRoot;
+  }
+
+  get recordingMode(): C8yPactRecordingMode {
+    return this._recordingMode;
+  }
+
+  get mode(): C8yPactMode {
+    return this._mode;
   }
 
   isRecordingEnabled(): boolean {
@@ -241,6 +258,15 @@ export class C8yPactHttpController {
         res.status(204).send();
         return;
       }
+      return true;
+    });
+    this.app.get("/c8yctrl/current", (req, res) => {
+      if (!this.currentPact) {
+        // return 204 instead of 404 to indicate that no pact is set
+        res.status(204).send();
+        return;
+      }
+      res.setHeader("content-type", "application/json");
       res.send(this.stringifyPact(this.currentPact));
     });
     this.app.post("/c8yctrl/current", async (req, res) => {
@@ -252,14 +278,49 @@ export class C8yPactHttpController {
       }
 
       const parameters = { ...req.body, ...req.query };
-      const { recording, clear, strictMocking } = parameters;
-      this._isRecordingEnabled = toBoolean(recording, this._isRecordingEnabled);
+      const { mode, clear, recordingMode, strictMocking } = parameters;
+
+      if (mode) {
+        this._isRecordingEnabled = isOneOfStrings(mode, [
+          "record",
+          "recording",
+        ]);
+        this._mode = this._isRecordingEnabled ? "record" : "apply";
+      } else {
+        this._isRecordingEnabled = false;
+        this._mode = "apply";
+      }
+
+      if (
+        isOneOfStrings(
+          recordingMode,
+          C8yPactRecordingModeValues as unknown as string[]
+        )
+      ) {
+        this._recordingMode = recordingMode;
+      } else {
+        this._recordingMode = "append";
+      }
+
       this._isStrictMocking = toBoolean(strictMocking, this._isStrictMocking);
+
+      const refreshPact =
+        this.recordingMode === "refresh" &&
+        this.isRecordingEnabled() === true &&
+        this.currentPact != null;
+      const clearPact =
+        _.isString(clear) &&
+        (_.isEmpty(clear) || toBoolean(clear, false) === true);
+
+      this.logger.debug(
+        `mode: ${this.mode}, recordingMode: ${this.recordingMode}, strictMocking: ${this._isStrictMocking}, refresh: ${refreshPact}, clear: ${clearPact}`
+      );
 
       if (this.currentPact?.id === id) {
         res.status(200);
       } else {
-        if (this.isRecordingEnabled()) {
+        const current = this.adapter?.loadPact(id);
+        if (!current && this.isRecordingEnabled()) {
           const info: C8yPactInfo = {
             baseUrl: this.baseUrl || "",
             requestMatching: this.options.requestMatching,
@@ -277,6 +338,13 @@ export class C8yPactHttpController {
           };
           this.currentPact = new C8yDefaultPact([], info, id);
           res.status(201);
+        }
+
+        if (!current) {
+          res
+            .status(404)
+            .send(`Not found. Enable recording to create a new pact.`);
+          return;
         } else {
           const current = this.adapter?.loadPact(id);
           if (!current) {
@@ -289,17 +357,28 @@ export class C8yPactHttpController {
             res.status(200);
           }
         }
+      }
 
-        if (
-          _.isString(clear) &&
-          (_.isEmpty(clear) || clear.toLowerCase() === "true") &&
-          this.currentPact
-        ) {
-          this.currentPact.clearRecords();
-          await this.savePact(this.currentPact);
+      if (refreshPact === true || clearPact === true) {
+        this.currentPact!.clearRecords();
+        let shouldSave = true;
+        if (_.isFunction(this.options.on.savePact)) {
+          shouldSave = this.options.on.savePact(this, this.currentPact!);
+          if (!shouldSave) {
+            this.logger.warn(
+              "Pact not saved. Disabled by on.savePact() even though refresh or clear was requested."
+            );
+          }
+        }
+        if (shouldSave === true) {
+          await this.savePact(this.currentPact!);
+          this.logger.debug(
+            `Cleared pact (refresh: ${refreshPact} and clear: ${clearPact})`
+          );
         }
       }
 
+      res.setHeader("content-type", "application/json");
       res.send(
         this.stringifyPact({
           ...this.currentPact,
@@ -311,15 +390,26 @@ export class C8yPactHttpController {
       this.currentPact = undefined;
       res.status(204).send();
     });
+    this.app.post("/c8yctrl/current/clear", async (req, res) => {
+      if (!this.currentPact) {
+        // return 204 instead of 404 to indicate that no pact is set
+        res.status(204).send();
+        return;
+      }
+      this.currentPact!.clearRecords();
+      res.setHeader("content-type", "application/json");
+      res.send(this.stringifyPact(this.currentPact));
+    });
     this.app.get("/c8yctrl/current/request", (req, res) => {
       if (!this.currentPact) {
         res.send(204);
         return;
       }
       const result = this.getObjectWithKeys(
-        this.currentPact?.records.map((r) => r.request),
+        this.currentPact!.records.map((r) => r.request),
         Object.keys(req.query)
       );
+      res.setHeader("content-type", "application/json");
       res.status(200).send(JSON.stringify(result, null, 2));
     });
     this.app.get("/c8yctrl/current/response", (req, res) => {
@@ -328,13 +418,15 @@ export class C8yPactHttpController {
         return;
       }
       const result = this.getObjectWithKeys(
-        this.currentPact?.records.map((r) => {
+        this.currentPact!.records.map((r) => {
           return { ...r.response, url: r.request.url };
         }),
         Object.keys(req.query)
       );
+      res.setHeader("content-type", "application/json");
       res.status(200).send(JSON.stringify(result, null, 2));
     });
+
     // log endpoint
     this.app.post("/c8yctrl/log", (req, res) => {
       const { message, level } = req.body;
@@ -346,14 +438,12 @@ export class C8yPactHttpController {
     this.app.put("/c8yctrl/log", (req, res) => {
       const parameters = { ...req.body, ...req.query };
       const { level } = parameters;
-      if (
-        _.isString(level) &&
-        (_.isEqual(level, "debug") ||
-          _.isEqual(level, "info") ||
-          _.isEqual(level, "warn") ||
-          _.isEqual(level, "error"))
-      ) {
-        this.logger.level = level;
+      const levelValues = ["debug", "info", "warn", "error"];
+      if (_.isString(level) && levelValues.includes(level.toLowerCase())) {
+        this.logger.level = level.toLowerCase() as any;
+      } else {
+        res.status(400).send(`Invalid log level: ${level}`);
+        return;
       }
       res.status(204).send();
     });
@@ -366,16 +456,6 @@ export class C8yPactHttpController {
       return next();
     }
 
-    const addC8yCtrlHeader = (
-      value: string,
-      response?: C8yPactHttpResponse | null
-    ) => {
-      if (response && !_.get(response.headers, "x-c8yctrl-type")) {
-        response.headers = response?.headers || {};
-        response.headers["x-c8yctrl-type"] = value;
-      }
-    };
-
     let response: C8yPactHttpResponse | undefined | null = undefined;
     const record = this.currentPact?.nextRecordMatchingRequest(
       req,
@@ -384,16 +464,13 @@ export class C8yPactHttpController {
     if (_.isFunction(this.options.on.mockRequest)) {
       response = this.options.on.mockRequest(this, req, record);
       if (!response && record) {
-        if (!res.getHeader("x-c8yctrl-type")) {
-          res.setHeader("x-c8yctrl-type", "mock-skipped");
-        }
+        this.addC8yCtrlHeader("x-c8yctrl-type", "skipped", res);
         return next();
       }
-      addC8yCtrlHeader("mocked-custom", response);
     } else {
       response = record?.response;
-      addC8yCtrlHeader("mocked", response);
     }
+    this.addC8yCtrlHeader("x-c8yctrl-mode", this.recordingMode, response);
 
     if (!record && !response) {
       if (this._isStrictMocking) {
@@ -420,7 +497,7 @@ export class C8yPactHttpController {
             },
           };
         }
-        addC8yCtrlHeader("mock-not-found", response);
+        this.addC8yCtrlHeader("x-c8yctrl-type", "notfound", response);
       }
     }
 
@@ -460,6 +537,8 @@ export class C8yPactHttpController {
             (req as any).c8yctrlId = this.currentPact?.id;
           }
 
+          this.addC8yCtrlHeader("x-c8yctrl-mode", this.recordingMode, res);
+
           // add authorization header
           if (
             this._isRecordingEnabled === true &&
@@ -496,6 +575,8 @@ export class C8yPactHttpController {
             let resBody = responseBuffer.toString("utf8");
             const c8yctrlId = (req as any).c8yctrlId;
 
+            this.addC8yCtrlHeader("x-c8yctrl-mode", this.recordingMode, res);
+
             const pactResponse = this.toC8yPactResponse(res, resBody);
             if (_.isFunction(this.options.on.proxyResponse)) {
               const shouldContinue = this.options.on.proxyResponse(
@@ -518,9 +599,7 @@ export class C8yPactHttpController {
               }
 
               if (!shouldContinue) {
-                if (!res.getHeader("x-c8yctrl-type")) {
-                  res.setHeader("x-c8yctrl-type", "skipped");
-                }
+                this.addC8yCtrlHeader("x-c8yctrl-type", "skip", res);
                 return resBody;
               }
             }
@@ -564,22 +643,29 @@ export class C8yPactHttpController {
                 if (_.isFunction(this.options.on.savePact)) {
                   const shouldSave = this.options.on.savePact(this, pact);
                   if (!shouldSave) {
-                    if (!res.getHeader("x-c8yctrl-type")) {
-                      res.setHeader("x-c8yctrl-type", "not-recorded");
-                    }
+                    this.addC8yCtrlHeader("x-c8yctrl-type", "skipped", res);
                     return responseBuffer;
                   }
                 }
 
+                let hasBeenSaved = false;
                 if (pact) {
-                  await this.savePact(
+                  hasBeenSaved = await this.savePact(
                     this.toCypressResponse(req, res, { resBody, reqBody }),
                     pact
                   );
                 }
-                if (!res.getHeader("x-c8yctrl-type")) {
-                  res.setHeader("x-c8yctrl-type", "recorded");
-                }
+
+                this.addC8yCtrlHeader(
+                  "x-c8yctrl-type",
+                  hasBeenSaved ? "saved" : "discard",
+                  res
+                );
+                this.addC8yCtrlHeader(
+                  "x-c8yctrl-count",
+                  `${pact.records.length}`,
+                  res
+                );
               }
             }
             return responseBuffer;
@@ -646,9 +732,10 @@ export class C8yPactHttpController {
   async savePact(
     response: Cypress.Response<any> | C8yPact,
     pactForId?: C8yPact
-  ): Promise<void> {
-    if (!pactForId) return;
+  ): Promise<boolean> {
+    if (!pactForId) return false;
 
+    let result = false;
     const id = pactForId.id;
     try {
       let pact: Pick<C8yPact, C8yPactSaveKeys>;
@@ -670,24 +757,39 @@ export class C8yPactHttpController {
         });
       }
 
+      // see also cypresspact.ts savePact() implementation
       const { records } = pact;
       if (!pactForId) {
         pactForId = new C8yDefaultPact(records, pact.info, id);
         this.currentPact = pactForId as C8yDefaultPact;
       } else {
-        if (!pactForId.records) {
-          pactForId.records = records;
-        } else if (Array.isArray(records)) {
-          Array.prototype.push.apply(pactForId.records, records);
-        } else {
-          pactForId.records.push(records);
+        if (
+          this.recordingMode === "append" ||
+          this.recordingMode === "new" ||
+          // refresh is the same as append as for refresh we remove the pact in each tests beforeEach
+          this.recordingMode === "refresh"
+        ) {
+          for (const record of pact.records) {
+            result =
+              result ||
+              pactForId.appendRecord(record, this.recordingMode === "new");
+          }
+        } else if (this.recordingMode === "replace") {
+          for (const record of pact.records) {
+            result = result || pactForId.replaceRecord(record);
+          }
         }
       }
+
       // records might be empty when if a new pact without having received a request
-      if (!pact || _.isEmpty(pactForId.records)) return;
-      this.adapter?.savePact(pactForId);
+      if (!pact || _.isEmpty(pactForId.records)) return false;
+      if (result) {
+        this.adapter?.savePact(pactForId);
+      }
+      return result;
     } catch (error) {
-      this.logger.error(`Failed to save pact`, error);
+      this.logger.error(`Failed to save pact ${error}`);
+      return false;
     }
   }
 
@@ -767,12 +869,33 @@ export class C8yPactHttpController {
       return x;
     });
   }
+
+  protected addC8yCtrlHeader(
+    ctrlHeader: C8yCtrlHeader,
+    value: string,
+    response?: C8yPactHttpResponse | Response | null
+  ) {
+    if (
+      response != null &&
+      "hasHeader" in response &&
+      "setHeader" in response
+    ) {
+      if (!response.hasHeader(ctrlHeader)) {
+        response.setHeader(ctrlHeader, value);
+      }
+    } else if (response && "headers" in response) {
+      if (!_.get(response.headers, ctrlHeader)) {
+        response.headers = response?.headers || {};
+        response.headers[ctrlHeader] = value;
+      }
+    }
+  }
 }
 
 function toBoolean(input: string, defaultValue: boolean): boolean {
   if (input == null || !_.isString(input)) return defaultValue;
   const booleanString = input.toString().toLowerCase();
-  if (booleanString == "true") return true;
-  if (booleanString == "false") return false;
+  if (booleanString == "true" || booleanString === "1") return true;
+  if (booleanString == "false" || booleanString === "0") return false;
   return defaultValue;
 }

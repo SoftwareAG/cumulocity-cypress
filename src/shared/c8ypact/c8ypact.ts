@@ -160,13 +160,18 @@ export interface C8yPact {
   /**
    * Appends a new record to the pact. If skipIfExists is true, the record is
    * only appended if no record with the same request exists.
+   * @param record The record to add.
+   * @param skipIfExists If true, the record is only appended if no record for the same request exists.
+   * @returns True if the record was appended, false otherwise.
    */
-  appendRecord(record: C8yPactRecord, skipIfExists?: boolean): void;
+  appendRecord(record: C8yPactRecord, skipIfExists?: boolean): boolean;
   /**
    * Replaces an existing record with a new record. If no record with the same
    * request exists, the record is appended.
+   * @param record The record to be replaced.
+   * @returns True if the record was replaced, false otherwise.
    */
-  replaceRecord(record: C8yPactRecord): void;
+  replaceRecord(record: C8yPactRecord): boolean;
   /**
    * Returns the next pact record or null if no more records are available.
    */
@@ -700,4 +705,9 @@ export function getEnvVar(
     getForName(plainName) ||
     getForName(camelCasedPlainName)
   );
+}
+
+export function isOneOfStrings(value: string, values: string[]): boolean {
+  if (!_.isString(value) || _.isEmpty(value)) return false;
+  return values.includes(value.toLowerCase());
 }

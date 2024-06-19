@@ -111,18 +111,19 @@ export class C8yDefaultPact implements C8yPact {
     this.iteratorIndex = 0;
   }
 
-  appendRecord(record: C8yPactRecord, skipIfExists: boolean = false): void {
+  appendRecord(record: C8yPactRecord, skipIfExists: boolean = false): boolean {
     if (skipIfExists) {
       if (!record.request.url) null;
       const matches = this.getRecordsMatchingRequest(record.request);
-      if (matches && !_.isEmpty(matches)) return;
+      if (matches && !_.isEmpty(matches)) return false;
     }
     this.records.push(record);
+    return true;
   }
 
-  replaceRecord(record: C8yPactRecord): void {
+  replaceRecord(record: C8yPactRecord): boolean {
     const key = this.indexMapKey(record.request, this.info.baseUrl);
-    if (!key) return;
+    if (!key) return false;
 
     const matches = this.getRecordsMatchingRequest(record.request);
     if (!matches) {
@@ -137,9 +138,12 @@ export class C8yDefaultPact implements C8yPact {
         if (index >= 0) {
           this.records[index] = record;
           this.setIndexForKey(key, currentIndex + 1);
+        } else {
+          return false;
         }
       }
     }
+    return true;
   }
 
   /**

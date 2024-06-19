@@ -222,3 +222,9 @@ export interface C8yPactHttpControllerConfig
    */
   password?: string;
 }
+
+export type C8yCtrlHeader =
+  | "x-c8yctrl-type"
+  | "x-c8yctrl-id"
+  | "x-c8yctrl-count"
+  | "x-c8yctrl-mode";
