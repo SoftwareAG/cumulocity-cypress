@@ -10,8 +10,13 @@ import {
   C8yPactHttpController,
   C8yPactHttpControllerOptions,
 } from "../shared/c8yctrl/httpcontroller";
-import { C8yPact } from "../shared/c8ypact/c8ypact";
+import {
+  C8yPact,
+  getEnvVar,
+  validatePactMode,
+} from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
+import { validateBaseUrl } from "cumulocity-cypress/shared/c8ypact/url";
 
 export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
@@ -47,12 +52,12 @@ export function configureC8yPlugin(
   options: C8yPluginConfig = {}
 ) {
   let adapter = options.pactAdapter;
+  const envFolder = getEnvVar("C8Y_PACT_FOLDER");
   if (!adapter) {
     const folder =
       options.pactFolder ||
       options.pactAdapter?.getFolder() ||
-      process.env.C8Y_PACT_FOLDER ||
-      process.env.CYPRESS_C8Y_PACT_FOLDER ||
+      envFolder ||
       // default folder is cypress/fixtures/c8ypact
       path.join(process.cwd(), "cypress", "fixtures", "c8ypact");
     adapter = new C8yPactDefaultFileAdapter(folder);
@@ -60,6 +65,22 @@ export function configureC8yPlugin(
   } else {
     log(`Using adapter from options ${adapter}`);
   }
+
+  // validate pact mode and base url before starting the plugin
+  // use environment variables AND config.env for variables defined in cypress.config.ts
+  const mode =
+    getEnvVar("C8Y_PACT_MODE") || getEnvVar("C8Y_PACT_MODE", config.env);
+  log(`validatePactMode() - ${mode}`);
+
+  validatePactMode(mode); // throws on error
+  const baseUrl =
+    getEnvVar("C8Y_BASEURL") ||
+    getEnvVar("CYPRESS_BASEURL") ||
+    getEnvVar("C8Y_BASEURL", config.env) ||
+    getEnvVar("CYPRESS_BASEURL", config.env);
+
+  log(`validateBaseUrl() - ${baseUrl}`);
+  validateBaseUrl(baseUrl); // throws on error
 
   let http: C8yPactHttpController | null = null;
 

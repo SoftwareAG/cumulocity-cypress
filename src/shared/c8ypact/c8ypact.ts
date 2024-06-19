@@ -383,6 +383,26 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
 }
 
 /**
+ * Validate the given pact mode. Throws an error if the mode is not supported
+ * or undefined.
+ * @param mode The pact mode to validate.
+ */
+export function validatePactMode(mode?: string) {
+  if (mode != null) {
+    const values = Object.values(C8yPactModeValues) as string[];
+    if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
+      const error = new Error(
+        `Unsupported pact mode: "${mode}". Supported values are: ${values.join(
+          ", "
+        )} or undefined.`
+      );
+      error.name = "C8yPactError";
+      throw error;
+    }
+  }
+}
+
+/**
  * Creates an C8yPactID for give string or array of strings.
  * @param value The string or array of strings to convert to a pact id.
  * @returns The pact id.
@@ -631,4 +651,53 @@ export function createPactRecord(
   // only store properties that need to be exposed. do not store password.
   auth = auth ? toPactAuthObject(auth) : auth;
   return C8yDefaultPactRecord.from(response, auth, client);
+}
+
+/**
+ * Returns the value of the environment variable with the given name. The function
+ * tries to find the value in the global `process.env` or `Cypress.env()`. If `env`
+ * is provided, the function uses the given object as environment.
+ *
+ * The function tries to find the value in the following order:
+ * - `name`
+ * - `camelCase(name)`
+ * - `CYPRESS_name`
+ * - `name.replace(/^C8Y_/i, "")`
+ * - `CYPRESS_camelCase(name)`
+ * - `CYPRESS_camelCase(name.replace(/^C8Y_/i, ""))`
+ *
+ * @param name The name of the environment variable.
+ * @param env The environment object to use. Default is `process.env` or `Cypress.env()`
+ *
+ * @returns The value of the environment variable or `undefined` if not found.
+ */
+export function getEnvVar(
+  name: string,
+  env?: { [key: string]: string }
+): string | undefined {
+  if (!name) return undefined;
+
+  const e: { [key: string]: string } =
+    env ||
+    (typeof window !== "undefined" && window.Cypress
+      ? Cypress.env()
+      : process.env);
+
+  function getFromEnv(key: string): string | undefined {
+    return e[key] as string | undefined;
+  }
+
+  function getForName(name: string): string | undefined {
+    return getFromEnv(name) || getFromEnv(`CYPRESS_${name}`);
+  }
+
+  const plainName = name.replace(/^C8Y_/i, "");
+  const camelCasedName = _.camelCase(name).replace(/^c8Y/i, "c8y");
+  const camelCasedPlainName = _.camelCase(plainName);
+  return (
+    getForName(name) ||
+    getForName(camelCasedName) ||
+    getForName(plainName) ||
+    getForName(camelCasedPlainName)
+  );
 }

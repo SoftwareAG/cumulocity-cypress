@@ -22,6 +22,8 @@ import {
   C8yPactRecordingModeValues,
   C8yPactModeValues,
   pactId,
+  validatePactMode,
+  getEnvVar,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
@@ -33,6 +35,7 @@ const { _ } = Cypress;
 
 import { FetchClient, IAuthentication } from "@c8y/client";
 import { C8yPactFetchClient } from "./fetchclient";
+import { validateBaseUrl } from "cumulocity-cypress/shared/c8ypact/url";
 
 declare global {
   namespace Cypress {
@@ -380,7 +383,6 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
 
   beforeEach(() => {
     Cypress.c8ypact.current = null;
-    validatePactMode();
 
     let consoleProps: any = {};
     let logger: Cypress.Log | undefined = undefined;
@@ -391,6 +393,7 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
         isRecordingEnabled: Cypress.c8ypact.isRecordingEnabled(),
         isMockingEnabled: Cypress.c8ypact.isMockingEnabled(),
         mode: Cypress.c8ypact.mode(),
+        baseUrl: getBaseUrlFromEnv(),
         recordingMode: Cypress.c8ypact.recordingMode(),
         matcher: Cypress.c8ypact.matcher || null,
         pactRunner: Cypress.c8ypact.pactRunner || null,
@@ -414,6 +417,14 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
       });
     }
 
+    try {
+      validatePactMode(getEnvVar("C8Y_PACT_MODE"));
+      validateBaseUrl(getBaseUrlFromEnv());
+    } catch (error) {
+      logger?.end();
+      throw error;
+    }
+
     if (!isEnabled()) {
       logger?.end();
       return;
@@ -430,24 +441,28 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     Cypress.c8ypact.loadCurrent().then((pact) => {
       Cypress.c8ypact.current = pact;
       consoleProps.current = pact;
-      logger?.end();
 
       // set tenant and baseUrl from pact info if not configured
       // this is needed to not require tenant and baseUrl for fully mocked tests
       if (!Cypress.env("C8Y_TENANT") && pact?.info?.tenant) {
         Cypress.env("C8Y_TENANT", pact?.info?.tenant);
       }
+
+      const baseUrl = getBaseUrlFromEnv();
+      const pactBaseUrl = pact?.info?.baseUrl;
       if (
-        !Cypress.env("C8Y_BASEURL") &&
-        !Cypress.env("baseUrl") &&
-        pact?.info?.baseUrl
+        baseUrl == null ||
+        (pactBaseUrl != null && baseUrl === Cypress.config().baseUrl)
       ) {
-        Cypress.env("C8Y_BASEURL", pact?.info?.baseUrl);
+        Cypress.env("C8Y_BASEURL", pactBaseUrl);
+        consoleProps.baseUrl = getBaseUrlFromEnv();
       }
 
       if (pact != null && _.isFunction(Cypress.c8ypact.on.loadPact)) {
         Cypress.c8ypact.on.loadPact(pact);
       }
+
+      logger?.end();
     });
   });
 }
@@ -481,23 +496,6 @@ function isRecordingEnabled(): boolean {
 function isMockingEnabled(): boolean {
   const values = ["apply", "mock", "mocking"];
   return isEnabled() && values.includes(Cypress.c8ypact.mode());
-}
-
-/**
- * Validates the pact mode and throws an error if the mode is not supported.
- */
-function validatePactMode() {
-  const mode = Cypress.env("C8Y_PACT_MODE") || "disabled";
-  const values = Object.values(C8yPactModeValues) as string[];
-  if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
-    const error = new Error(
-      `Unsupported pact mode: ${mode}. Supported values are: ${values.join(
-        ", "
-      )}`
-    );
-    error.name = "C8yPactError";
-    throw error;
-  }
 }
 
 function mode(): C8yPactMode {

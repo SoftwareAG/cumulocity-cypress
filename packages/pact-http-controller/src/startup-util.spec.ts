@@ -7,7 +7,6 @@ import {
   getConfigFromArgs,
   getConfigFromArgsOrEnvironment,
   getConfigFromEnvironment,
-  getEnvVar,
 } from "./startup-util";
 
 import {
@@ -16,44 +15,6 @@ import {
 } from "../../../src/node";
 
 describe("startup util tests", () => {
-  describe("getEnvVar", () => {
-    test("getEnvVar should return value for same key", () => {
-      process.env.MY_VARIABLE = "my value";
-      const result = getEnvVar("MY_VARIABLE");
-      expect(result).toBe("my value");
-    });
-
-    test("getEnvVar should return value for camelCase key", () => {
-      process.env.myVariable = "my value";
-      const result = getEnvVar("MY_VARIABLE");
-      expect(result).toBe("my value");
-    });
-
-    test("getEnvVar should return value for key with Cypress_ prefix", () => {
-      process.env.CYPRESS_MY_VARIABLE = "my value";
-      const result = getEnvVar("MY_VARIABLE");
-      expect(result).toBe("my value");
-    });
-
-    test("getEnvVar should return value for key with C8Y_ prefix", () => {
-      process.env.MY_VARIABLE = "my value";
-      const result = getEnvVar("C8Y_MY_VARIABLE");
-      expect(result).toBe("my value");
-    });
-
-    test("getEnvVar should return value for key with CYPRESS_ prefix and camel case variable", () => {
-      process.env.CYPRESS_myVariable = "my value";
-      const result = getEnvVar("MY_VARIABLE");
-      expect(result).toBe("my value");
-    });
-
-    test("getEnvVar should return value for camelCase key with cypress prefix", () => {
-      process.env.cypressMyVariable = "my value";
-      const result = getEnvVar("MY_VARIABLE");
-      expect(result).toBe("my value");
-    });
-  });
-
   describe("getConfigFromArgs", () => {
     test("getConfigFromArgs should return partial config", () => {
       process.argv = [
