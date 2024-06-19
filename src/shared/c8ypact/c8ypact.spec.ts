@@ -4,12 +4,68 @@ import { C8yDefaultPact } from "./c8ydefaultpact";
 import {
   C8yDefaultPactRecord,
   C8yPact,
+  C8yPactModeValues,
+  getEnvVar,
   isPact,
   isPactError,
   isPactRecord,
+  pactId,
+  validatePactMode,
 } from "./c8ypact";
 
 describe("c8ypact", () => {
+  describe("pactId", function () {
+    it("generate id for string", function () {
+      expect(pactId("test")).toBe("test");
+      expect(pactId("test test")).toBe("test_test");
+      expect(pactId("test    test")).toBe("test_test");
+    });
+
+    it("remove special characters", function () {
+      expect(pactId("test@#$%^&*()_+")).toBe("test");
+      expect(pactId("test@#$%^&*()_+ test")).toBe("test_test");
+    });
+
+    it("should not split numbers", function () {
+      expect(pactId("c8ypact")).toBe("c8ypact");
+      expect(pactId("c8ypact test")).toBe("c8ypact_test");
+    });
+
+    it("deburrs string", function () {
+      expect(pactId("tést")).toBe("test");
+      expect(pactId("tést tèst")).toBe("test_test");
+    });
+
+    it("trims id string", function () {
+      expect(pactId(" test ")).toBe("test");
+      expect(pactId(" test test ")).toBe("test_test");
+      expect(pactId(["  test  ", "  test"])).toBe("test__test");
+    });
+
+    it("generate id for array of strings", function () {
+      expect(pactId(["test", "test"])).toBe("test__test");
+      expect(pactId(["test", "test test"])).toBe("test__test_test");
+    });
+
+    it("undefined and null", function () {
+      expect(pactId(undefined as any)).toBe(undefined);
+      expect(pactId(null as any)).toBe(null);
+    });
+
+    it("generate id for object", function () {
+      expect(pactId({ test: "test" } as any)).toBe(undefined);
+      expect(pactId({ test: "test", test2: "test" } as any)).toBe(undefined);
+    });
+
+    it("should not change valid ids", function () {
+      expect(pactId("test")).toBe("test");
+      expect(pactId("test_test")).toBe("test_test");
+      expect(pactId("test__test")).toBe("test__test");
+      const x = "c8ypact__c8ypact_record_and_load__should_record_c8ypacts";
+      expect(pactId(x)).toBe(x);
+    });
+  });
+
   describe("isPactRecord", function () {
     it("isPactRecord validates undefined", function () {
       expect(isPactRecord(undefined)).toBe(false);
@@ -113,6 +169,94 @@ describe("c8ypact", () => {
       expect(isPactError(undefined)).toBe(false);
       expect(isPactError(null)).toBe(false);
       expect(isPactError({})).toBe(false);
+    });
+  });
+
+  describe("getEnvVar", () => {
+    it("getEnvVar should return value for same key", () => {
+      process.env.MY_VARIABLE = "my value";
+      const result = getEnvVar("MY_VARIABLE");
+      expect(result).toBe("my value");
+    });
+
+    it("getEnvVar should return value for camelCase key", () => {
+      process.env.myVariable = "my value";
+      const result = getEnvVar("MY_VARIABLE");
+      expect(result).toBe("my value");
+    });
+
+    it("getEnvVar should return value for key with Cypress_ prefix", () => {
+      process.env.CYPRESS_MY_VARIABLE = "my value";
+      const result = getEnvVar("MY_VARIABLE");
+      expect(result).toBe("my value");
+    });
+
+    it("getEnvVar should return value for key with C8Y_ prefix", () => {
+      process.env.MY_VARIABLE = "my value";
+      const result = getEnvVar("C8Y_MY_VARIABLE");
+      expect(result).toBe("my value");
+    });
+
+    it("getEnvVar should return value for key with CYPRESS_ prefix and camel case variable", () => {
+      process.env.CYPRESS_myVariable = "my value";
+      const result = getEnvVar("MY_VARIABLE");
+      expect(result).toBe("my value");
+    });
+
+    it("getEnvVar should return value for key with CYPRESS_ with removing C8Y_", () => {
+      process.env.CYPRESS_MY_VARIABLE = "my value";
+      const result = getEnvVar("C8Y_MY_VARIABLE");
+      expect(result).toBe("my value");
+    });
+
+    it("getEnvVar should camelcase C8Y prefix as c8y", () => {
+      process.env.CYPRESS_c8yPactMode = "my value";
+      const result = getEnvVar("C8Y_PACT_MODE");
+      expect(result).toBe("my value");
+    });
+  });
+
+  describe("validatePactMode", () => {
+    it("validatePactMode should not throw for valid mode", () => {
+      expect(() => {
+        validatePactMode("record");
+      }).not.toThrow();
+    });
+
+    it("validatePactMode should not throw for null or undefined", () => {
+      expect(() => {
+        validatePactMode(null as any);
+      }).not.toThrow();
+
+      expect(() => {
+        validatePactMode(undefined);
+      }).not.toThrow();
+    });
+
+    it("validatePactMode should lowercase value", () => {
+      expect(() => {
+        validatePactMode("ReCORd");
+      }).not.toThrow();
+    });
+
+    it("validatePactMode should throw for not string value", () => {
+      expect(() => {
+        validatePactMode({} as any);
+      }).toThrowError(
+        `Unsupported pact mode: "${{}.toString()}". Supported values are: ${Object.values(
+          C8yPactModeValues
+        ).join(", ")}`
+      );
+    });
+
+    it("validatePactMode should throw for invalid mode", () => {
+      expect(() => {
+        validatePactMode("invalid");
+      }).toThrowError(
+        `Unsupported pact mode: "invalid". Supported values are: ${Object.values(
+          C8yPactModeValues
+        ).join(", ")}`
+      );
     });
   });
 });
