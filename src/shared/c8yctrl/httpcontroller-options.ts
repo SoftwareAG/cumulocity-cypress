@@ -32,6 +32,10 @@ export type C8yPactHttpResponse<T = any> = Pick<
 
 export interface C8yPactHttpControllerOptions {
   /**
+   * The resource path to use for the controller. Default is "/c8yctrl".
+   */
+  resourcePath?: string;
+  /**
    * Base URL of the target server to proxy requests to.
    */
   baseUrl?: string;
