@@ -21,6 +21,7 @@ import {
   C8yPactRecordingMode,
   C8yPactRecordingModeValues,
   C8yPactModeValues,
+  pactId,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
@@ -528,12 +529,27 @@ function recordingMode() {
 }
 
 function getCurrentTestId(): C8yPactID {
-  let key = Cypress.currentTest?.titlePath?.join("__");
-  if (key == null) {
-    key = Cypress.spec?.relative?.split("/").slice(-2).join("__");
-  }
   const pact = Cypress.config().c8ypact;
-  return (pact && pact.id) || key.replace(/ /g, "_");
+  if (pact?.id != null) {
+    const pId = pactId(pact.id);
+    if (pId != null) {
+      return pId;
+    }
+  }
+
+  let key = Cypress.currentTest?.titlePath;
+  if (key == null) {
+    key = Cypress.spec?.relative?.split("/").slice(-2);
+  }
+  const result = pactId(key);
+  if (key == null || result == null) {
+    const error = new Error(
+      "Failed to get or create pact id for current test."
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+  return result;
 }
 
 async function savePact(

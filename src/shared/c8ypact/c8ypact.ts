@@ -1,6 +1,10 @@
 /// <reference types="cypress" />
 
-import _ from "lodash";
+// workaround for lodash import in Cypress nodejs typescript runtime and browser
+import lodash1 from "lodash";
+import * as lodash2 from "lodash";
+const _ = lodash1 || lodash2;
+
 import {
   C8yPactPreprocessor,
   C8yPactPreprocessorOptions,
@@ -370,6 +374,37 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
     });
     return result as Cypress.Response<T>;
   }
+}
+
+export function isValidPactId(value: string): boolean {
+  const validPactIdRegex = /^[a-zA-Z0-9_-]+(__[a-zA-Z0-9_-]+)*$/;
+  return validPactIdRegex.test(value);
+}
+
+/**
+ * Creates an C8yPactID for a given string or array of strings.
+ * @param value The string or array of strings to convert to a pact id.
+ * @returns The pact id.
+ */
+export function pactId(value: string | string[]): C8yPactID | undefined {
+  let result: string = "";
+  const suiteSeparator = "__";
+
+  const normalize = (value: string): string =>
+    value
+      .split(suiteSeparator)
+      .map((v) => _.words(_.deburr(v), /[a-zA-Z0-9_-]+/g).join("_"))
+      .join(suiteSeparator);
+
+  if (value != null && _.isArray(value)) {
+    result = value.map((v) => normalize(v)).join(suiteSeparator);
+  } else if (value != null && _.isString(value)) {
+    result = normalize(value as string);
+  }
+  if (result == null || _.isEmpty(result)) {
+    return !value ? (value as C8yPactID) : (undefined as any);
+  }
+  return result;
 }
 
 /**
