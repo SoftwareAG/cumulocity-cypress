@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Cypress commands for Cumulocity IoT",
   "scripts": {
     "start-server": "http-server test/cypress/app/ --silent --port 8080 --mimetypes test/custom_mime_types.types --ext json",
