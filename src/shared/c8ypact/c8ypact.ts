@@ -377,6 +377,7 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
 }
 
 export function isValidPactId(value: string): boolean {
+  if (value == null || value.length > 1000 || !_.isString(value)) return false;
   const validPactIdRegex = /^[a-zA-Z0-9_-]+(__[a-zA-Z0-9_-]+)*$/;
   return validPactIdRegex.test(value);
 }
