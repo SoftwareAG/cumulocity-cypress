@@ -527,19 +527,61 @@ describe("c8ypact", () => {
     it("plugin should be enabled", function () {
       expect(Cypress.env("C8Y_PLUGIN_LOADED")).to.eq("true");
     });
+  });
 
+  context("c8ypact getCurrentTestId", function () {
     it("should create pact identifier from test case name", function () {
       expect(Cypress.c8ypact.getCurrentTestId()).to.equal(
-        "c8ypact__c8ypact_config_and_environment_variables__should_create_pact_identifier_from_test_case_name"
+        "c8ypact__c8ypact_getCurrentTestId__should_create_pact_identifier_from_test_case_name"
       );
     });
+
+    it("should throw error if pact identifier is undefined", function (done) {
+      Cypress.once("fail", (err) => {
+        expect(err.message).to.contain(
+          "Failed to get or create pact id for current test."
+        );
+        done();
+      });
+      cy.stub(Cypress, "currentTest").value({});
+      cy.stub(Cypress.spec, "relative").value(undefined);
+      Cypress.c8ypact.getCurrentTestId();
+    });
+
+    it(
+      "should not throw error if id is annotated",
+      { c8ypact: { id: "mytest" } },
+      function () {
+        cy.stub(Cypress, "currentTest").value({});
+        cy.stub(Cypress.spec, "relative").value(undefined);
+        expect(Cypress.currentTest.titlePath).to.be.undefined;
+        expect(Cypress.spec.relative).to.be.undefined;
+        expect(Cypress.c8ypact.getCurrentTestId()).to.equal("mytest");
+      }
+    );
+
+    it(
+      "should throw error if id is annotated with invalid value",
+      { c8ypact: { id: "&*%+§$%" } },
+      function (done) {
+        Cypress.once("fail", (err) => {
+          expect(err.message).to.contain(
+            "Failed to get or create pact id for current test."
+          );
+          done();
+        });
+        cy.stub(Cypress, "currentTest").value({});
+        cy.stub(Cypress.spec, "relative").value(undefined);
+        Cypress.c8ypact.getCurrentTestId();
+      }
+    );
 
     it(
       "should create pact identifier from test case annotation",
       { c8ypact: { id: "mycustom test case" } },
       function () {
         expect(Cypress.c8ypact.getCurrentTestId()).to.equal(
-          "mycustom test case"
+          "mycustom_test_case"
         );
       }
     );
@@ -881,6 +923,34 @@ describe("c8ypact", () => {
         expect(pact?.records).to.have.length(3);
         expect(pact?.records[2].response.status).to.eq(409);
         expect(pact?.records[2].response.statusText).to.eq("Conflict");
+      });
+    });
+  });
+
+  context("c8ypact callback handlers", function () {
+    let startSpy: sinon.SinonSpy;
+
+    before(() => {
+      Cypress.c8ypact.on.suiteStart = () => {
+        cy.log("c8ypact on.suiteStart");
+      };
+      startSpy = cy.spy(Cypress.c8ypact.on, "suiteStart").log(false);
+    });
+
+    context("c8ypact on.suiteStart", function () {
+      before(() => {
+        Cypress.env("MY_SUITE_START", "true");
+      });
+
+      it("should call suiteStart callback", function () {
+        expect(startSpy).to.have.been.calledOnce;
+        expect(startSpy.getCall(0).args).to.have.length(1);
+        expect(startSpy.getCall(0).args[0]).to.deep.eq([
+          "c8ypact",
+          "c8ypact callback handlers",
+          "c8ypact on.suiteStart",
+        ]);
+        expect(Cypress.env("MY_SUITE_START")).to.eq("true");
       });
     });
   });
