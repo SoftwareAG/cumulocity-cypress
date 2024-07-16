@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as glob from "glob";
 import debug from "debug";
-import { C8yPact, C8yPactSaveKeys } from "./c8ypact";
+import { C8yPact, C8yPactSaveKeys, pactId } from "./c8ypact";
 
 import lodash1 from "lodash";
 import * as lodash2 from "lodash";
@@ -69,11 +69,19 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
 
   loadPact(id: string): C8yPact | null {
     log(`loadPact() - ${id}`);
+
+    const pId = pactId(id);
+    if (pId == null) {
+      log(`loadPact() - invalid pact id ${id} -> ${pId}`);
+      return null;
+    }
+
     if (!this.folder || !fs.existsSync(this.folder)) {
       log(`loadPact() - folder ${this.folder} does not exist`);
       return null;
     }
-    const file = path.join(this.folder, `${id}.json`);
+
+    const file = path.join(this.folder, `${pId}.json`);
     if (fs.existsSync(file)) {
       const pact = fs.readFileSync(file, "utf-8");
       log(`loadPact() - ${file} loaded`);
@@ -86,25 +94,56 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
 
   savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {
     this.createFolderRecursive(this.folder);
-    const file = path.join(this.folder, `${pact.id}.json`);
-    log(`savePact() - ${file}`);
-    fs.writeFileSync(
-      file,
-      JSON.stringify(
-        {
-          id: pact.id,
-          info: pact.info,
-          records: pact.records,
-        },
-        undefined,
-        2
-      ),
-      "utf-8"
+    const pId = pactId(pact.id);
+    if (pId == null) {
+      log(`savePact() - invalid pact id ${pact.id} -> ${pId}`);
+      return;
+    }
+
+    const file = path.join(this.folder, `${pId}.json`);
+    log(`savePact() - write ${file} (${pact.records?.length || 0} records)`);
+
+    try {
+      fs.writeFileSync(
+        file,
+        this.safeStringify(
+          {
+            id: pact.id,
+            info: pact.info,
+            records: pact.records,
+          },
+          2
+        ),
+        "utf-8"
+      );
+    } catch (error) {
+      console.error(`Failed to save pact.`, error);
+    }
+  }
+
+  protected safeStringify(obj: any, indent = 2) {
+    let cache: any[] = [];
+    const retVal = JSON.stringify(
+      obj,
+      (key, value) =>
+        typeof value === "object" && value !== null
+          ? cache.includes(value)
+            ? undefined
+            : cache.push(value) && value
+          : value,
+      indent
     );
+    cache = [];
+    return retVal;
   }
 
   deletePact(id: string): void {
-    const filePath = path.join(this.folder, `${id}.json`);
+    const pId = pactId(id);
+    if (pId == null) {
+      log(`deletePact() - invalid pact id ${id} -> ${pId}`);
+      return;
+    }
+    const filePath = path.join(this.folder, `${pId}.json`);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       log(`deletePact() - deleted ${filePath}`);

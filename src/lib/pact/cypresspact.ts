@@ -21,6 +21,7 @@ import {
   C8yPactRecordingMode,
   C8yPactRecordingModeValues,
   C8yPactModeValues,
+  pactId,
 } from "../../shared/c8ypact";
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
@@ -214,6 +215,11 @@ declare global {
       error: Error,
       options: any
     ) => void;
+    /**
+     * Called for every mocha suite started.
+     * @param titlePath The title path including parent suite names
+     */
+    suiteStart?: (titlePath: string[]) => void;
   }
 
   /**
@@ -377,6 +383,14 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     },
   };
 
+  const runner = (Cypress as any).mocha.getRunner();
+  runner.on("suite", (suite: any) => {
+    const callback = Cypress.c8ypact.on.suiteStart;
+    if (_.isFunction(callback)) {
+      callback(getSuiteTitles(suite));
+    }
+  });
+
   beforeEach(() => {
     Cypress.c8ypact.current = null;
     validatePactMode();
@@ -528,12 +542,34 @@ function recordingMode() {
 }
 
 function getCurrentTestId(): C8yPactID {
-  let key = Cypress.currentTest?.titlePath?.join("__");
-  if (key == null) {
-    key = Cypress.spec?.relative?.split("/").slice(-2).join("__");
-  }
   const pact = Cypress.config().c8ypact;
-  return (pact && pact.id) || key.replace(/ /g, "_");
+  if (pact?.id != null) {
+    const pId = pactId(pact.id);
+    if (pId != null) {
+      return pId;
+    }
+  }
+
+  let key = Cypress.currentTest?.titlePath;
+  if (key == null) {
+    key = Cypress.spec?.relative?.split("/").slice(-2);
+  }
+  const result = pactId(key);
+  if (key == null || result == null) {
+    const error = new Error(
+      "Failed to get or create pact id for current test."
+    );
+    error.name = "C8yPactError";
+    throw error;
+  }
+  return result;
+}
+
+function getSuiteTitles(suite: any): string[] {
+  if (suite.parent && !_.isEmpty(suite.parent.title)) {
+    return [...getSuiteTitles(suite.parent), suite.title];
+  }
+  return [suite.title];
 }
 
 async function savePact(
