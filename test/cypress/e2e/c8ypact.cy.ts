@@ -911,6 +911,34 @@ describe("c8ypact", () => {
     });
   });
 
+  context("c8ypact callback handlers", function () {
+    let startSpy: sinon.SinonSpy;
+
+    before(() => {
+      Cypress.c8ypact.on.suiteStart = () => {
+        cy.log("c8ypact on.suiteStart");
+      };
+      startSpy = cy.spy(Cypress.c8ypact.on, "suiteStart").log(false);
+    });
+
+    context("c8ypact on.suiteStart", function () {
+      before(() => {
+        Cypress.env("MY_SUITE_START", "true");
+      });
+
+      it("should call suiteStart callback", function () {
+        expect(startSpy).to.have.been.calledOnce;
+        expect(startSpy.getCall(0).args).to.have.length(1);
+        expect(startSpy.getCall(0).args[0]).to.deep.eq([
+          "c8ypact",
+          "c8ypact callback handlers",
+          "c8ypact on.suiteStart",
+        ]);
+        expect(Cypress.env("MY_SUITE_START")).to.eq("true");
+      });
+    });
+  });
+
   context("c8ypact matching", function () {
     const response: Cypress.Response<any> = {
       status: 200,

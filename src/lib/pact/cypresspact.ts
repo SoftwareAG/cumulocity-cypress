@@ -215,6 +215,11 @@ declare global {
       error: Error,
       options: any
     ) => void;
+    /**
+     * Called for every mocha suite started.
+     * @param titlePath The title path including parent suite names
+     */
+    suiteStart?: (titlePath: string[]) => void;
   }
 
   /**
@@ -377,6 +382,14 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
       });
     },
   };
+
+  const runner = (Cypress as any).mocha.getRunner();
+  runner.on("suite", (suite: any) => {
+    const callback = Cypress.c8ypact.on.suiteStart;
+    if (_.isFunction(callback)) {
+      callback(getSuiteTitles(suite));
+    }
+  });
 
   beforeEach(() => {
     Cypress.c8ypact.current = null;
@@ -550,6 +563,13 @@ function getCurrentTestId(): C8yPactID {
     throw error;
   }
   return result;
+}
+
+function getSuiteTitles(suite: any): string[] {
+  if (suite.parent && !_.isEmpty(suite.parent.title)) {
+    return [...getSuiteTitles(suite.parent), suite.title];
+  }
+  return [suite.title];
 }
 
 async function savePact(
