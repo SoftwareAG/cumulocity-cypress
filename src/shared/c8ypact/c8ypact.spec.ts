@@ -9,6 +9,7 @@ import {
   isPact,
   isPactError,
   isPactRecord,
+  isValidPactId,
   pactId,
   validatePactMode,
 } from "./c8ypact";
@@ -19,11 +20,16 @@ describe("c8ypact", () => {
       expect(pactId("test")).toBe("test");
       expect(pactId("test test")).toBe("test_test");
       expect(pactId("test    test")).toBe("test_test");
+      expect(pactId("test_test")).toBe("test_test");
+      expect(pactId("_test_test_")).toBe("_test_test_");
     });
 
     it("remove special characters", function () {
-      expect(pactId("test@#$%^&*()_+")).toBe("test");
-      expect(pactId("test@#$%^&*()_+ test")).toBe("test_test");
+      expect(pactId("test@#$%^&*()+")).toBe("test");
+      // special handling of _
+      // as value is split to words which are joined by _, there might be multiple _ in a row
+      expect(pactId("test@#$%^&*()_+")).toBe("test__");
+      expect(pactId("test@#$%^&*()_+ test")).toBe("test___test");
     });
 
     it("should not split numbers", function () {
@@ -47,12 +53,12 @@ describe("c8ypact", () => {
       expect(pactId(["test", "test test"])).toBe("test__test_test");
     });
 
-    it("undefined and null", function () {
+    it("should return undefined for undefined or null", function () {
       expect(pactId(undefined as any)).toBe(undefined);
       expect(pactId(null as any)).toBe(null);
     });
 
-    it("generate id for object", function () {
+    it("should return undefined for objects", function () {
       expect(pactId({ test: "test" } as any)).toBe(undefined);
       expect(pactId({ test: "test", test2: "test" } as any)).toBe(undefined);
     });
@@ -63,6 +69,22 @@ describe("c8ypact", () => {
       expect(pactId("test__test")).toBe("test__test");
       const x = "c8ypact__c8ypact_record_and_load__should_record_c8ypacts";
       expect(pactId(x)).toBe(x);
+    });
+  });
+
+  describe("isValidPactId", function () {
+    it("valid pact ids", function () {
+      expect(isValidPactId("test")).toBe(true);
+      expect(isValidPactId("test_test")).toBe(true);
+      expect(isValidPactId("test__test")).toBe(true);
+      expect(isValidPactId("test__test2__test_test3_test4")).toBe(true);
+      expect(isValidPactId("test__test_")).toBe(true); // underscore is valid character
+    });
+
+    it("invalid pact ids", function () {
+      expect(isValidPactId("test*#")).toBe(false);
+      expect(isValidPactId("test test")).toBe(false);
+      expect(isValidPactId("tést")).toBe(false);
     });
   });
 

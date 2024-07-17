@@ -387,6 +387,38 @@ export class C8yDefaultPactRecord implements C8yPactRecord {
   }
 }
 
+export function isValidPactId(value: string): boolean {
+  if (value == null || value.length > 1000 || !_.isString(value)) return false;
+  const validPactIdRegex = /^[a-zA-Z0-9_-]+(__[a-zA-Z0-9_-]+)*$/;
+  return validPactIdRegex.test(value);
+}
+
+/**
+ * Creates an C8yPactID for a given string or array of strings.
+ * @param value The string or array of strings to convert to a pact id.
+ * @returns The pact id.
+ */
+export function pactId(value: string | string[]): C8yPactID | undefined {
+  let result: string = "";
+  const suiteSeparator = "__";
+
+  const normalize = (value: string): string =>
+    value
+      .split(suiteSeparator)
+      .map((v) => _.words(_.deburr(v), /[a-zA-Z0-9_-]+/g).join("_"))
+      .join(suiteSeparator);
+
+  if (value != null && _.isArray(value)) {
+    result = value.map((v) => normalize(v)).join(suiteSeparator);
+  } else if (value != null && _.isString(value)) {
+    result = normalize(value as string);
+  }
+  if (result == null || _.isEmpty(result)) {
+    return !value ? (value as C8yPactID) : (undefined as any);
+  }
+  return result;
+}
+
 /**
  * Validate the given pact mode. Throws an error if the mode is not supported
  * or undefined.
@@ -405,32 +437,6 @@ export function validatePactMode(mode?: string) {
       throw error;
     }
   }
-}
-
-/**
- * Creates an C8yPactID for give string or array of strings.
- * @param value The string or array of strings to convert to a pact id.
- * @returns The pact id.
- */
-export function pactId(value: string | string[]): C8yPactID {
-  let result: string = "";
-  const suiteSeparator = "__";
-
-  const normalize = (value: string): string =>
-    value
-      .split(suiteSeparator)
-      .map((v) => _.words(_.deburr(v), /[a-zA-Z0-9]+/g).join("_"))
-      .join(suiteSeparator);
-
-  if (value && _.isArray(value)) {
-    result = value.map((v) => normalize(v)).join(suiteSeparator);
-  } else if (value && _.isString(value)) {
-    result = normalize(value as string);
-  }
-  if (!result || _.isEmpty(result)) {
-    return !value ? (value as C8yPactID) : (undefined as any);
-  }
-  return result;
 }
 
 /**

@@ -81,11 +81,19 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
 
   loadPact(id: string): C8yPact | null {
     log(`loadPact() - ${id}`);
+
+    const pId = pactId(id);
+    if (pId == null) {
+      log(`loadPact() - invalid pact id ${id} -> ${pId}`);
+      return null;
+    }
+
     if (!this.folder || !fs.existsSync(this.folder)) {
       log(`loadPact() - folder ${this.folder} does not exist`);
       return null;
     }
-    const file = path.join(this.folder, `${pactId(id)}.json`);
+
+    const file = path.join(this.folder, `${pId}.json`);
     if (fs.existsSync(file)) {
       const pact = fs.readFileSync(file, "utf-8");
       log(`loadPact() - ${file} loaded`);
@@ -102,7 +110,13 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
 
   savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {
     this.createFolderRecursive(this.folder);
-    const file = path.join(this.folder, `${pactId(pact.id)}.json`);
+    const pId = pactId(pact.id);
+    if (pId == null) {
+      log(`savePact() - invalid pact id ${pact.id} -> ${pId}`);
+      return;
+    }
+
+    const file = path.join(this.folder, `${pId}.json`);
     log(`savePact() - write ${file} (${pact.records?.length || 0} records)`);
 
     try {
@@ -123,7 +137,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     }
   }
 
-  safeStringify(obj: any, indent = 2) {
+  protected safeStringify(obj: any, indent = 2) {
     let cache: any[] = [];
     const retVal = JSON.stringify(
       obj,
@@ -140,7 +154,12 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
   }
 
   deletePact(id: string): void {
-    const filePath = path.join(this.folder, `${pactId(id)}.json`);
+    const pId = pactId(id);
+    if (pId == null) {
+      log(`deletePact() - invalid pact id ${id} -> ${pId}`);
+      return;
+    }
+    const filePath = path.join(this.folder, `${pId}.json`);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       log(`deletePact() - deleted ${filePath}`);
