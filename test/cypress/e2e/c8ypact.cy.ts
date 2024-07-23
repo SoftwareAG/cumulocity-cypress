@@ -106,6 +106,10 @@ describe("c8ypact", () => {
       expect(Cypress.c8ypact.recordingMode()).to.eq("refresh");
     });
 
+    it("semver should be defined", function () {
+      expect(Cypress.semver).to.not.be.undefined;
+    });
+
     it("should not be enabled if pact mode is undefined", function () {
       stubEnv({ C8Y_PACT_MODE: undefined });
       expect(Cypress.c8ypact.isEnabled()).to.be.false;

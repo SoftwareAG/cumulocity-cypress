@@ -38,6 +38,7 @@ declare global {
   namespace Cypress {
     interface Cypress {
       c8ypact: CypressC8yPact;
+      semver: typeof semver;
     }
 
     interface SuiteConfigOverrides {
@@ -284,7 +285,7 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
 if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
   _.set(Cypress, "__c8ypact.initialized", true);
   const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
-
+  Cypress.semver = semver;
   Cypress.c8ypact = {
     current: null,
     mode,
