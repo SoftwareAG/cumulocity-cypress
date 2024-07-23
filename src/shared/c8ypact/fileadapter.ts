@@ -36,6 +36,14 @@ export interface C8yPactFileAdapter {
    * Gets the folder where the pact files are stored.
    */
   getFolder: () => string;
+  /**
+   * Checks if a pact exists for a given id.
+   */
+  pactExists(id: string): boolean;
+  /**
+   * Provides some custom description of the adapter.
+   */
+  description(): string;
 }
 
 const log = debug("c8y:plugin:fileadapter");
@@ -50,6 +58,10 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     this.folder = path.isAbsolute(folder)
       ? folder
       : this.toAbsolutePath(folder);
+  }
+
+  description(): string {
+    return `C8yPactDefaultFileAdapter: ${this.folder}`;
   }
 
   getFolder(): string {
@@ -90,6 +102,10 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
       log(`loadPact() - ${file} does not exist`);
     }
     return null;
+  }
+
+  pactExists(id: string): boolean {
+    return fs.existsSync(path.join(this.folder, `${pactId(id)}.json`));
   }
 
   savePact(pact: C8yPact | Pick<C8yPact, C8yPactSaveKeys>): void {

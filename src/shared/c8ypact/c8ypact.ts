@@ -160,13 +160,18 @@ export interface C8yPact {
   /**
    * Appends a new record to the pact. If skipIfExists is true, the record is
    * only appended if no record with the same request exists.
+   * @param record The record to add.
+   * @param skipIfExists If true, the record is only appended if no record for the same request exists.
+   * @returns True if the record was appended, false otherwise.
    */
-  appendRecord(record: C8yPactRecord, skipIfExists?: boolean): void;
+  appendRecord(record: C8yPactRecord, skipIfExists?: boolean): boolean;
   /**
    * Replaces an existing record with a new record. If no record with the same
    * request exists, the record is appended.
+   * @param record The record to be replaced.
+   * @returns True if the record was replaced, false otherwise.
    */
-  replaceRecord(record: C8yPactRecord): void;
+  replaceRecord(record: C8yPactRecord): boolean;
   /**
    * Returns the next pact record or null if no more records are available.
    */
@@ -176,13 +181,19 @@ export interface C8yPact {
    * based ob criteria like url and method. Returns null if no record is found.
    */
   nextRecordMatchingRequest(
-    request: Partial<Request>,
+    request: Partial<Request> | { url: string; method: string },
     baseUrl?: string
   ): C8yPactRecord | null;
   /**
    * Returns an iterator for the pact records.
    */
   [Symbol.iterator](): Iterator<C8yPactRecord | null>;
+}
+
+export interface C8yPactInfoVersion {
+  system?: string;
+  c8ypact?: string;
+  runner?: string;
 }
 
 /**
@@ -193,7 +204,7 @@ export interface C8yPactInfo extends C8yPactConfigOptions {
   /**
    * Version information of the system, runner and pact standard used to record the pact.
    */
-  version?: { system?: string; c8ypact?: string; runner?: string };
+  version?: C8yPactInfoVersion;
   /**
    * Title of the pact. Title is an array of suite and test titles.
    */
@@ -409,6 +420,26 @@ export function pactId(value: string | string[]): C8yPactID | undefined {
 }
 
 /**
+ * Validate the given pact mode. Throws an error if the mode is not supported
+ * or undefined.
+ * @param mode The pact mode to validate.
+ */
+export function validatePactMode(mode?: string) {
+  if (mode != null) {
+    const values = Object.values(C8yPactModeValues) as string[];
+    if (!_.isString(mode) || !values.includes(mode.toLowerCase())) {
+      const error = new Error(
+        `Unsupported pact mode: "${mode}". Supported values are: ${values.join(
+          ", "
+        )} or undefined.`
+      );
+      error.name = "C8yPactError";
+      throw error;
+    }
+  }
+}
+
+/**
  * Checks if the given object is a C8yPact. This also includes checking
  * all records to be valid C8yPactRecord instances.
  *
@@ -572,7 +603,12 @@ export async function toPactSerializableObject(
   try {
     await Promise.all(
       pact.records
-        .filter((record_1: C8yPactRecord) => !record_1.response.$body)
+        .filter(
+          (record_1) =>
+            record_1.response.body &&
+            !record_1.response.$body &&
+            _.isObjectLike(record_1.response.body)
+        )
         .map((record_2) =>
           options?.schemaGenerator
             ?.generate(record_2.response.body, { name: "body" })
@@ -628,50 +664,56 @@ export function createPactRecord(
   return C8yDefaultPactRecord.from(response, auth, client);
 }
 
-export function updateURLs(
-  value: string,
-  info: C8yPactInfo,
-  options?: { tenantId?: string; baseUrl?: string }
-): string {
-  if (!value || !info) return value;
-  let result = value;
+/**
+ * Returns the value of the environment variable with the given name. The function
+ * tries to find the value in the global `process.env` or `Cypress.env()`. If `env`
+ * is provided, the function uses the given object as environment.
+ *
+ * The function tries to find the value in the following order:
+ * - `name`
+ * - `camelCase(name)`
+ * - `CYPRESS_name`
+ * - `name.replace(/^C8Y_/i, "")`
+ * - `CYPRESS_camelCase(name)`
+ * - `CYPRESS_camelCase(name.replace(/^C8Y_/i, ""))`
+ *
+ * @param name The name of the environment variable.
+ * @param env The environment object to use. Default is `process.env` or `Cypress.env()`
+ *
+ * @returns The value of the environment variable or `undefined` if not found.
+ */
+export function getEnvVar(
+  name: string,
+  env?: { [key: string]: string }
+): string | undefined {
+  if (!name) return undefined;
 
-  const tenantUrl = (baseUrl?: string, tenant?: string): URL | undefined => {
-    if (!baseUrl || !tenant) return undefined;
-    try {
-      const url = new URL(baseUrl);
-      const instance = url.host.split(".")?.slice(1)?.join(".");
-      url.host = `${tenant}.${instance}`;
-      return url;
-    } catch {
-      // no-op
-    }
-    return undefined;
-  };
+  const e: { [key: string]: string } =
+    env ||
+    (typeof window !== "undefined" && window.Cypress
+      ? Cypress.env()
+      : process.env);
 
-  const infoUrl = tenantUrl(info.baseUrl, info.tenant)
-    ?.toString()
-    ?.replace(/\/$/, "");
-  const url =
-    (
-      tenantUrl(options?.baseUrl, options?.tenantId)?.toString() ??
-      options?.baseUrl
-    )?.replace(/\/$/, "") ?? "";
-
-  if (infoUrl && url) {
-    const regexp = new RegExp(`${infoUrl}`, "g");
-    result = result.replace(regexp, url);
+  function getFromEnv(key: string): string | undefined {
+    return e[key] as string | undefined;
   }
 
-  if (options?.baseUrl && info.baseUrl) {
-    const regexp = new RegExp(`${info.baseUrl}`, "g");
-    result = result.replace(regexp, options?.baseUrl);
+  function getForName(name: string): string | undefined {
+    return getFromEnv(name) || getFromEnv(`CYPRESS_${name}`);
   }
 
-  if (info.tenant && options?.tenantId) {
-    const regexp = new RegExp(`${info.tenant}`, "g");
-    result = result.replace(regexp, options?.tenantId);
-  }
+  const plainName = name.replace(/^C8Y_/i, "");
+  const camelCasedName = _.camelCase(name).replace(/^c8Y/i, "c8y");
+  const camelCasedPlainName = _.camelCase(plainName);
+  return (
+    getForName(name) ||
+    getForName(camelCasedName) ||
+    getForName(plainName) ||
+    getForName(camelCasedPlainName)
+  );
+}
 
-  return result;
+export function isOneOfStrings(value: string, values: string[]): boolean {
+  if (!_.isString(value) || _.isEmpty(value)) return false;
+  return values.includes(value.toLowerCase());
 }
