@@ -714,7 +714,7 @@ function save(pact: any, options: C8yPactSaveOptions) {
   if (options?.noqueue === true) {
     if (
       Cypress.testingType === "component" &&
-      semver.gte(Cypress.version, "12.15.0")
+      Cypress.semver.gte(Cypress.version, "12.15.0")
     ) {
       return new Promise((resolve) => setTimeout(resolve, 5))
         .then(() =>
