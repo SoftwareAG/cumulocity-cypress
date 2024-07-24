@@ -37,7 +37,6 @@ const { _ } = Cypress;
 
 import { FetchClient, IAuthentication } from "@c8y/client";
 import { C8yPactFetchClient } from "./fetchclient";
-import { getSystemVersion } from "../commands/requires";
 
 declare global {
   namespace Cypress {
