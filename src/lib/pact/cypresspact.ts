@@ -27,18 +27,22 @@ import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClient } from "../../shared/c8yclient";
 import { getBaseUrlFromEnv } from "../utils";
-import * as semver from "semver";
+import {
+  getMinSatisfyingVersion,
+  getMinimizedVersionString,
+  toSemverVersion,
+} from "../../shared/versioning";
 
 const { _ } = Cypress;
 
 import { FetchClient, IAuthentication } from "@c8y/client";
 import { C8yPactFetchClient } from "./fetchclient";
+import { getSystemVersion } from "../commands/requires";
 
 declare global {
   namespace Cypress {
     interface Cypress {
       c8ypact: CypressC8yPact;
-      semver: typeof semver;
     }
 
     interface SuiteConfigOverrides {
@@ -81,12 +85,6 @@ declare global {
      * Create a C8yPactID for the current test case.
      */
     getCurrentTestId(): C8yPactID;
-    /**
-     * Checks if the current test case is satisfying the version requirement defined in `requires` property of
-     * `C8yPactConfigOptions`.
-     * @returns True if the current test case is satisfying the version requirement, false otherwise.
-     */
-    isSystemVersionSatisfyingCurrentTestRequirements: () => boolean;
     /**
      * The pact object for the current test case. null if there is no recorded pact for current test.
      */
@@ -291,12 +289,10 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
 if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
   _.set(Cypress, "__c8ypact.initialized", true);
   const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
-  Cypress.semver = semver;
   Cypress.c8ypact = {
     current: null,
     mode,
     getCurrentTestId,
-    isSystemVersionSatisfyingCurrentTestRequirements,
     isRecordingEnabled,
     isMockingEnabled,
     savePact,
@@ -436,15 +432,6 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
       });
     }
 
-    if (
-      Cypress.env("C8Y_PACT_IGNORE_VERSION_SKIP") == null &&
-      Cypress.c8ypact.isSystemVersionSatisfyingCurrentTestRequirements() ===
-        false
-    ) {
-      logger?.end();
-      this.skip();
-    }
-
     if (!isEnabled()) {
       logger?.end();
       return;
@@ -573,8 +560,10 @@ function getCurrentTestId(): C8yPactID {
     }
   }
 
-  const version = getSystemVersion();
-  const requires = Cypress.config().c8ypact?.requires;
+  const requires = Cypress.config().requires;
+  const version = toSemverVersion(
+    Cypress.env("C8Y_SYSTEM_VERSION") || Cypress.env("C8Y_VERSION")
+  );
   if (version != null && result != null && requires != null) {
     const minVersion = getMinSatisfyingVersion(version, requires);
     if (minVersion != null) {
@@ -767,113 +756,4 @@ function save(pact: any, options: C8yPactSaveOptions) {
   } else {
     cy.task("c8ypact:save", pact, debugLogger());
   }
-}
-
-function isSystemVersionSatisfyingCurrentTestRequirements(): boolean {
-  const requires = Cypress.config().c8ypact?.requires;
-  const systemVersion = getSystemVersion();
-  if (!requires) return true;
-
-  let skipTest = false;
-  if (systemVersion != null) {
-    const requiredRanges = getRangesSatisfyingVersion(systemVersion, requires);
-    skipTest = _.isEmpty(requiredRanges);
-  } else {
-    // null is a special placeholder to mark the test to be executed if NO system version
-    // is configured. Used for example for mocked tests with cy.intercept.
-    skipTest = !requires?.includes(null);
-  }
-  return !skipTest;
-}
-
-// function to get the required versions from Cypress.config().c8yctrl?.requires satisfying the system version from getSystemVersion
-export function getRangesSatisfyingVersion(
-  version: semver.SemVer | string,
-  requires?: (string | null)[]
-): string[] {
-  if (version == null || requires == null || _.isEmpty(requires)) {
-    return [];
-  }
-  return filterNonNull(requires)
-    .filter((v) => semver.satisfies(version, v))
-    .filter((v) => v != null);
-}
-
-export function getMinSatisfyingVersion(
-  version: string | semver.SemVer,
-  ranges: (string | null)[]
-): semver.SemVer | undefined {
-  const minVersions = getMinSatisfyingVersions(version, ranges);
-  return _.first(minVersions);
-}
-
-export function getMinSatisfyingVersions(
-  version: string | semver.SemVer,
-  ranges: (string | null)[]
-): semver.SemVer[] {
-  if (!version || !ranges || !_.isString(version) || !_.isArray(ranges)) {
-    return [];
-  }
-  if (_.isEmpty(ranges)) {
-    const v = semver.coerce(version);
-    return v ? [v] : [];
-  }
-  const minVersions = ranges.reduce(
-    (acc: semver.SemVer[], range: string | null) => {
-      if (range != null && _.isString(range)) {
-        if (semver.satisfies(version, range)) {
-          const v = semver.minVersion(range);
-          if (v) acc.push(v);
-        }
-      } else {
-        const v = semver.coerce(version);
-        if (v) acc.push(v);
-      }
-      return acc;
-    },
-    []
-  );
-
-  return semver.sort(minVersions);
-}
-
-export function getSystemVersion() {
-  let version = Cypress.env("C8Y_SYSTEM_VERSION") || Cypress.env("C8Y_VERSION");
-  if (version == null) return undefined;
-
-  // version could possibly be a number, make sure to always convert to string
-  version = semver.coerce(version.toString());
-  if (!version) return undefined;
-  return version.toString();
-}
-
-export function getMinimizedVersionString(version: string | semver.SemVer) {
-  const semVerObj = _.isString(version) ? semver.parse(version) : version;
-  if (semVerObj == null) return undefined;
-
-  const props = ["major", "minor", "patch", "prerelease", "build"];
-  if (!props.every((prop) => prop in semVerObj)) {
-    return undefined;
-  }
-
-  if (
-    semVerObj.patch === 0 &&
-    semVerObj.minor === 0 &&
-    !semVerObj.prerelease.length &&
-    !semVerObj.build.length
-  ) {
-    return `${semVerObj.major}`;
-  } else if (
-    semVerObj.patch === 0 &&
-    !semVerObj.prerelease.length &&
-    !semVerObj.build.length
-  ) {
-    return `${semVerObj.major}.${semVerObj.minor}`;
-  } else {
-    return semVerObj.version;
-  }
-}
-
-function filterNonNull<T>(items: (T | null)[]): T[] {
-  return items.filter((item): item is T => item !== null) as T[];
 }

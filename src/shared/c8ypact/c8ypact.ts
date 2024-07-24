@@ -73,10 +73,6 @@ export interface C8yPactConfigOptions {
    */
   log?: boolean;
   /**
-   * System versions required to run the test as semver version ranges.
-   */
-  requires?: (string | null)[];
-  /**
    * Information describing the producer of the pact. Includes name and version information
    */
   producer?: { name: string; version?: string } | string;

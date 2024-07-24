@@ -26,7 +26,6 @@ if (!Cypress.c8ypact) {
     mode: () => "disabled",
     recordingMode: () => "refresh",
     current: null,
-    isSystemVersionSatisfyingCurrentTestRequirements: () => true,
     getCurrentTestId: () => "-",
     isRecordingEnabled: () => false,
     isMockingEnabled: () => false,
