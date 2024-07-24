@@ -28,6 +28,11 @@ class AcceptAllMatcher implements C8yPactMatcher {
 }
 
 describe("c8ypact", () => {
+  before(() => {
+    // do not skip tests with unsatisfied version requirements
+    Cypress.env("C8Y_PACT_IGNORE_VERSION_SKIP", "1");
+  });
+
   beforeEach(() => {
     Cypress.c8ypact.config.strictMatching = true;
     Cypress.c8ypact.config.ignore = false;
@@ -574,16 +579,20 @@ describe("c8ypact", () => {
       }
     );
 
-    it("should add min version to pact id", { requires: ["1.2"] }, function () {
-      stubEnv({ C8Y_SYSTEM_VERSION: "1.2.3" });
-      expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
-        "1_2__c8ypact_versions__getCurrentTestId__should_add_min_version_to_pact_id"
-      );
-    });
+    it(
+      "should add min version to pact id",
+      { requires: ["1.2.x"] },
+      function () {
+        stubEnv({ C8Y_SYSTEM_VERSION: "1.2.3" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
+          "1_2__c8ypact__c8ypact_getCurrentTestId__should_add_min_version_to_pact_id"
+        );
+      }
+    );
 
     it(
       "should add min version to pact id using c8ypact id",
-      { requires: ["1.2"], c8ypact: { id: "my_pact" } },
+      { requires: ["1.2.x"], c8ypact: { id: "my_pact" } },
       function () {
         stubEnv({ C8Y_SYSTEM_VERSION: "1.2.3" });
         expect(Cypress.c8ypact.getCurrentTestId()).to.eq("1_2__my_pact");
@@ -607,16 +616,38 @@ describe("c8ypact", () => {
     );
 
     it("should use C8Y_VERSION if set", { requires: ["1.2.3"] }, function () {
-      stubEnv({ C8Y_SYSTEM_VERSION: undefined, C8Y_VERSION: "1.2.4__" });
-      expect(Cypress.c8ypact.getCurrentTestId()).to.contain("1_2_4__");
+      stubEnv({ C8Y_SYSTEM_VERSION: undefined, C8Y_VERSION: "1.2.3" });
+      expect(Cypress.c8ypact.getCurrentTestId()).to.contain("1_2_3__");
     });
 
     it(
       "should prefer C8Y_SYSTEM_VERSION over C8Y_VERSION",
-      { requires: ["1.2.3"] },
+      { requires: [">=2", "^1.2.3"] },
       function () {
-        stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5", C8Y_VERSION: "1.2.6" });
-        expect(Cypress.c8ypact.getCurrentTestId()).to.contain("1_2_5__");
+        stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5", C8Y_VERSION: "2.0.0" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.contain("1_2_3__");
+      }
+    );
+
+    it(
+      "should not add version if min version is 0",
+      { requires: ["<2"] },
+      function () {
+        stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
+          "c8ypact__c8ypact_getCurrentTestId__should_not_add_version_if_min_version_is_0"
+        );
+      }
+    );
+
+    it(
+      "should not add system version if range only has null value",
+      { requires: [null] },
+      function () {
+        stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
+          "c8ypact__c8ypact_getCurrentTestId__should_not_add_system_version_if_range_only_has_null_value"
+        );
       }
     );
   });

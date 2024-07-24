@@ -32,7 +32,10 @@ if (Cypress.semver == null) {
 }
 
 beforeEach(function () {
-  if (isSystemVersionSatisfyingCurrentTestRequirements() === false) {
+  if (
+    Cypress.env("C8Y_PACT_IGNORE_VERSION_SKIP") == null &&
+    isSystemVersionSatisfyingCurrentTestRequirements() === false
+  ) {
     this.skip();
   }
 });

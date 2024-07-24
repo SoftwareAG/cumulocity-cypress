@@ -57,6 +57,9 @@ export function getMinSatisfyingVersions(
   if (!version || !ranges || !_.isString(version) || !_.isArray(ranges)) {
     return [];
   }
+  if (filterNonNull(ranges).length === 0) {
+    return [];
+  }
   if (_.isEmpty(ranges)) {
     const v = semver.coerce(version);
     return v ? [v] : [];

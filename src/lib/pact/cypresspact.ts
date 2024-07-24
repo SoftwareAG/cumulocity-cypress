@@ -546,6 +546,7 @@ function recordingMode() {
 }
 
 function getCurrentTestId(): C8yPactID {
+  debugger;
   let result: string[] | undefined = undefined;
   const pact = Cypress.config().c8ypact;
   if (pact?.id != null && pactId(pact.id) != null) {
@@ -567,7 +568,7 @@ function getCurrentTestId(): C8yPactID {
     const minVersion = getMinSatisfyingVersion(version, requires);
     if (minVersion != null) {
       const mv = getMinimizedVersionString(minVersion);
-      if (mv != null) {
+      if (mv != null && mv !== "0") {
         result.unshift(mv);
       }
     }
