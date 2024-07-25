@@ -27,7 +27,11 @@ import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClient } from "../../shared/c8yclient";
 import { getBaseUrlFromEnv } from "../utils";
-import * as semver from "semver";
+import {
+  getMinSatisfyingVersion,
+  getMinimizedVersionString,
+  toSemverVersion,
+} from "../../shared/versioning";
 
 const { _ } = Cypress;
 
@@ -284,7 +288,6 @@ export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
 if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
   _.set(Cypress, "__c8ypact.initialized", true);
   const globalIgnore = Cypress.env("C8Y_PACT_IGNORE");
-
   Cypress.c8ypact = {
     current: null,
     mode,
@@ -391,7 +394,7 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     }
   });
 
-  beforeEach(() => {
+  beforeEach(function () {
     Cypress.c8ypact.current = null;
     validatePactMode();
 
@@ -417,6 +420,7 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
         currentTestId: Cypress.c8ypact.getCurrentTestId(),
         env: Cypress.c8ypact.env(),
         cypressEnv: Cypress.env(),
+        systemVersion: Cypress.env("C8Y_SYSTEM_VERSION"),
       };
 
       logger = Cypress.log({
@@ -542,27 +546,43 @@ function recordingMode() {
 }
 
 function getCurrentTestId(): C8yPactID {
+  let result: string[] | undefined = undefined;
   const pact = Cypress.config().c8ypact;
-  if (pact?.id != null) {
-    const pId = pactId(pact.id);
+  if (pact?.id != null && pactId(pact.id) != null) {
+    result = [pact.id];
+  }
+
+  if (result == null) {
+    result = Cypress.currentTest?.titlePath;
+    if (result == null) {
+      result = Cypress.spec?.relative?.split("/").slice(-2);
+    }
+  }
+
+  const requires = Cypress.config().requires;
+  const version = toSemverVersion(
+    Cypress.env("C8Y_SYSTEM_VERSION") || Cypress.env("C8Y_VERSION")
+  );
+  if (version != null && result != null && requires != null) {
+    const minVersion = getMinSatisfyingVersion(version, requires);
+    if (minVersion != null) {
+      const mv = getMinimizedVersionString(minVersion);
+      if (mv != null && mv !== "0") {
+        result.unshift(mv);
+      }
+    }
+  }
+
+  if (result != null) {
+    const pId = pactId(result);
     if (pId != null) {
       return pId;
     }
   }
 
-  let key = Cypress.currentTest?.titlePath;
-  if (key == null) {
-    key = Cypress.spec?.relative?.split("/").slice(-2);
-  }
-  const result = pactId(key);
-  if (key == null || result == null) {
-    const error = new Error(
-      "Failed to get or create pact id for current test."
-    );
-    error.name = "C8yPactError";
-    throw error;
-  }
-  return result;
+  const error = new Error("Failed to get or create pact id for current test.");
+  error.name = "C8yPactError";
+  throw error;
 }
 
 function getSuiteTitles(suite: any): string[] {
@@ -694,7 +714,7 @@ function save(pact: any, options: C8yPactSaveOptions) {
   if (options?.noqueue === true) {
     if (
       Cypress.testingType === "component" &&
-      semver.gte(Cypress.version, "12.15.0")
+      Cypress.semver.gte(Cypress.version, "12.15.0")
     ) {
       return new Promise((resolve) => setTimeout(resolve, 5))
         .then(() =>
