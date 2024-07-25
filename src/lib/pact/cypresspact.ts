@@ -546,7 +546,6 @@ function recordingMode() {
 }
 
 function getCurrentTestId(): C8yPactID {
-  debugger;
   let result: string[] | undefined = undefined;
   const pact = Cypress.config().c8ypact;
   if (pact?.id != null && pactId(pact.id) != null) {

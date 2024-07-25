@@ -106,10 +106,11 @@ describe("versioning", () => {
       const v1 = getMinSatisfyingVersions("", []);
       expect(v1).toStrictEqual([]);
       const v2 = getMinSatisfyingVersions("1.2.3", []);
-      expect(v2).toStrictEqual([p("1.2.3")]);
-      // should coerce non-semver versions
-      const v3 = getMinSatisfyingVersions("1", []);
-      expect(v3).toStrictEqual([p("1.0.0")]);
+      expect(v2).toStrictEqual([]);
+      const v3 = getMinSatisfyingVersions("1.2.3", [null]);
+      expect(v3).toStrictEqual([]);
+      const v4 = getMinSatisfyingVersions("1.2.3", [null, null, null]);
+      expect(v4).toStrictEqual([]);
     });
 
     it("should work with single range", function () {
@@ -130,6 +131,13 @@ describe("versioning", () => {
       expect(v2).toStrictEqual([p("1.2.0")]);
       const v3 = getMinSatisfyingVersions("1.2.3", ["^1.0.1", "1.2.x"]);
       expect(v3).toStrictEqual([p("1.0.1"), p("1.2.0")]);
+    });
+
+    it("should coerce version to semver", function () {
+      const v1 = getMinSatisfyingVersions("1.2", ["1.2.x"]);
+      expect(v1).toStrictEqual([p("1.2.0")]);
+      const v2 = getMinSatisfyingVersions("1", ["1.x.x"]);
+      expect(v2).toStrictEqual([p("1.0.0")]);
     });
 
     it("should sort multiple ranges", function () {
