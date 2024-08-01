@@ -317,7 +317,7 @@ function expectCallsWithArgs(
       // } else {
       // console.log(JSON.stringify(expected[index][key]));
       // console.log(JSON.stringify(request.args[key]));
-      expect(request.args[key]).to.deep.equal(expected[index][key]);
+      expect(expected[index][key]).to.deep.equal(request.args[key]);
       // }
     });
   });
