@@ -44,7 +44,6 @@ export function normalizedArguments(args: any[] | any) {
  * env variables at the beginning of the arguments.
  */
 export function normalizedArgumentsWithAuth(args: any[]) {
-  if (!args) return [undefined];
   const normalized = normalizedArguments(args);
   if (
     _.isEmpty(normalized) ||
@@ -60,33 +59,6 @@ export function normalizedArgumentsWithAuth(args: any[]) {
     }
   }
   return normalized;
-}
-
-export function normalizedC8yclientArguments(args: any[]) {
-  if (!args) return [undefined];
-  const normalized = normalizedArgumentsWithAuth(args);
-  if (getCookieAuthFromEnv() != null && args[0] == null) {
-    normalized[0] = undefined;
-  }
-  return normalized;
-}
-
-export function getCookieAuthFromEnv() {
-  const cookieAuth = new CookieAuth();
-  const token = _.get(cookieAuth.getFetchOptions({}), "headers.X-XSRF-TOKEN");
-  if (!token || _.isEmpty(token)) {
-    return undefined;
-  }
-  return cookieAuth;
-}
-
-export function getXsrfToken() {
-  const cookieAuth = new CookieAuth();
-  const token = _.get(cookieAuth.getFetchOptions({}), "headers.X-XSRF-TOKEN");
-  if (token != null && !_.isEmpty(token)) {
-    return token;
-  }
-  return undefined;
 }
 
 export function getAuthOptionsFromEnv() {

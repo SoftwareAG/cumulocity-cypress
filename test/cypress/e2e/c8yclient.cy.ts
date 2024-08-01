@@ -1,6 +1,5 @@
 import {
   BasicAuth,
-  BearerAuth,
   Client,
   ICurrentTenant,
   IManagedObject,
@@ -10,7 +9,6 @@ import {
   expectC8yClientRequest,
   getConsolePropsForLogSpy,
   initRequestStub,
-  stubEnv,
   stubResponse,
   stubResponses,
 } from "../support/testutils";
@@ -188,55 +186,16 @@ describe("c8yclient", () => {
     );
 
     it("should use auth from options", () => {
-      stubEnv({ C8Y_TENANT: "t1234" });
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
-        auth: new BearerAuth("mytoken"),
+        auth: new BasicAuth({
+          user: "admin",
+          password: "mypassword",
+          tenant: "t1234",
+        }),
       }).then((response) => {
         expect(response.status).to.eq(200);
-        expectC8yClientRequest({
-          headers: {
-            Authorization: "Bearer mytoken",
-          },
-          url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
-        });
+        expectC8yClientRequest(requestOptions);
       });
-    });
-
-    it("should use auth from options and overwrite cookie", () => {
-      stubEnv({ C8Y_TENANT: "t1234" });
-      cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
-      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current(), {
-        auth: new BearerAuth("mytoken"),
-      }).then((response) => {
-        expect(response.status).to.eq(200);
-        expectC8yClientRequest({
-          headers: {
-            Authorization: "Bearer mytoken",
-          },
-          url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
-        });
-      });
-    });
-
-    it("should prefer CookieAuth over C8Y_USERNAME env variables", () => {
-      stubEnv({
-        C8Y_TENANT: "t1234",
-        C8Y_USERNAME: "admin",
-        C8Y_PASSWORD: "password",
-      });
-      const token = "fsETfgIBdAnEyOLbADTu22";
-      cy.setCookie("XSRF-TOKEN", token);
-      cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
-        (response) => {
-          expect(response.status).to.eq(200);
-          expectC8yClientRequest({
-            headers: {
-              "X-XSRF-TOKEN": token,
-            },
-            url: `${Cypress.config().baseUrl}/tenant/currentTenant`,
-          });
-        }
-      );
     });
 
     it("should use client from options", () => {
@@ -298,8 +257,7 @@ describe("c8yclient", () => {
         "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu22",
       });
 
-      stubEnv({ C8Y_TENANT: "t1234" });
-      cy.useAuth({ user: "admin", password: "mypassword" });
+      cy.useAuth({ user: "admin", password: "mypassword", tenant: "t1234" });
       cy.c8yclient<ICurrentTenant>((client) => client.tenant.current()).then(
         (response) => {
           expect(response.status).to.eq(200);
@@ -318,7 +276,6 @@ describe("c8yclient", () => {
       cy.setCookie("XSRF-TOKEN", "fsETfgIBdAnEyOLbADTu22");
 
       const expectedOptions = _.cloneDeep(requestOptions);
-      // BasicAuth also adds X-XSRF-TOKEN header
       _.extend(expectedOptions.headers, {
         "X-XSRF-TOKEN": "fsETfgIBdAnEyOLbADTu22",
       });

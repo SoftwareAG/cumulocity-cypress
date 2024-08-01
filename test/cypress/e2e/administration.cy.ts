@@ -42,30 +42,25 @@ describe("administration", () => {
           headers: { "content-type": "application/json" },
         }),
       ]);
-      cy.setCookie("XSRF-TOKEN", "123").then(() => {
-        cy.getAuth({
-          user: "admin",
-          password: "mypassword",
-          tenant: "t12345678",
-        })
-          .deleteUser({ userName: "test", displayName: "wewe" })
-          .then((response) => {
-            expect(response.status).to.eq(204);
-            expectC8yClientRequest({
-              url: `${Cypress.config().baseUrl}/user/t12345678/users/test`,
-              auth: {
-                user: "admin",
-                password: "mypassword",
-                tenant: "t12345678",
-              },
-              headers: { UseXBasic: true, "X-XSRF-TOKEN": "123" },
-              method: "DELETE",
-            });
+
+      cy.getAuth({ user: "admin", password: "mypassword", tenant: "t12345678" })
+        .deleteUser({ userName: "test", displayName: "wewe" })
+        .then((response) => {
+          expect(response.status).to.eq(204);
+          expectC8yClientRequest({
+            url: `${Cypress.config().baseUrl}/user/t12345678/users/test`,
+            auth: {
+              user: "admin",
+              password: "mypassword",
+              tenant: "t12345678",
+            },
+            headers: { UseXBasic: true },
+            method: "DELETE",
           });
-      });
+        });
     });
 
-    it("should pass client options to c8yclient", function () {
+    it("should use client options", function () {
       stubResponses([
         new window.Response(null, {
           status: 404,
@@ -106,34 +101,6 @@ describe("administration", () => {
 
       //@ts-expect-error
       cy.deleteUser(user);
-    });
-
-    it("should not overwrite cookie auth with auth from env", () => {
-      stubResponses([
-        new window.Response(null, {
-          status: 204,
-          statusText: "OK",
-          headers: { "content-type": "application/json" },
-        }),
-      ]);
-      stubEnv({
-        C8Y_USERNAME: "admin",
-        C8Y_PASSWORD: "mypassword",
-        C8Y_TENANT: "t12345678",
-      });
-      cy.setCookie("XSRF-TOKEN", "123").then(() => {
-        cy.deleteUser({ userName: "test", displayName: "wewe" }).then(
-          (response) => {
-            expect(response.status).to.eq(204);
-            expectC8yClientRequest({
-              url: `${Cypress.config().baseUrl}/user/t12345678/users/test`,
-              auth: undefined,
-              headers: { UseXBasic: true, "X-XSRF-TOKEN": "123" },
-              method: "DELETE",
-            });
-          }
-        );
-      });
     });
   });
 
