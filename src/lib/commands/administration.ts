@@ -1,4 +1,4 @@
-import { normalizedArgumentsWithAuth, throwError } from "../utils";
+import { normalizedC8yclientArguments, throwError } from "../utils";
 import {
   IUser,
   IApplication,
@@ -207,7 +207,7 @@ declare global {
 }
 
 Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
-  const $args = normalizedArgumentsWithAuth(args);
+  const $args = normalizedC8yclientArguments(args);
   const [auth, userOptions, permissions, applications, clientOptions] = $args;
 
   const consoleProps: any = {
@@ -310,7 +310,7 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
 });
 
 Cypress.Commands.add("deleteUser", { prevSubject: "optional" }, (...args) => {
-  const $args = normalizedArgumentsWithAuth(args);
+  const $args = normalizedC8yclientArguments(args);
   const [auth, user, clientOptions] = $args;
 
   const options = { ...clientOptions, ...{ failOnStatusCode: false } };
@@ -349,7 +349,7 @@ Cypress.Commands.add(
   "clearUserRoles",
   { prevSubject: "optional" },
   (...args) => {
-    const $args = normalizedArgumentsWithAuth(args);
+    const $args = normalizedC8yclientArguments(args);
     const [auth, user, clientOptions] = $args;
 
     const options = { ...clientOptions };
@@ -407,7 +407,7 @@ Cypress.Commands.add(
   "assignUserRoles",
   { prevSubject: "optional" },
   (...args) => {
-    const $args = normalizedArgumentsWithAuth(args);
+    const $args = normalizedC8yclientArguments(args);
     const [auth, user, roles, clientOptions] = $args;
 
     const options = { ...clientOptions };
@@ -478,7 +478,7 @@ Cypress.Commands.add(
   "getCurrentTenant",
   { prevSubject: "optional" },
   (...args) => {
-    const $args = normalizedArgumentsWithAuth(args);
+    const $args = normalizedC8yclientArguments(args);
     const [auth, clientOptions] = $args;
 
     const consoleProps = {
@@ -499,7 +499,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add("getTenantId", { prevSubject: "optional" }, (...args) => {
-  const $args = normalizedArgumentsWithAuth(args);
+  const $args = normalizedC8yclientArguments(args);
   const [auth] = $args;
   const consoleProps: any = {
     args: args || null,
@@ -541,7 +541,7 @@ Cypress.Commands.add(
   "getSystemVersion",
   { prevSubject: "optional" },
   (...args) => {
-    const $args = normalizedArgumentsWithAuth(args);
+    const $args = normalizedC8yclientArguments(args);
     const [auth, clientOptions] = $args;
 
     const consoleProps: any = {
@@ -598,7 +598,7 @@ Cypress.Commands.add(
   "bootstrapDeviceCredentials",
   { prevSubject: "optional" },
   (...args) => {
-    const $args = normalizedArgumentsWithAuth(args);
+    const $args = normalizedC8yclientArguments(args);
     const [auth, id, clientOptions] = $args;
 
     const consoleProps: any = {
