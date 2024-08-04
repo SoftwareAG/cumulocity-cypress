@@ -277,9 +277,10 @@ export function expectC8yClientRequest(
     if (options.auth && !result.headers.Authorization) {
       const tenant = options.auth.tenant ? options.auth.tenant + "/" : "";
       const user = `${tenant}${options.auth.user}`;
-      result.headers.Authorization = `Basic ${encodeBase64(
-        user + ":" + options.auth.password
-      )}`;
+      result.headers.Authorization = basicAuthorization(
+        user,
+        options.auth.password
+      );
     }
     _.defaultsDeep(result, defaultOptions);
 
@@ -289,6 +290,10 @@ export function expectC8yClientRequest(
   expect(window.fetchStub).to.have.callCount(all.length);
   const calls = window.fetchStub.getCalls();
   return expectCallsWithArgs(calls, all);
+}
+
+export function basicAuthorization(user: string, password: string): string {
+  return `Basic ${encodeBase64(`${user}:${password}`)}`;
 }
 
 function expectCallsWithArgs(
