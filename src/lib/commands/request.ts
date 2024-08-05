@@ -1,4 +1,8 @@
-import { getAuthOptionsFromEnv, normalizedArgumentsWithAuth } from "../utils";
+import {
+  getAuthOptionsFromEnv,
+  getXsrfToken,
+  normalizedArgumentsWithAuth,
+} from "../utils";
 const { _ } = Cypress;
 
 declare global {
@@ -153,7 +157,14 @@ const requestCommandWrapper = (
       options.body = $args[2];
     }
 
-    if (!options.auth && auth) {
+    const xsrfToken = getXsrfToken();
+    if (xsrfToken) {
+      options.headers = _.extend(options.headers || {}, {
+        "X-XSRF-TOKEN": xsrfToken,
+      });
+    }
+
+    if (!options.auth && !xsrfToken && auth) {
       options.auth = _.omit(auth, "tenant");
     }
 
