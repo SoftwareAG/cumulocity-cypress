@@ -1,56 +1,86 @@
 import {
   expectHttpRequest,
-  stubResponse,
   stubResponses,
   initRequestStub,
   url as _url,
+  stubEnv,
+  basicAuthorization,
 } from "../support/testutils";
 const { _, Promise } = Cypress;
 
 describe("request", () => {
   beforeEach(() => {
     initRequestStub();
-    stubResponse({
-      isOkStatusCode: true,
-      status: 201,
-      body: undefined,
-    });
+  });
 
-    Cypress.env("C8Y_USERNAME", undefined);
-    Cypress.env("C8Y_PASSWORD", undefined);
+  afterEach(() => {
+    cy.clearAllLocalStorage();
+    cy.clearAllCookies();
   });
 
   context("auth from environment", () => {
-    it("use auth from env variables", () => {
-      Cypress.env("C8Y_USERNAME", "admin");
-      Cypress.env("C8Y_PASSWORD", "password");
-
-      cy.request("/my/test/request").then(() => {
-        expectHttpRequest({
-          url: _url(`/my/test/request`),
-          method: "GET",
-          auth: { user: "admin", password: "password" },
-          body: undefined,
-        });
+    it("should use auth from env variables", () => {
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
+      cy.request("/my/test/request").then((response) => {
+        expect(response.status).to.eq(200);
+        const request = response.body.request;
+        expect(request.url).to.eq("/my/test/request");
+        expect(request.auth).to.eq(basicAuthorization("admin", "password"));
+        expect(request.cookies).to.deep.eq({});
+        expect(request.body).to.deep.eq({});
+        expect(request.headers).to.not.have.property("x-xsrf-token");
       });
     });
 
-    it("do not override auth in request", () => {
-      Cypress.env("C8Y_USERNAME", "admin");
-      Cypress.env("C8Y_PASSWORD", "password");
+    it("should use cookie auth from env and add x-xsrf-token header", () => {
+      cy.setCookie("XSRF-TOKEN", "1234");
+      cy.setCookie("authorization", "abc");
 
-      cy.request({
-        method: "POST",
-        url: "/my/test/request",
-        auth: { user: "myadmin", password: "mypassword" },
-      }).then(() => {
-        expectHttpRequest({
-          url: _url(`/my/test/request`),
-          method: "POST",
-          auth: { user: "myadmin", password: "mypassword" },
-          body: undefined,
-        });
+      cy.request("/my/test/request").then((response) => {
+        expect(response.status).to.eq(200);
+        const request = response.body.request;
+        expect(request.auth).to.be.undefined;
+        expect(request.url).to.eq("/my/test/request");
+        expect(request.method).to.eq("GET");
+        expect(request.body).to.deep.eq({});
+
+        const headers = response.body.request.headers;
+        const cookies: any = { authorization: "abc", "XSRF-TOKEN": "1234" };
+        expect(request.cookies).to.deep.eq(cookies);
+        expect(headers).to.have.property("x-xsrf-token", "1234");
+        expect(headers).to.not.have.property("authorization");
       });
+    });
+
+    it("should not override cookie with basic auth", () => {
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
+      cy.setCookie("XSRF-TOKEN", "1234");
+      cy.setCookie("authorization", "abc");
+
+      cy.request("/my/test/request").then((response) => {
+        expect(response.status).to.eq(200);
+        const request = response.body.request;
+        expect(request.auth).to.be.undefined;
+
+        const headers = response.body.request.headers;
+        const cookies: any = { authorization: "abc", "XSRF-TOKEN": "1234" };
+        expect(request.cookies).to.deep.eq(cookies);
+        expect(headers).to.have.property("x-xsrf-token", "1234");
+        expect(headers).to.not.have.property("authorization");
+      });
+    });
+
+    it("should not support previousSubject", () => {
+      // fail if behaviour changes in new cypress versions
+      cy.getAuth({ user: "admin", password: "password" })
+        .request({
+          url: "/my/test/request",
+        })
+        .then((response) => {
+          expect(response.status).to.eq(200);
+          const request = response.body.request;
+          expect(request.auth).to.be.undefined;
+        });
     });
   });
 
@@ -58,13 +88,14 @@ describe("request", () => {
     it("use auth configured with useAuth command", () => {
       cy.useAuth({ user: "admin", password: "password" });
 
-      cy.request("/my/test/request").then(() => {
-        expectHttpRequest({
-          url: _url(`/my/test/request`),
-          method: "GET",
-          auth: { user: "admin", password: "password" },
-          body: undefined,
-        });
+      cy.request("/my/test/request").then((response) => {
+        expect(response.status).to.eq(200);
+        const request = response.body.request;
+        expect(request.url).to.eq("/my/test/request");
+        expect(request.auth).to.eq(basicAuthorization("admin", "password"));
+        expect(request.cookies).to.deep.eq({});
+        expect(request.body).to.deep.eq({});
+        expect(request.headers).to.not.have.property("x-xsrf-token");
       });
     });
 
@@ -75,13 +106,32 @@ describe("request", () => {
         method: "POST",
         url: "/my/test/request",
         auth: { user: "myadmin", password: "mypassword" },
-      }).then(() => {
-        expectHttpRequest({
-          url: _url(`/my/test/request`),
-          method: "POST",
-          auth: { user: "myadmin", password: "mypassword" },
-          body: undefined,
-        });
+      }).then((response) => {
+        expect(response.status).to.eq(200);
+        const request = response.body.request;
+        expect(request.url).to.eq("/my/test/request");
+        expect(request.method).to.eq("POST");
+        expect(request.auth).to.eq(basicAuthorization("myadmin", "mypassword"));
+        expect(request.cookies).to.deep.eq({});
+        expect(request.headers).to.not.have.property("x-xsrf-token");
+      });
+    });
+
+    it("should not override cookie and add auth header", () => {
+      cy.useAuth({ user: "admin", password: "password" });
+      cy.setCookie("XSRF-TOKEN", "1234");
+      cy.setCookie("authorization", "abc");
+
+      cy.request("/my/test/request").then((response) => {
+        expect(response.status).to.eq(200);
+        const request = response.body.request;
+        expect(request.auth).to.be.undefined;
+
+        const headers = response.body.request.headers;
+        const cookies: any = { authorization: "abc", "XSRF-TOKEN": "1234" };
+        expect(request.cookies).to.deep.eq(cookies);
+        expect(headers).to.have.property("x-xsrf-token", "1234");
+        expect(headers).to.not.have.property("authorization");
       });
     });
   });
@@ -144,8 +194,7 @@ describe("request", () => {
         return originalFn(options);
       });
 
-      Cypress.env("C8Y_USERNAME", "admin2");
-      Cypress.env("C8Y_PASSWORD", "password2");
+      stubEnv({ C8Y_USERNAME: "admin2", C8Y_PASSWORD: "password2" });
 
       cy.request({
         method: "POST",
@@ -229,9 +278,7 @@ describe("request", () => {
     });
 
     it("should retry requests", () => {
-      Cypress.env("C8Y_USERNAME", "admin");
-      Cypress.env("C8Y_PASSWORD", "password");
-
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
       stubResponses([
         {
           isOkStatusCode: false,
@@ -279,9 +326,7 @@ describe("request", () => {
     });
 
     it("should fail when retry requests exceeds max - failOnStatusCode true", (done) => {
-      Cypress.env("C8Y_USERNAME", "admin");
-      Cypress.env("C8Y_PASSWORD", "password");
-
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
       stubResponses(
         Array(3).fill({
           isOkStatusCode: false,
@@ -324,9 +369,7 @@ describe("request", () => {
     });
 
     it("should fail when retry requests exceeds max - failOnStatusCode false", () => {
-      Cypress.env("C8Y_USERNAME", "admin");
-      Cypress.env("C8Y_PASSWORD", "password");
-
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
       stubResponses(
         Array(3).fill({
           isOkStatusCode: false,
