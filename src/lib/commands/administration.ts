@@ -283,7 +283,7 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
                 const applications =
                   applicationResponse?.body?.applications ||
                   applicationResponse?.body;
-                if (!applications || _.isArrayLike(applications)) {
+                if (!applications || !_.isArrayLike(applications)) {
                   throwError(
                     `Application ${appName} not found. No or empty response.`
                   );
