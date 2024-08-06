@@ -253,6 +253,8 @@ describe("versioning", () => {
       expect(v1).toBe(undefined);
       const v2 = toSemverVersion({} as any);
       expect(v2).toBe(undefined);
+      const v3 = toSemverVersion("abc");
+      expect(v3).toBe(undefined);
     });
 
     it("should return coerced semver version", function () {
@@ -262,6 +264,10 @@ describe("versioning", () => {
       expect(v2).toBe("1.2.0");
       const v3 = toSemverVersion("1");
       expect(v3).toBe("1.0.0");
+      const v4 = toSemverVersion("a2a");
+      expect(v4).toBe("2.0.0");
+      const v5 = toSemverVersion("10.18.0.1");
+      expect(v5).toBe("10.18.0");
     });
 
     it("should return coerced semver version for number", function () {

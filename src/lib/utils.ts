@@ -3,6 +3,7 @@
 import { BasicAuth, CookieAuth, IAuthentication } from "@c8y/client";
 import { C8yAuthOptions, isAuthOptions } from "../shared/auth";
 import { C8yClient } from "../shared/c8yclient";
+import { toSemverVersion } from "../shared/versioning";
 
 const { _ } = Cypress;
 
@@ -264,6 +265,23 @@ function authWithTenant(options: C8yAuthOptions) {
     _.extend(options, { tenant });
   }
   return options;
+}
+
+export function getSystemVersionFromEnv(): string | undefined {
+  let result = toSemverVersion(
+    Cypress.env(`C8Y_SYSTEM_VERSION`) || Cypress.env(`C8Y_VERSION`)
+  );
+  if (
+    result == null &&
+    Cypress.c8ypact?.isEnabled() === true &&
+    Cypress.c8ypact.mode() === "mock"
+  ) {
+    const pactVersion = Cypress.c8ypact.current?.info.version?.system;
+    if (pactVersion) {
+      result = toSemverVersion(pactVersion);
+    }
+  }
+  return result;
 }
 
 export function getBaseUrlFromEnv(): string | undefined {

@@ -1,4 +1,8 @@
-import { normalizedC8yclientArguments, throwError } from "../utils";
+import {
+  getSystemVersionFromEnv,
+  normalizedC8yclientArguments,
+  throwError,
+} from "../utils";
 import {
   IUser,
   IApplication,
@@ -7,6 +11,7 @@ import {
 } from "@c8y/client";
 import { C8yAuthOptions } from "./auth";
 import { C8yClientOptions } from "../../shared/c8yclient";
+
 const { _ } = Cypress;
 
 declare global {
@@ -548,30 +553,26 @@ Cypress.Commands.add(
       args: args || null,
       auth: auth || null,
       clientOptions: clientOptions || null,
+      C8Y_SYSTEM_VERSION: Cypress.env("C8Y_SYSTEM_VERSION") || null,
+      C8Y_VERSION: Cypress.env("C8Y_VERSION") || null,
+      pactSystemVersion: Cypress.c8ypact.current?.info.version?.system || null,
     };
     Cypress.log({
       name: "getSystemVersion",
       consoleProps: () => consoleProps,
     });
 
-    if (Cypress.env("C8Y_VERSION")) {
-      const version: string | undefined = Cypress.env("C8Y_VERSION");
-      consoleProps.C8Y_VERSION = version;
-      return cy.wrap(version);
-    }
-
-    // isMockingEnabled() also includes apply for matching of pacts with cy.c8ymatch
-    // for matching we might not want use tenant id from recordings
-    if (
-      Cypress.c8ypact?.isEnabled() === true &&
-      Cypress.c8ypact.mode() === "mock"
-    ) {
-      const version: string | undefined =
-        Cypress.env("C8Y_VERSION") ||
-        Cypress.c8ypact.current?.info.version?.system;
-
-      Cypress.env("C8Y_VERSION", version);
-      return cy.wrap(version);
+    const systemVersion = getSystemVersionFromEnv();
+    if (systemVersion) {
+      consoleProps.Yields = systemVersion;
+      if (Cypress.env("C8Y_SYSTEM_VERSION") == null) {
+        Cypress.env("C8Y_SYSTEM_VERSION", systemVersion);
+      }
+      // set C8Y_VERSION for backward compatibility
+      if (Cypress.env("C8Y_VERSION") == null) {
+        Cypress.env("C8Y_VERSION", systemVersion);
+      }
+      return cy.wrap<string | undefined>(systemVersion);
     }
 
     cy.wrap(auth, { log: false })
@@ -585,8 +586,10 @@ Cypress.Commands.add(
           );
           if (!_.isEmpty(versionOptions)) {
             const version: string | undefined = _.first(versionOptions).value;
+            consoleProps.Yields = version;
+            Cypress.env("C8Y_SYSTEM_VERSION", version);
             Cypress.env("C8Y_VERSION", version);
-            return cy.wrap(version);
+            return cy.wrap<string | undefined>(version);
           }
         }
         cy.wrap(undefined);
