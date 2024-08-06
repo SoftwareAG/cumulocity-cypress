@@ -1,10 +1,10 @@
 import {
   C8yRequireConfigOption,
   isVersionSatisfyingRequirements,
-  toSemverVersion,
 } from "cumulocity-cypress";
 
 import * as semver from "semver";
+import { getSystemVersionFromEnv } from "../utils";
 
 interface C8yRequire {
   /**
@@ -57,9 +57,7 @@ beforeEach(function () {
  */
 export function isSystemVersionSatisfyingCurrentTestRequirements(): boolean {
   return isVersionSatisfyingRequirements(
-    toSemverVersion(
-      Cypress.env("C8Y_SYSTEM_VERSION") || Cypress.env("C8Y_VERSION")
-    ),
+    getSystemVersionFromEnv(),
     Cypress.config().requires
   );
 }

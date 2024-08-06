@@ -2,6 +2,7 @@ import { stubEnv } from "cypress/support/testutils";
 import {
   getAuthOptions,
   getCookieAuthFromEnv,
+  getSystemVersionFromEnv,
   getXsrfToken,
   normalizedArguments,
   normalizedArgumentsWithAuth,
@@ -309,6 +310,82 @@ describe("utils", () => {
         const result = getXsrfToken();
         expect(result).to.be.undefined;
       });
+    });
+  });
+
+  context("getSystemVersionFromEnv", () => {
+    it("should get system version from env", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "10.7.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.7.0");
+    });
+
+    it("should get from C8Y_VERSION if C8Y_SYSTEM_VERSION is not present", () => {
+      stubEnv({ C8Y_VERSION: "10.7.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.7.0");
+    });
+
+    it("should prefer C8Y_SYSTEM_VERSION over C8Y_VERSION", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "10.7.0", C8Y_VERSION: "10.8.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.7.0");
+    });
+
+    it("should return undefined without system version", () => {
+      const result = getSystemVersionFromEnv();
+      expect(result).to.be.undefined;
+    });
+
+    it("should return undefined for invalid system version", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "abd" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.be.undefined;
+    });
+
+    it("should return correct coerced semver version", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "abscs10.1" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.1.0");
+    });
+
+    it("should return coerced semver version", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "10" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.0.0");
+    });
+
+    it("should get system version from pact if mocking", () => {
+      cy.stub(Cypress, "c8ypact").value({
+        isEnabled: () => true,
+        mode: () => "mock",
+        current: {
+          info: {
+            version: {
+              system: "11.7.0",
+            },
+          },
+        },
+      } as any);
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("11.7.0");
+    });
+
+    it("should prefer system version from env over pact when mocking", () => {
+      cy.stub(Cypress, "c8ypact").value({
+        isEnabled: () => true,
+        mode: () => "mock",
+        current: {
+          info: {
+            version: {
+              system: "11.7.0",
+            },
+          },
+        },
+      } as any);
+      stubEnv({ C8Y_SYSTEM_VERSION: "10.9.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.9.0");
     });
   });
 });
