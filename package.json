@@ -121,8 +121,7 @@
     "yalc": "^1.0.0-pre.53"
   },
   "peerDependencies": {
-    "@angular/common": ">=16.0.0",
-    "@angular/core": ">=16.0.0",
+    "@angular/common": ">=14.0.0",
     "@c8y/client": ">=1015.0.0",
     "cypress": ">=12.0.0"
   }
