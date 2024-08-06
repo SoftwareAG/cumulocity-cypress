@@ -4,11 +4,19 @@ import lodash1 from "lodash";
 import * as lodash2 from "lodash";
 const _ = lodash1 || lodash2;
 
+export type RequireConfigKeys = "shell" | "system";
+export type RequireConfigVersions = (string | null)[];
+
 /**
  * A configuration option for required versions. It is an array of semver ranges or `null` to allow
  * version without specifying a range.
  */
-export type C8yRequireConfigOption = (string | null)[];
+export type C8yRequireConfigOption =
+  | RequireConfigVersions
+  | {
+      shell?: RequireConfigVersions;
+      system?: RequireConfigVersions;
+    };
 
 /**
  * Checks if the given version satisfies the requirements provided as an array of semver ranges.
@@ -19,7 +27,7 @@ export type C8yRequireConfigOption = (string | null)[];
  */
 export function isVersionSatisfyingRequirements(
   version?: string | semver.SemVer,
-  requires?: C8yRequireConfigOption
+  requires?: RequireConfigVersions
 ): boolean {
   if (!requires || !_.isArrayLike(requires) || _.isEmpty(requires)) return true;
   if (requires.length === 1 && _.first(requires) == null) return true;
@@ -44,7 +52,7 @@ export function isVersionSatisfyingRequirements(
  */
 export function getRangesSatisfyingVersion(
   version: semver.SemVer | string,
-  requires?: (string | null)[]
+  requires?: RequireConfigVersions
 ): string[] {
   if (version == null || requires == null || _.isEmpty(requires)) {
     return [];
@@ -63,7 +71,7 @@ export function getRangesSatisfyingVersion(
  */
 export function getMinSatisfyingVersion(
   version: string | semver.SemVer,
-  ranges: (string | null)[]
+  ranges: RequireConfigVersions
 ): semver.SemVer | undefined {
   const minVersions = getMinSatisfyingVersions(version, ranges);
   return _.first(minVersions);
@@ -77,7 +85,7 @@ export function getMinSatisfyingVersion(
  */
 export function getMinSatisfyingVersions(
   version: string | semver.SemVer,
-  ranges: (string | null)[]
+  ranges: RequireConfigVersions
 ): semver.SemVer[] {
   if (!version || !ranges || !_.isString(version) || !_.isArray(ranges)) {
     return [];

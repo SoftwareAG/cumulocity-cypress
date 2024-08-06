@@ -22,6 +22,7 @@ describe("administration", () => {
     Cypress.env("C8Y_PLUGIN_LOADED", undefined);
     Cypress.env("C8Y_VERSION", undefined);
     Cypress.env("C8Y_SYSTEM_VERSION", undefined);
+    Cypress.env("C8Y_SHELL_VERSION", undefined);
 
     Cypress.c8ypact.current = null;
 
@@ -663,6 +664,71 @@ describe("administration", () => {
         expect(Cypress.env("C8Y_SYSTEM_VERSION")).to.equal("10.8.1");
         expect(Cypress.env("C8Y_VERSION")).to.equal("10.8.1");
       });
+    });
+  });
+
+  context("getShellVersion", () => {
+    it("should use system version from C8Y_SHELL_VERSION env variable", function () {
+      stubEnv({ C8Y_SHELL_VERSION: "10.6.0" });
+      cy.getShellVersion("cockpit").then((version) => {
+        expect(version).to.equal("10.6.0");
+        expect(window.fetchStub.callCount).to.equal(0);
+      });
+    });
+
+    it("should use C8Y_SHELL_NAME env variable", function () {
+      stubEnv({ C8Y_SHELL_NAME: "cockpit" });
+      stubResponses([
+        new window.Response(
+          JSON.stringify({
+            version: "10.2.11",
+          }),
+          {
+            status: 200,
+            statusText: "OK",
+            headers: { "content-type": "application/json" },
+          }
+        ),
+      ]);
+
+      const auth = { user: "ad", password: "my", tenant: "t123" };
+      cy.getAuth(auth)
+        .getShellVersion({ sendImmediately: true })
+        .then((version) => {
+          expect(version).to.equal("10.2.11");
+          expect(window.fetchStub.callCount).to.equal(1);
+          expectC8yClientRequest({
+            url: `${Cypress.config().baseUrl}/apps/cockpit/cumulocity.json`,
+            auth,
+          });
+        });
+    });
+
+    it("should get system version from ui shell", function () {
+      stubResponses([
+        new window.Response(
+          JSON.stringify({
+            version: "10.1.11",
+          }),
+          {
+            status: 200,
+            statusText: "OK",
+            headers: { "content-type": "application/json" },
+          }
+        ),
+      ]);
+      const auth = { user: "ad", password: "my", tenant: "t123" };
+      cy.getAuth(auth)
+        .getShellVersion("mycockpit")
+        .then((version) => {
+          expect(version).to.equal("10.1.11");
+          expect(window.fetchStub.callCount).to.equal(1);
+          expectC8yClientRequest({
+            url: `${Cypress.config().baseUrl}/apps/mycockpit/cumulocity.json`,
+            auth,
+          });
+          expect(Cypress.env("C8Y_SHELL_VERSION")).to.equal("10.1.11");
+        });
     });
   });
 });
