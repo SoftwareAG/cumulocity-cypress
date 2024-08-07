@@ -21,7 +21,7 @@ interface C8yRequire {
    * defined. To also run the test when required versions are not defined, add `null` to the list of
    * required versions.
    *
-   * Use `C8Y_PACT_IGNORE_VERSION_SKIP` environment variable to disable skipping tests for unsatisfied
+   * Use `C8Y_IGNORE_REQUIRES_SKIP` environment variable to disable skipping tests for unsatisfied
    * version requirements.
    *
    * @example
@@ -64,6 +64,8 @@ if (Cypress.semver == null) {
 
 beforeEach(function () {
   if (
+    Cypress.env("C8Y_IGNORE_REQUIRES_SKIP") == null &&
+    // backward compatibility
     Cypress.env("C8Y_PACT_IGNORE_VERSION_SKIP") == null &&
     isSystemVersionSatisfyingCurrentTestRequirements() === false
   ) {

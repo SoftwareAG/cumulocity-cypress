@@ -11,7 +11,7 @@ function p(v: string) {
 describe("c8ypact versions", function () {
   before(() => {
     // do not skip tests with unsatisfied version requirements
-    Cypress.env("C8Y_PACT_IGNORE_VERSION_SKIP", "1");
+    Cypress.env("C8Y_IGNORE_REQUIRES_SKIP", "1");
   });
 
   context("semver", function () {
