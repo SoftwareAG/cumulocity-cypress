@@ -8,8 +8,8 @@ export type RequireConfigKeys = "shell" | "system";
 export type RequireConfigVersions = (string | null)[];
 
 /**
- * A configuration option for required versions. It is an array of semver ranges or `null` to allow
- * version without specifying a range.
+ * A configuration option for required versions to run an annotated test. Supported versions are `system` and `shell`.
+ * Each version is defined by and array of semver ranges or `null` to allow versions without specifying a range.
  */
 export type C8yRequireConfigOption =
   | RequireConfigVersions
