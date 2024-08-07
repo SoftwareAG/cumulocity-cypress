@@ -4,7 +4,9 @@ import {
 } from "cumulocity-cypress";
 
 import * as semver from "semver";
-import { getSystemVersionFromEnv } from "../utils";
+import { getShellVersionFromEnv, getSystemVersionFromEnv } from "../utils";
+
+const { _ } = Cypress;
 
 interface C8yRequire {
   /**
@@ -52,12 +54,33 @@ beforeEach(function () {
 });
 
 /**
- * Checks if `C8Y_SYSTEM_VERSION` or `C8Y_VERSION` satisfy the requirements of the current test.
+ * Checks if `Cypress.config().requires` matches environment for the current test.
  * @returns `true` if the system version satisfies the requirements of the current test, `false` otherwise.
  */
 export function isSystemVersionSatisfyingCurrentTestRequirements(): boolean {
-  return isVersionSatisfyingRequirements(
-    getSystemVersionFromEnv(),
-    Cypress.config().requires
-  );
+  const requires = Cypress.config().requires;
+  if (requires == null) return true;
+
+  if (_.isArrayLike(requires)) {
+    return isVersionSatisfyingRequirements(
+      getSystemVersionFromEnv(),
+      requires as string[]
+    );
+  } else {
+    let systemResult = true;
+    if (requires.system != null) {
+      systemResult = isVersionSatisfyingRequirements(
+        getSystemVersionFromEnv(),
+        requires.system
+      );
+    }
+    let shellResult = true;
+    if (requires.shell != null) {
+      shellResult = isVersionSatisfyingRequirements(
+        getShellVersionFromEnv(),
+        requires.shell
+      );
+    }
+    return systemResult && shellResult;
+  }
 }

@@ -580,27 +580,51 @@ describe("c8ypact", () => {
     );
 
     it(
-      "should add min version to pact id",
+      "should add min system version to pact id",
       { requires: ["1.2.x"] },
       function () {
         stubEnv({ C8Y_SYSTEM_VERSION: "1.2.3" });
         expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
-          "1_2__c8ypact__c8ypact_getCurrentTestId__should_add_min_version_to_pact_id"
+          "1_2__c8ypact__c8ypact_getCurrentTestId__should_add_min_system_version_to_pact_id"
         );
       }
     );
 
     it(
-      "should add min version to pact id using c8ypact id",
-      { requires: ["1.2.x"], c8ypact: { id: "my_pact" } },
+      "should add min shell version to pact id",
+      { requires: { shell: ["1.2.x"] } },
+      function () {
+        stubEnv({ C8Y_SHELL_VERSION: "1.2.3" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
+          "1_2__c8ypact__c8ypact_getCurrentTestId__should_add_min_shell_version_to_pact_id"
+        );
+      }
+    );
+
+    it(
+      "should add min system version to pact id using c8ypact id",
+      { requires: { system: ["1.2.x"] }, c8ypact: { id: "my_pact" } },
       function () {
         stubEnv({ C8Y_SYSTEM_VERSION: "1.2.3" });
         expect(Cypress.c8ypact.getCurrentTestId()).to.eq("1_2__my_pact");
       }
     );
 
+    it(
+      "should add min shell version to pact id using c8ypact id",
+      { requires: { shell: ["1.2.x"] }, c8ypact: { id: "my_pact" } },
+      function () {
+        stubEnv({ C8Y_SHELL_VERSION: "1.2.3" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.eq("1_2__my_pact");
+      }
+    );
+
     it("should not add version if no system version is set", function () {
-      stubEnv({ C8Y_SYSTEM_VERSION: undefined, C8Y_VERSION: undefined });
+      stubEnv({
+        C8Y_SYSTEM_VERSION: undefined,
+        C8Y_VERSION: undefined,
+        C8Y_SHELL_VERSION: undefined,
+      });
       expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
         "c8ypact__c8ypact_getCurrentTestId__should_not_add_version_if_no_system_version_is_set"
       );
@@ -621,11 +645,29 @@ describe("c8ypact", () => {
     });
 
     it(
+      "should use C8Y_SHELL_VERSION if set",
+      { requires: { shell: ["1.2.3"] } },
+      function () {
+        stubEnv({ C8Y_SYSTEM_VERSION: undefined, C8Y_SHELL_VERSION: "1.2.3" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.contain("1_2_3__");
+      }
+    );
+
+    it(
       "should prefer C8Y_SYSTEM_VERSION over C8Y_VERSION",
       { requires: [">=2", "^1.2.3"] },
       function () {
         stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5", C8Y_VERSION: "2.0.0" });
         expect(Cypress.c8ypact.getCurrentTestId()).to.contain("1_2_3__");
+      }
+    );
+
+    it(
+      "should prefer shell version over system version",
+      { requires: { shell: [">1"], system: [">1"] } },
+      function () {
+        stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5", C8Y_SHELL_VERSION: "2.0.0" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.contain("2__");
       }
     );
 
@@ -647,6 +689,17 @@ describe("c8ypact", () => {
         stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5" });
         expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
           "c8ypact__c8ypact_getCurrentTestId__should_not_add_system_version_if_range_only_has_null_value"
+        );
+      }
+    );
+
+    it(
+      "should not add system or shell version if ranges only have null value",
+      { requires: { shell: [null], system: [null] } },
+      function () {
+        stubEnv({ C8Y_SYSTEM_VERSION: "1.2.5", C8Y_SHELL_VERSION: "2.0.0" });
+        expect(Cypress.c8ypact.getCurrentTestId()).to.eq(
+          "c8ypact__c8ypact_getCurrentTestId__should_not_add_system_or_shell_version_if_ranges_only_have_null_value"
         );
       }
     );

@@ -26,7 +26,11 @@ import {
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClient } from "../../shared/c8yclient";
-import { getBaseUrlFromEnv, getSystemVersionFromEnv } from "../utils";
+import {
+  getBaseUrlFromEnv,
+  getShellVersionFromEnv,
+  getSystemVersionFromEnv,
+} from "../utils";
 import {
   getMinSatisfyingVersion,
   getMinimizedVersionString,
@@ -559,9 +563,18 @@ function getCurrentTestId(): C8yPactID {
   }
 
   const requires = Cypress.config().requires;
-  const version = getSystemVersionFromEnv();
-  if (version != null && result != null && requires != null) {
-    const minVersion = getMinSatisfyingVersion(version, requires);
+  const requiredVersion = _.isArrayLike(requires)
+    ? requires
+    : requires?.shell || requires?.system;
+
+  // for now prefer shell version over system version
+  const version =
+    _.isArrayLike(requires) || requires?.shell == null
+      ? getSystemVersionFromEnv()
+      : getShellVersionFromEnv();
+
+  if (version != null && result != null && requiredVersion != null) {
+    const minVersion = getMinSatisfyingVersion(version, requiredVersion);
     if (minVersion != null) {
       const mv = getMinimizedVersionString(minVersion);
       if (mv != null && mv !== "0") {
@@ -624,7 +637,11 @@ async function savePact(
       };
       const systemVersion = getSystemVersionFromEnv();
       if (systemVersion != null) {
-        info.version = { system: systemVersion };
+        info.version = {
+          system: systemVersion,
+          shell: getShellVersionFromEnv(),
+          shellName: Cypress.env("C8Y_SHELL_NAME") || "cockpit",
+        };
       }
       pact = await toPactSerializableObject(response, info, {
         loggedInUser:

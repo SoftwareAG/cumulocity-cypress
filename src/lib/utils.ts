@@ -284,6 +284,10 @@ export function getSystemVersionFromEnv(): string | undefined {
   return result;
 }
 
+export function getShellVersionFromEnv(): string | undefined {
+  return Cypress.env(`C8Y_SHELL_VERSION`);
+}
+
 export function getBaseUrlFromEnv(): string | undefined {
   return (
     Cypress.env(`C8Y_BASEURL`) ||
