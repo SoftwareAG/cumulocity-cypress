@@ -93,7 +93,6 @@ yarn add -D cumulocity-cypress
 Make sure the following dependencies are installed in your project:
 - `cypress`
 - `@c8y/client`
-- `angular-core`
 - `angular-common`
 
 ### Load plugin
