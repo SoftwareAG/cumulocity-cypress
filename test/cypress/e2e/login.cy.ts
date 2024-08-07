@@ -1,6 +1,5 @@
 import {
   expectHttpRequest,
-  stubResponse,
   initRequestStub,
   url as _url,
 } from "../support/testutils";
@@ -9,6 +8,8 @@ const { _, $ } = Cypress;
 
 describe("login", () => {
   let url: string;
+  const testAuthorizationCookie = "eyJhbGciOiJ";
+  const testXsrfTokenCookie = "pQWAHZQfhLRcDVqVsCjV";
 
   beforeEach(() => {
     Cypress.session.clearAllSavedSessions();
@@ -17,21 +18,7 @@ describe("login", () => {
     Cypress.env("C8Y_TENANT", "t702341987");
     url = _url(`/tenant/oauth?tenant_id=t702341987`);
 
-    const headers = new Headers();
-    headers.append(
-      "set-cookie",
-      "authorization=eyJhbGciOiJ; path=/; domain=localhost; HttpOnly"
-    );
-    headers.append(
-      "set-cookie",
-      "XSRF-TOKEN=pQWAHZQfhLRcDVqVsCjV; Path=/; Domain=localhost; Secure"
-    );
-    stubResponse({
-      isOkStatusCode: true,
-      status: 200,
-      headers,
-      body: undefined,
-    });
+    // response is mocked with set-cookie headers in test-server.ts
   });
 
   context("without cy.session", () => {
@@ -45,12 +32,17 @@ describe("login", () => {
           validationCalled = true;
         }),
       }).then((auth) => {
-        expect(auth).to.not.be.undefined;
-        expect(auth.user).to.eq("user");
-        expect(auth.password).to.eq("password");
-
+        // we do not want auth to be returned
+        expect(auth).to.be.undefined;
         expect(validationCalled).to.be.true;
         expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("user");
+
+        cy.getCookie("authorization").then((cookie) => {
+          expect(cookie?.value).to.eq(testAuthorizationCookie);
+        });
+        cy.getCookie("XSRF-TOKEN").then((cookie) => {
+          expect(cookie?.value).to.eq(testXsrfTokenCookie);
+        });
 
         expectHttpRequest({
           url,
@@ -76,9 +68,13 @@ describe("login", () => {
           validationFn: cy.stub(() => {}),
         })
         .then((auth) => {
-          expect(auth.user).to.eq("testuser");
-          expect(auth.password).to.eq("testpasswd");
-          expect(auth.userAlias).to.eq("testadmin");
+          expect(auth).to.be.undefined;
+          cy.getCookie("authorization").then((cookie) => {
+            expect(cookie?.value).to.eq(testAuthorizationCookie);
+          });
+          cy.getCookie("XSRF-TOKEN").then((cookie) => {
+            expect(cookie?.value).to.eq(testXsrfTokenCookie);
+          });
 
           expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("testuser");
           expect(Cypress.env("C8Y_LOGGED_IN_USER_ALIAS")).to.eq("testadmin");
@@ -153,22 +149,20 @@ describe("login", () => {
           expect(sessionData.cookies).to.not.be.undefined;
           expect(sessionData.cookies).to.have.length(2);
           expect(sessionData.cookies![0].name).to.eq("authorization");
-          expect(sessionData.cookies![0].value).to.eq("eyJhbGciOiJ");
+          expect(sessionData.cookies![0].value).to.eq(testAuthorizationCookie);
           expect(sessionData.cookies![1].name).to.eq("XSRF-TOKEN");
-          expect(sessionData.cookies![1].value).to.eq("pQWAHZQfhLRcDVqVsCjV");
+          expect(sessionData.cookies![1].value).to.eq(testXsrfTokenCookie);
         });
 
         cy.getCookies().then((cookies) => {
           expect(cookies).to.have.length(2);
           expect(cookies[0].name).to.eq("authorization");
-          expect(cookies[0].value).to.eq("eyJhbGciOiJ");
+          expect(cookies[0].value).to.eq(testAuthorizationCookie);
           expect(cookies[1].name).to.eq("XSRF-TOKEN");
-          expect(cookies[1].value).to.eq("pQWAHZQfhLRcDVqVsCjV");
+          expect(cookies[1].value).to.eq(testXsrfTokenCookie);
         });
 
-        expect(auth).to.not.be.undefined;
-        expect(auth.user).to.eq("pvtuser");
-        expect(auth.password).to.eq("pvtpassword");
+        expect(auth).to.be.undefined;
         expect(Cypress.env("C8Y_LOGGED_IN_USER")).to.eq("pvtuser");
       });
     });
