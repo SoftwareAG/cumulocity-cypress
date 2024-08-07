@@ -668,7 +668,7 @@ Cypress.Commands.add(
       C8Y_SHELL_NAME: Cypress.env("C8Y_SHELL_NAME") || null,
     };
     Cypress.log({
-      name: "getSystemVersion",
+      name: "getShellVersion",
       message: shellName || "cockpit",
       consoleProps: () => consoleProps,
     });
