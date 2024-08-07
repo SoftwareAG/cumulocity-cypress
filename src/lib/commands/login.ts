@@ -11,7 +11,7 @@ declare global {
        * Login to Cumulocity.
        *
        * Uses env variables `C8Y_USERNAME` and `C8Y_PASSWORD` if no arguments or no
-       * password is passed. The logged in user will be stored in `C8Y_LOGGED_IN_USER`.
+       * auth options are passed. The logged in user will be stored in `C8Y_LOGGED_IN_USER`.
        *
        * Default values for login options:
        * ```
@@ -30,17 +30,14 @@ declare global {
        * @param {string} password - the password to login to Cumulocity
        * @param {C8yLoginOptions} options - login options to use for login to Cumulocity
        */
-      login(options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
-      login(user: string, options?: C8yLoginOptions): Chainable<C8yAuthOptions>;
+      login(options?: C8yLoginOptions): Chainable<void>;
+      login(user: string, options?: C8yLoginOptions): Chainable<void>;
       login(
         user: string,
         password: string,
         options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
-      login(
-        auth: C8yAuthOptions,
-        options?: C8yLoginOptions
-      ): Chainable<C8yAuthOptions>;
+      ): Chainable<void>;
+      login(auth: C8yAuthOptions, options?: C8yLoginOptions): Chainable<void>;
     }
   }
 
@@ -101,8 +98,8 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
         options = _.defaults(lastArg, defaultLoginOptions());
       }
 
-      consoleProps.auth = auth;
-      consoleProps.options = options;
+      consoleProps.auth = auth || null;
+      consoleProps.options = options || null;
 
       const loginRequest = (tenant: string) => {
         return cy
@@ -129,7 +126,7 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
       };
 
       const tenant: string = auth?.tenant || Cypress.env("C8Y_TENANT");
-      consoleProps.tenant = tenant;
+      consoleProps.tenant = tenant || null;
 
       if (options.useSession === true) {
         cy.session(
@@ -165,6 +162,4 @@ Cypress.Commands.add("login", { prevSubject: "optional" }, (...args) => {
   cy.then(() => {
     logger.end();
   });
-
-  cy.wrap(auth, { log: false });
 });

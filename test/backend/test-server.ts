@@ -17,6 +17,20 @@ app.use(
   })
 );
 
+app.post("/tenant/oauth", (req, res) => {
+  // set cookies for the session
+  res.cookie("authorization", "eyJhbGciOiJ", {
+    domain: "localhost",
+    path: "/",
+    httpOnly: true,
+  });
+  res.cookie("XSRF-TOKEN", "pQWAHZQfhLRcDVqVsCjV", {
+    domain: "localhost",
+    path: "/",
+  });
+  res.send();
+});
+
 app.all("/*", (req, res) => {
   res.json({
     request: {
