@@ -1,4 +1,5 @@
 import {
+  getShellVersionFromEnv,
   getSystemVersionFromEnv,
   normalizedC8yclientArguments,
   throwError,
@@ -672,7 +673,7 @@ Cypress.Commands.add(
       consoleProps: () => consoleProps,
     });
 
-    const version = Cypress.env("C8Y_SHELL_VERSION");
+    const version = getShellVersionFromEnv();
     if (version) {
       consoleProps.Yields = version;
       return cy.wrap<string | undefined>(version);
@@ -689,6 +690,9 @@ Cypress.Commands.add(
         const shellVersion = toSemverVersion(response?.body?.version);
         consoleProps.Yields = version || null;
         Cypress.env("C8Y_SHELL_VERSION", shellVersion);
+        if (shellVersion != null && !Cypress.env("C8Y_SHELL_NAME")) {
+          Cypress.env("C8Y_SHELL_NAME", myShell);
+        }
         cy.wrap<string | undefined>(shellVersion);
       });
   }

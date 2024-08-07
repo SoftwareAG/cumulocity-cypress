@@ -23,6 +23,7 @@ describe("administration", () => {
     Cypress.env("C8Y_VERSION", undefined);
     Cypress.env("C8Y_SYSTEM_VERSION", undefined);
     Cypress.env("C8Y_SHELL_VERSION", undefined);
+    Cypress.env("C8Y_SHELL_NAME", undefined);
 
     Cypress.c8ypact.current = null;
 
@@ -677,7 +678,7 @@ describe("administration", () => {
     });
 
     it("should use C8Y_SHELL_NAME env variable", function () {
-      stubEnv({ C8Y_SHELL_NAME: "cockpit" });
+      stubEnv({ C8Y_SHELL_NAME: "cockpit2" });
       stubResponses([
         new window.Response(
           JSON.stringify({
@@ -697,8 +698,10 @@ describe("administration", () => {
         .then((version) => {
           expect(version).to.equal("10.2.11");
           expect(window.fetchStub.callCount).to.equal(1);
+          expect(Cypress.env("C8Y_SHELL_VERSION")).to.equal("10.2.11");
+          expect(Cypress.env("C8Y_SHELL_NAME")).to.equal("cockpit2");
           expectC8yClientRequest({
-            url: `${Cypress.config().baseUrl}/apps/cockpit/cumulocity.json`,
+            url: `${Cypress.config().baseUrl}/apps/cockpit2/cumulocity.json`,
             auth,
           });
         });
@@ -728,6 +731,7 @@ describe("administration", () => {
             auth,
           });
           expect(Cypress.env("C8Y_SHELL_VERSION")).to.equal("10.1.11");
+          expect(Cypress.env("C8Y_SHELL_NAME")).to.equal("mycockpit");
         });
     });
   });

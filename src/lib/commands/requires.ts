@@ -4,7 +4,7 @@ import {
 } from "cumulocity-cypress";
 
 import * as semver from "semver";
-import { getSystemVersionFromEnv } from "../utils";
+import { getShellVersionFromEnv, getSystemVersionFromEnv } from "../utils";
 
 const { _ } = Cypress;
 
@@ -77,7 +77,7 @@ export function isSystemVersionSatisfyingCurrentTestRequirements(): boolean {
     let shellResult = true;
     if (requires.shell != null) {
       shellResult = isVersionSatisfyingRequirements(
-        Cypress.env("C8Y_SHELL_VERSION"),
+        getShellVersionFromEnv(),
         requires.shell
       );
     }
