@@ -13,7 +13,7 @@ describe("plugin", () => {
         pactFolder: "cypress/fixtures/c8ypact",
       });
       expect(path.resolve((config.env as any).C8Y_PACT_FOLDER)).toBe(
-        path.resolve("/home/user/test/cypress/fixtures/c8ypact2")
+        path.resolve("/home/user/test/cypress/fixtures/c8ypact")
       );
       expect((config.env as any).C8Y_PLUGIN_LOADED).toBe("true");
     });

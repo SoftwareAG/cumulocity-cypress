@@ -76,7 +76,9 @@ describe("C8yPactDefaultFileAdapter", () => {
 
       expect(fs.existsSync(folderPath)).toBe(false);
       const result = adapter.createFolderRecursive(folderPath);
-      expect(path.resolve(result as string)).toBe(path.resolve(path.join(CWD, "folder1", "folder2")));
+      expect(path.resolve(result as string)).toBe(
+        path.resolve(path.join(CWD, "folder1", "folder2"))
+      );
 
       // check mock-fs folder has been created
       expect(fs.existsSync(folderPath)).toBe(true);
@@ -89,7 +91,9 @@ describe("C8yPactDefaultFileAdapter", () => {
       const folderPath = path.join(CWD, "cypress2", "test2", "c8ypact2");
 
       expect(fs.existsSync(folderPath)).toBe(false);
-      const result = path.resolve(adapter.createFolderRecursive(folderPath) as string);
+      const result = path.resolve(
+        adapter.createFolderRecursive(folderPath) as string
+      );
 
       expect(fs.existsSync(folderPath)).toBe(true);
       expect(result.endsWith(path.join("cypress2", "test2", "c8ypact2"))).toBe(
