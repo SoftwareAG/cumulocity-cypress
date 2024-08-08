@@ -1,4 +1,9 @@
-import { normalizedC8yclientArguments, throwError } from "../utils";
+import {
+  getShellVersionFromEnv,
+  getSystemVersionFromEnv,
+  normalizedC8yclientArguments,
+  throwError,
+} from "../utils";
 import {
   IUser,
   IApplication,
@@ -7,6 +12,8 @@ import {
 } from "@c8y/client";
 import { C8yAuthOptions } from "./auth";
 import { C8yClientOptions } from "../../shared/c8yclient";
+import { toSemverVersion } from "../../shared/versioning";
+
 const { _ } = Cypress;
 
 declare global {
@@ -171,14 +178,63 @@ declare global {
       getTenantId(authOptions?: C8yAuthOptions): Chainable<string>;
 
       /**
-       * Get Cumulocity system version. Requires bootstrap credentials.
+       * Get Cumulocity system version. System version is loaded from `/tenant/system/options` endpoint.
+       *
+       * The system version is stored automatically in `C8Y_SYSTEM_VERSION` environment variable. If
+       * the `C8Y_SYSTEM_VERSION` is set, the value is returned from the environment variable without requesting
+       * the system version from the backend.
+       *
+       * @example
+       * cy.getSystemVersion();
+       * cy.log(Cypress.env("C8Y_SYSTEM_VERSION"));
+       *
+       * cy.getAuth("admin").getSystemVersion().then((version) => {
+       *  cy.log(version);
+       * });
        *
        * @param {C8yAuthOptions} options - The authentication options including username and password
-       * @returns {Chainable<string>}
+       * @param {C8yClientOptions} clientOptions - The options passed to c8yclient for loading the version
+       * @returns {Chainable<string>} The system version of Cumulocity backend
        */
       getSystemVersion(
         authOptions?: C8yAuthOptions,
-        c8yoptions?: C8yClientOptions
+        clientOptions?: C8yClientOptions
+      ): Chainable<string | undefined>;
+
+      /**
+       * Get Cumulocity shell version. The shell version is differrent to the system version and defining
+       * the UI application being used as shell in the application tested. This is typically `cockpit`,
+       * `devicemanagement` or `administration`. The shell version is loaded from
+       * `/apps/{shellName}/cumulocity.json`.
+       *
+       * Shell name can be set as `C8Y_SHELL_NAME` environment variable. If no shell name is provided
+       * `cockpit` is used as default.
+       *
+       * The shell version is stored automatically in `C8Y_SHELL_VERSION` environment variable. If
+       * `C8Y_SHELL_VERSION` is set, the value is returned from the environment variable without requesting
+       * the shell version from the backend.
+       *
+       * @example
+       * cy.getShellVersion("cockpit").then((version) => {
+       *   cy.log(version);
+       * });
+       *
+       * cy.getAuth("admin").getShellVersion("cockpit");
+       * cy.log(Cypress.env("C8Y_SHELL_VERSION"));
+       *
+       * @param {C8yAuthOptions} options - The authentication options including username and password
+       * @param {string} shellName - The name of the shell to get the version for
+       * @param {C8yClientOptions} clientOptions - The options passed to c8yclient for loading the version
+       * @returns {Chainable<string>} The shekk
+       */
+      getShellVersion(
+        ...args:
+          | [shellName?: string, clientOptions?: C8yClientOptions]
+          | [
+              authOptions?: C8yAuthOptions,
+              shellName?: string,
+              clientOptions?: C8yClientOptions
+            ]
       ): Chainable<string | undefined>;
 
       /**
@@ -278,7 +334,7 @@ Cypress.Commands.add("createUser", { prevSubject: "optional" }, (...args) => {
                 const applications =
                   applicationResponse?.body?.applications ||
                   applicationResponse?.body;
-                if (!applications || _.isArrayLike(applications)) {
+                if (!applications || !_.isArrayLike(applications)) {
                   throwError(
                     `Application ${appName} not found. No or empty response.`
                   );
@@ -548,30 +604,26 @@ Cypress.Commands.add(
       args: args || null,
       auth: auth || null,
       clientOptions: clientOptions || null,
+      C8Y_SYSTEM_VERSION: Cypress.env("C8Y_SYSTEM_VERSION") || null,
+      C8Y_VERSION: Cypress.env("C8Y_VERSION") || null,
+      pactSystemVersion: Cypress.c8ypact.current?.info.version?.system || null,
     };
     Cypress.log({
       name: "getSystemVersion",
       consoleProps: () => consoleProps,
     });
 
-    if (Cypress.env("C8Y_VERSION")) {
-      const version: string | undefined = Cypress.env("C8Y_VERSION");
-      consoleProps.C8Y_VERSION = version;
-      return cy.wrap(version);
-    }
-
-    // isMockingEnabled() also includes apply for matching of pacts with cy.c8ymatch
-    // for matching we might not want use tenant id from recordings
-    if (
-      Cypress.c8ypact?.isEnabled() === true &&
-      Cypress.c8ypact.mode() === "mock"
-    ) {
-      const version: string | undefined =
-        Cypress.env("C8Y_VERSION") ||
-        Cypress.c8ypact.current?.info.version?.system;
-
-      Cypress.env("C8Y_VERSION", version);
-      return cy.wrap(version);
+    const systemVersion = getSystemVersionFromEnv();
+    if (systemVersion) {
+      consoleProps.Yields = systemVersion;
+      if (Cypress.env("C8Y_SYSTEM_VERSION") == null) {
+        Cypress.env("C8Y_SYSTEM_VERSION", systemVersion);
+      }
+      // set C8Y_VERSION for backward compatibility
+      if (Cypress.env("C8Y_VERSION") == null) {
+        Cypress.env("C8Y_VERSION", systemVersion);
+      }
+      return cy.wrap<string | undefined>(systemVersion);
     }
 
     cy.wrap(auth, { log: false })
@@ -585,11 +637,63 @@ Cypress.Commands.add(
           );
           if (!_.isEmpty(versionOptions)) {
             const version: string | undefined = _.first(versionOptions).value;
+            consoleProps.Yields = version || null;
+            Cypress.env("C8Y_SYSTEM_VERSION", version);
             Cypress.env("C8Y_VERSION", version);
-            return cy.wrap(version);
+            return cy.wrap<string | undefined>(version);
           }
         }
         cy.wrap(undefined);
+      });
+  }
+);
+
+Cypress.Commands.add(
+  "getShellVersion",
+  { prevSubject: "optional" },
+  (...args) => {
+    const $args = normalizedC8yclientArguments(args);
+    // eslint-disable-next-line prefer-const
+    let [auth, shellName, clientOptions] = $args;
+    if (_.isObjectLike(shellName)) {
+      shellName = undefined;
+      clientOptions = shellName;
+    }
+
+    const consoleProps: any = {
+      args: args || null,
+      auth: auth || null,
+      shellName: shellName || null,
+      clientOptions: clientOptions || null,
+      C8Y_SHELL_NAME: Cypress.env("C8Y_SHELL_NAME") || null,
+    };
+    Cypress.log({
+      name: "getShellVersion",
+      message: shellName || "cockpit",
+      consoleProps: () => consoleProps,
+    });
+
+    const version = getShellVersionFromEnv();
+    if (version) {
+      consoleProps.Yields = version;
+      return cy.wrap<string | undefined>(version);
+    }
+
+    const myShell = shellName || Cypress.env("C8Y_SHELL_NAME") || "cockpit";
+    cy.wrap(auth, { log: false })
+      .c8yclient(
+        (c) => c.core.fetch(`/apps/${myShell}/cumulocity.json`),
+        clientOptions
+      )
+      .then((response: any) => {
+        consoleProps.response = response || null;
+        const shellVersion = toSemverVersion(response?.body?.version);
+        consoleProps.Yields = version || null;
+        Cypress.env("C8Y_SHELL_VERSION", shellVersion);
+        if (shellVersion != null && !Cypress.env("C8Y_SHELL_NAME")) {
+          Cypress.env("C8Y_SHELL_NAME", myShell);
+        }
+        cy.wrap<string | undefined>(shellVersion);
       });
   }
 );

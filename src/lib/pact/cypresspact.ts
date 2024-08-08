@@ -26,11 +26,14 @@ import {
 import { C8yDefaultPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClient } from "../../shared/c8yclient";
-import { getBaseUrlFromEnv } from "../utils";
+import {
+  getBaseUrlFromEnv,
+  getShellVersionFromEnv,
+  getSystemVersionFromEnv,
+} from "../utils";
 import {
   getMinSatisfyingVersion,
   getMinimizedVersionString,
-  toSemverVersion,
 } from "../../shared/versioning";
 
 const { _ } = Cypress;
@@ -364,7 +367,7 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
     env: () => {
       return {
         tenant: Cypress.env("C8Y_TENANT"),
-        systemVersion: Cypress.env("C8Y_VERSION"),
+        systemVersion: getSystemVersionFromEnv(),
         loggedInUser: Cypress.env("C8Y_LOGGED_IN_USER"),
         loggedInUserAlias: Cypress.env("C8Y_LOGGED_IN_USER_ALIAS"),
         pluginFolder: Cypress.env("C8Y_PACT_FOLDER"),
@@ -420,7 +423,7 @@ if (_.get(Cypress, "__c8ypact.initialized") === undefined) {
         currentTestId: Cypress.c8ypact.getCurrentTestId(),
         env: Cypress.c8ypact.env(),
         cypressEnv: Cypress.env(),
-        systemVersion: Cypress.env("C8Y_SYSTEM_VERSION"),
+        systemVersion: getSystemVersionFromEnv(),
       };
 
       logger = Cypress.log({
@@ -560,11 +563,18 @@ function getCurrentTestId(): C8yPactID {
   }
 
   const requires = Cypress.config().requires;
-  const version = toSemverVersion(
-    Cypress.env("C8Y_SYSTEM_VERSION") || Cypress.env("C8Y_VERSION")
-  );
-  if (version != null && result != null && requires != null) {
-    const minVersion = getMinSatisfyingVersion(version, requires);
+  const requiredVersion = _.isArrayLike(requires)
+    ? requires
+    : requires?.shell || requires?.system;
+
+  // for now prefer shell version over system version
+  const version =
+    _.isArrayLike(requires) || requires?.shell == null
+      ? getSystemVersionFromEnv()
+      : getShellVersionFromEnv();
+
+  if (version != null && result != null && requiredVersion != null) {
+    const minVersion = getMinSatisfyingVersion(version, requiredVersion);
     if (minVersion != null) {
       const mv = getMinimizedVersionString(minVersion);
       if (mv != null && mv !== "0") {
@@ -621,13 +631,18 @@ async function savePact(
         title: Cypress.currentTest?.titlePath || [],
         tenant: client?._client?.core.tenant || Cypress.env("C8Y_TENANT"),
         baseUrl,
-        version: Cypress.env("C8Y_VERSION") && {
-          system: Cypress.env("C8Y_VERSION"),
-        },
         preprocessor: (
           Cypress.c8ypact.preprocessor as C8yCypressEnvPreprocessor
         )?.resolveOptions(),
       };
+      const systemVersion = getSystemVersionFromEnv();
+      if (systemVersion != null) {
+        info.version = {
+          system: systemVersion,
+          shell: getShellVersionFromEnv(),
+          shellName: Cypress.env("C8Y_SHELL_NAME") || "cockpit",
+        };
+      }
       pact = await toPactSerializableObject(response, info, {
         loggedInUser:
           options?.loggedInUser ?? Cypress.env("C8Y_LOGGED_IN_USER"),

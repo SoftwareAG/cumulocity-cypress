@@ -21,6 +21,10 @@ describe("administration", () => {
     Cypress.env("C8Y_TENANT", undefined);
     Cypress.env("C8Y_PLUGIN_LOADED", undefined);
     Cypress.env("C8Y_VERSION", undefined);
+    Cypress.env("C8Y_SYSTEM_VERSION", undefined);
+    Cypress.env("C8Y_SHELL_VERSION", undefined);
+    Cypress.env("C8Y_SHELL_NAME", undefined);
+
     Cypress.c8ypact.current = null;
 
     initRequestStub();
@@ -605,12 +609,45 @@ describe("administration", () => {
   });
 
   context("getSystemVersion", () => {
-    it("should use system version from env variable", function () {
-      Cypress.env("C8Y_VERSION", "10.6.0");
+    it("should use system version from C8Y_SYSTEM_VERSION env variable", function () {
+      stubEnv({ C8Y_SYSTEM_VERSION: "10.6.0" });
       cy.getSystemVersion().then((version) => {
         expect(version).to.equal("10.6.0");
         expect(window.fetchStub.callCount).to.equal(0);
+        expect(Cypress.env("C8Y_VERSION")).to.equal("10.6.0");
       });
+    });
+
+    it("should use system version from C8Y_VERSION env variable", function () {
+      stubEnv({ C8Y_VERSION: "10.6.1" });
+      cy.getSystemVersion().then((version) => {
+        expect(version).to.equal("10.6.1");
+        expect(window.fetchStub.callCount).to.equal(0);
+        expect(Cypress.env("C8Y_SYSTEM_VERSION")).to.equal("10.6.1");
+      });
+    });
+
+    it("should get system version from tenant system options and set C8Y_SYSTEM_VERSION", function () {
+      stubResponses([
+        new window.Response(
+          JSON.stringify({
+            options: [{ category: "system", key: "version", value: "10.1.11" }],
+          }),
+          {
+            status: 200,
+            statusText: "OK",
+            headers: { "content-type": "application/json" },
+          }
+        ),
+      ]);
+      cy.getAuth({ user: "admin", password: "p", tenant: "t123" })
+        .getSystemVersion()
+        .then((version) => {
+          expect(version).to.equal("10.1.11");
+          expect(window.fetchStub.callCount).to.equal(1);
+          expect(Cypress.env("C8Y_SYSTEM_VERSION")).to.equal("10.1.11");
+          expect(Cypress.env("C8Y_VERSION")).to.equal("10.1.11");
+        });
     });
 
     it("should use system version from pact recording when mocking", function () {
@@ -618,15 +655,84 @@ describe("administration", () => {
       Cypress.c8ypact.current = new C8yDefaultPact(
         [{ request: { url: "/tenant/system/options" } } as any],
         {
-          version: { system: "10.7.0" },
+          version: { system: "10.8.1" },
         } as any,
         "test"
       );
       cy.getSystemVersion().then((version) => {
-        expect(version).to.equal("10.7.0");
+        expect(version).to.equal("10.8.1");
         expect(window.fetchStub.callCount).to.equal(0);
-        expect(Cypress.env("C8Y_VERSION")).to.equal("10.7.0");
+        expect(Cypress.env("C8Y_SYSTEM_VERSION")).to.equal("10.8.1");
+        expect(Cypress.env("C8Y_VERSION")).to.equal("10.8.1");
       });
+    });
+  });
+
+  context("getShellVersion", () => {
+    it("should use system version from C8Y_SHELL_VERSION env variable", function () {
+      stubEnv({ C8Y_SHELL_VERSION: "10.6.0" });
+      cy.getShellVersion("cockpit").then((version) => {
+        expect(version).to.equal("10.6.0");
+        expect(window.fetchStub.callCount).to.equal(0);
+      });
+    });
+
+    it("should use C8Y_SHELL_NAME env variable", function () {
+      stubEnv({ C8Y_SHELL_NAME: "cockpit2" });
+      stubResponses([
+        new window.Response(
+          JSON.stringify({
+            version: "10.2.11",
+          }),
+          {
+            status: 200,
+            statusText: "OK",
+            headers: { "content-type": "application/json" },
+          }
+        ),
+      ]);
+
+      const auth = { user: "ad", password: "my", tenant: "t123" };
+      cy.getAuth(auth)
+        .getShellVersion({ sendImmediately: true })
+        .then((version) => {
+          expect(version).to.equal("10.2.11");
+          expect(window.fetchStub.callCount).to.equal(1);
+          expect(Cypress.env("C8Y_SHELL_VERSION")).to.equal("10.2.11");
+          expect(Cypress.env("C8Y_SHELL_NAME")).to.equal("cockpit2");
+          expectC8yClientRequest({
+            url: `${Cypress.config().baseUrl}/apps/cockpit2/cumulocity.json`,
+            auth,
+          });
+        });
+    });
+
+    it("should get system version from ui shell", function () {
+      stubResponses([
+        new window.Response(
+          JSON.stringify({
+            version: "10.1.11",
+          }),
+          {
+            status: 200,
+            statusText: "OK",
+            headers: { "content-type": "application/json" },
+          }
+        ),
+      ]);
+      const auth = { user: "ad", password: "my", tenant: "t123" };
+      cy.getAuth(auth)
+        .getShellVersion("mycockpit")
+        .then((version) => {
+          expect(version).to.equal("10.1.11");
+          expect(window.fetchStub.callCount).to.equal(1);
+          expectC8yClientRequest({
+            url: `${Cypress.config().baseUrl}/apps/mycockpit/cumulocity.json`,
+            auth,
+          });
+          expect(Cypress.env("C8Y_SHELL_VERSION")).to.equal("10.1.11");
+          expect(Cypress.env("C8Y_SHELL_NAME")).to.equal("mycockpit");
+        });
     });
   });
 });
