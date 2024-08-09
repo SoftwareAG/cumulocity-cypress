@@ -1,22 +1,16 @@
 module.exports = {
-  branches: [
-    "main",
-    {
-      name: "release/v*",
-      channel: (name) => name.replace(/^release\/v/, ""),
-    },
-  ],
+  branches: ["main"],
   plugins: [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
     "@semantic-release/changelog",
-    [
-      "@semantic-release/npm",
-      {
-        npmPublish: false,
-        pkgRoot: "dist/",
-      },
-    ],
+    // [
+    //   "@semantic-release/npm",
+    //   {
+    //     npmPublish: false,
+    //     pkgRoot: "dist/",
+    //   },
+    // ],
     // "@semantic-release/github",
     // [
     //   "@semantic-release/git",
