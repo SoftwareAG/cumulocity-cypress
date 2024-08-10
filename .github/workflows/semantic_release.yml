@@ -24,7 +24,7 @@ jobs:
         run: npm install
 
       - name: Package
-        run: npx run package
+        run: npm run package
 
       - name: Semantic release
         run: npx semantic-release --debug
