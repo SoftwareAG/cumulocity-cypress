@@ -1,3 +1,10 @@
+## [0.6.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.0...v0.6.1) (2024-08-10)
+
+
+### Bug Fixes
+
+* **release:** Removed versions from package.json ([e433b2c](https://github.com/thomaswinkler/cumulocity-cypress/commit/e433b2c9e11b3c9afe59d8fa190ffe1e13f94979))
+
 # [0.6.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.5.4...v0.6.0) (2024-08-10)
 
 
