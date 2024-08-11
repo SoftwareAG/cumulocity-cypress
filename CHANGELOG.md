@@ -1,3 +1,10 @@
+# [0.8.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.7.3...v0.8.0) (2024-08-11)
+
+
+### Features
+
+* **release:** Updated release branch glob pattern ([d8e0d73](https://github.com/thomaswinkler/cumulocity-cypress/commit/d8e0d737d3b76b4d9f930ece4702cfdc906a2161))
+
 ## [0.7.3](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.7.2...v0.7.3) (2024-08-11)
 
 
