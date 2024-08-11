@@ -1,3 +1,10 @@
+## [0.7.3](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.7.2...v0.7.3) (2024-08-11)
+
+
+### Bug Fixes
+
+* **release:** Fix release branch pattern on main ([fb3a4c6](https://github.com/thomaswinkler/cumulocity-cypress/commit/fb3a4c66c1c87bc4f9941ef5e31257293cbedbcd))
+
 ## [0.7.2](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.7.1...v0.7.2) (2024-08-11)
 
 
