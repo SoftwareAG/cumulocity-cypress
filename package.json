@@ -37,7 +37,7 @@
   "author": "twi@softwareag.com",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/thomaswinkler/cumulocity-cypress/issues"
+    "url": "git+https://github.com/thomaswinkler/cumulocity-cypress/issues"
   },
   "workspaces": [
     "packages/*"
