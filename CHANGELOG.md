@@ -1,3 +1,10 @@
+# [0.10.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.9.0...v0.10.0) (2024-08-11)
+
+
+### Features
+
+* **release:** Switched order of release branches ([2b24485](https://github.com/thomaswinkler/cumulocity-cypress/commit/2b2448541643d475dec5663f183ba1cf2f5c0557))
+
 # [0.9.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.8.0...v0.9.0) (2024-08-11)
 
 
