@@ -1,5 +1,5 @@
 module.exports = {
-  branches: ["main"],
+  branches: ["main", "release/v+([0-9])?(.{+([0-9]),x}).x"],
   plugins: [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
@@ -22,7 +22,7 @@ module.exports = {
     [
       "@semantic-release/github",
       {
-        assets: [{ path: "*.tgz", label: "Package" }],
+        assets: [{ path: "*.tgz", label: "Package (.tgz)" }],
       },
     ],
     [
