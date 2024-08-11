@@ -1,3 +1,11 @@
+## [0.6.3](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.2...v0.6.3) (2024-08-11)
+
+
+### Bug Fixes
+
+* **release:** Fixed errer from release npm script ([5183be9](https://github.com/thomaswinkler/cumulocity-cypress/commit/5183be9f8a6f7a0a4227829571245f519960fe4a))
+* **release:** Fixed packaging and enabled publishing. ([c38d7d4](https://github.com/thomaswinkler/cumulocity-cypress/commit/c38d7d4747b3128b48079f921ca710dc54a12dc2))
+
 ## [0.6.2](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.1...v0.6.2) (2024-08-11)
 
 
