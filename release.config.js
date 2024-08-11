@@ -16,12 +16,13 @@ module.exports = {
       {
         npmPublish: true,
         pkgRoot: "dist/",
+        tarballDir: "./",
       },
     ],
     [
       "@semantic-release/github",
       {
-        assets: [{ path: "dist/*.tgz", label: "Package" }],
+        assets: [{ path: "*.tgz", label: "Package" }],
       },
     ],
     [
