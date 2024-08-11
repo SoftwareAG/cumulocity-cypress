@@ -1,3 +1,10 @@
+# [0.11.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.10.0...v0.11.0) (2024-08-11)
+
+
+### Features
+
+* **readme:** Updated doc to trigger new release ([69e036f](https://github.com/thomaswinkler/cumulocity-cypress/commit/69e036fcf22d53020fb83d2902463a7f87ac52ca))
+
 # [0.10.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.9.0...v0.10.0) (2024-08-11)
 
 
