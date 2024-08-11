@@ -8,7 +8,7 @@ module.exports = {
       "@semantic-release/exec",
       {
         prepareCmd:
-          "npm pkg set version=${nextRelease.version} && npm pkg set version=${nextRelease.version} --ws && npm npx copyfiles CHANGELOG.md ./dist",
+          "npm pkg set version=${nextRelease.version} && npm pkg set version=${nextRelease.version} --ws && npx copyfiles CHANGELOG.md ./dist",
       },
     ],
     [
