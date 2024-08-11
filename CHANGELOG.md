@@ -1,3 +1,10 @@
+# [0.12.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.11.0...v0.12.0) (2024-08-11)
+
+
+### Features
+
+* **release:** Updated release to not use prerelease ([e0123fe](https://github.com/thomaswinkler/cumulocity-cypress/commit/e0123fe35f7f7f9948aa7ce80e59db7281d8f341))
+
 # [0.11.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.10.0...v0.11.0) (2024-08-11)
 
 
