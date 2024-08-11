@@ -1,3 +1,10 @@
+## [0.6.2](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.1...v0.6.2) (2024-08-11)
+
+
+### Bug Fixes
+
+* **release:** Fixed versions in package.json ([0536570](https://github.com/thomaswinkler/cumulocity-cypress/commit/0536570406e9e60294033349adfe37c7b9870288))
+
 ## [0.6.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.0...v0.6.1) (2024-08-10)
 
 
