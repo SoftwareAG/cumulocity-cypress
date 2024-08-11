@@ -8,17 +8,22 @@ module.exports = {
       "@semantic-release/exec",
       {
         prepareCmd:
-          "npm pkg set version=${nextRelease.version} && npm pkg set version=${nextRelease.version} --ws",
+          "npm pkg set version=${nextRelease.version} && npm pkg set version=${nextRelease.version} --ws && npm npx copyfiles CHANGELOG.md ./dist",
       },
     ],
     [
       "@semantic-release/npm",
       {
-        npmPublish: false,
+        npmPublish: true,
         pkgRoot: "dist/",
       },
     ],
-    "@semantic-release/github",
+    [
+      "@semantic-release/github",
+      {
+        assets: [{ path: "*.tgz", label: "Package" }],
+      },
+    ],
     [
       "@semantic-release/git",
       {
