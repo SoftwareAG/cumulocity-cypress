@@ -1,3 +1,11 @@
+## [0.7.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.7.0...v0.7.1) (2024-08-11)
+
+
+### Bug Fixes
+
+* **release:** Fixed package json url fields ([0f4d249](https://github.com/thomaswinkler/cumulocity-cypress/commit/0f4d249a443149e6015fb55a10e1eb94c01eb012))
+* **release:** Upload package to Github ([ae7d10e](https://github.com/thomaswinkler/cumulocity-cypress/commit/ae7d10ebc06eee991fe775c7150e068e85eccc24))
+
 # [0.7.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.3...v0.7.0) (2024-08-11)
 
 
