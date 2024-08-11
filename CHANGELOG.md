@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.3...v0.7.0) (2024-08-11)
+
+
+### Features
+
+* **release:** Upload package tgz to Github ([aaec3f1](https://github.com/thomaswinkler/cumulocity-cypress/commit/aaec3f156897d569ba1046b65d5f607f9e5e4c4b))
+
 ## [0.6.3](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.6.2...v0.6.3) (2024-08-11)
 
 
