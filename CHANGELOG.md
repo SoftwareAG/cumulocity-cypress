@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.0.0...v1.0.1) (2024-08-12)
+
+
+### Bug Fixes
+
+* **release:** Test main publishing in latest channel ([6907300](https://github.com/thomaswinkler/cumulocity-cypress/commit/69073007cfc20d2da23d6f838bb3471a676d61aa))
+
 # [1.0.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.12.1...v1.0.0) (2024-08-12)
 
 
