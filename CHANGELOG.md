@@ -1,3 +1,15 @@
+# [1.0.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.12.1...v1.0.0) (2024-08-12)
+
+
+### Features
+
+* **release:** Testing breaking change ([f6ae79e](https://github.com/thomaswinkler/cumulocity-cypress/commit/f6ae79ee27970ef1ee6bd354af8edc7364c78db2))
+
+
+### BREAKING CHANGES
+
+* **release:** Bump version number to 1.0 for testing of maintenance branches.
+
 ## [0.12.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.12.0...v0.12.1) (2024-08-12)
 
 
