@@ -1,7 +1,26 @@
 module.exports = {
-  branches: ["release/v+([0-9])?(.{+([0-9]),x}).x", "main"],
+  branches: [
+    {
+      name: "release/v+([0-9])?(.{+([0-9]),x}).x",
+      range: "${name.replace(/^release\\/v/g, '')}",
+    },
+    "main",
+  ],
   plugins: [
-    "@semantic-release/commit-analyzer",
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        preset: "angular",
+        releaseRules: [
+          { breaking: true, release: "major" },
+          { revert: true, release: "patch" },
+          { type: "feat", release: "minor" },
+          { type: "fix", release: "patch" },
+          { type: "chore", release: "patch" },
+          { type: "docs", release: "patch" },
+        ],
+      },
+    ],
     "@semantic-release/release-notes-generator",
     "@semantic-release/changelog",
     [
