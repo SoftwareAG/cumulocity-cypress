@@ -1,3 +1,10 @@
+## [0.12.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.12.0...v0.12.1) (2024-08-12)
+
+
+### Bug Fixes
+
+* **release:** Updated branches for release for testing ([1ca3e5a](https://github.com/thomaswinkler/cumulocity-cypress/commit/1ca3e5a021053421f85dd811db77de1597120df6))
+
 # [0.12.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v0.11.0...v0.12.0) (2024-08-11)
 
 
