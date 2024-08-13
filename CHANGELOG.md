@@ -1,3 +1,11 @@
+## [1.2.5](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.4...v1.2.5) (2024-08-13)
+
+
+### Bug Fixes
+
+
+* **release:** Test without commit body ([9f7e0ea](https://github.com/thomaswinkler/cumulocity-cypress/commit/9f7e0eaa6870b10a764d62ad98f637e9371f0e2b))
+
 ## [1.2.4](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.3...v1.2.4) (2024-08-13)
 
 

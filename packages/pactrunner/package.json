@@ -1,7 +1,7 @@
 {
   "name": "cumulocity-cypress-pactrunner",
   "description": "Cypress runner for Cumulocity pact recordings",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "scripts": {
     "cypress": "cypress run --config-file cypress.config.js --spec cypress/e2e/pact-runner.cy.ts",
     "cypress:open": "cypress open",
