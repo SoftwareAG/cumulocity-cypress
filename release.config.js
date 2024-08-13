@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+const commitTemplate = require("./release-commit.template");
+
 module.exports = {
   branches: [
     {
@@ -23,7 +26,14 @@ module.exports = {
         ],
       },
     ],
-    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        writerOpts: {
+          commitPartial: commitTemplate,
+        },
+      },
+    ],
     "@semantic-release/changelog",
     [
       "@semantic-release/exec",
