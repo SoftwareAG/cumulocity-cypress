@@ -1,3 +1,18 @@
+## [1.2.2](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.1...v1.2.2) (2024-08-13)
+
+
+### Bug Fixes
+
+
+* **release:** Testing new commit template  
+
+  With this release we have the commit body in the change log.
+- bullet points and
+- other stuff
+
+  
+ ([c889ddb](https://github.com/thomaswinkler/cumulocity-cypress/commit/c889ddb27bda57a47356862db7c28d488c5feb03))
+
 ## [1.2.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.0...v1.2.1) (2024-08-13)
 
 
