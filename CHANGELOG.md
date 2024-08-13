@@ -1,3 +1,11 @@
+## [1.2.6](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.5...v1.2.6) (2024-08-13)
+
+
+### Bug Fixes
+
+
+* **release:** Test issue in commit footer ([80fef51](https://github.com/thomaswinkler/cumulocity-cypress/commit/80fef512522cfed32277b5a9d13d6968b0f326a6)), closes [#137](https://github.com/thomaswinkler/cumulocity-cypress/issues/137)
+
 ## [1.2.5](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.4...v1.2.5) (2024-08-13)
 
 
