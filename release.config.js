@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const commitTemplate = require("./release-commit.template");
+const commitTemplate = require("./.release-commit.template");
 
 module.exports = {
   branches: [

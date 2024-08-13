@@ -7,8 +7,10 @@ module.exports = `
 {{~/if}}
 {{#if body}}
   
+
   {{body}}
 
+  
 {{/if}} 
 {{~!-- commit link --}} {{#if @root.linkReferences~}}
   ([{{shortHash}}](
