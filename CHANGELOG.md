@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.0.1...v1.1.0) (2024-08-13)
+
+
+### Features
+
+* **release:** Publish to vx-lts channel and add next branch ([40763af](https://github.com/thomaswinkler/cumulocity-cypress/commit/40763afcebbb49255dceb5ae5806447f5f35cfa9))
+
 ## [1.0.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.0.0...v1.0.1) (2024-08-12)
 
 
