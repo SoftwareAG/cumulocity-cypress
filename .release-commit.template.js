@@ -5,13 +5,6 @@ module.exports = `
 {{~else}}
   {{~header}}
 {{~/if}}
-{{#if body}}
-  
-
-  {{body}}
-
-  
-{{/if}} 
 {{~!-- commit link --}} {{#if @root.linkReferences~}}
   ([{{shortHash}}](
   {{~#if @root.repository}}
@@ -64,4 +57,11 @@ module.exports = `
     {{~this.repository}}#{{this.issue}}
   {{~/if}}{{/each}}
 {{~/if}}
+{{#if body}}
+  
+
+  {{body}}
+
+  
+{{/if}} 
 `;
