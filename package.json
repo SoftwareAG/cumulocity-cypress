@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress-test",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Cypress commands for Cumulocity IoT",
   "scripts": {
     "start-server": "cross-env NODE_NO_WARNINGS=1 npx tsx test/backend/test-server.ts",

@@ -1,3 +1,13 @@
+## [1.2.4](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.3...v1.2.4) (2024-08-13)
+
+
+### Bug Fixes
+
+
+* **release:** Test commit body at the end of commit template ([0618d8b](https://github.com/thomaswinkler/cumulocity-cypress/commit/0618d8b5c39828100cb39184f0dd796c5c3e6cf7))  
+
+  With this release you can use `cy.request` automatically with `X-XSRF-TOKEN` headers. All headers and cookies are configured automatically.
+
 ## [1.2.3](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.2...v1.2.3) (2024-08-13)
 
 
