@@ -1,3 +1,16 @@
+## [1.2.1](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.2.0...v1.2.1) (2024-08-13)
+
+
+### Bug Fixes
+
+
+* **release:** Test commit body in change log  
+  With this release we have the commit body in the change log.
+- bullet points and
+- other stuff
+
+ ([e8a001e](https://github.com/thomaswinkler/cumulocity-cypress/commit/e8a001eb55792fa37bb76c07b1ac0e21adbae0d8))
+
 # [1.2.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.1.0...v1.2.0) (2024-08-13)
 
 
