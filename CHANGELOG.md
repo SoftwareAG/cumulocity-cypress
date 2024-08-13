@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.1.0...v1.2.0) (2024-08-13)
+
+
+### Features
+
+
+* **release:** Add commit body to release notes ([a458ec8](https://github.com/thomaswinkler/cumulocity-cypress/commit/a458ec84942427348e60091cc4c8d3ccbde922e2))
+
 # [1.1.0](https://github.com/thomaswinkler/cumulocity-cypress/compare/v1.0.1...v1.1.0) (2024-08-13)
 
 
