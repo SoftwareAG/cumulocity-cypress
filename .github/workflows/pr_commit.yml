@@ -8,16 +8,12 @@ on:
       - auto_merge_enabled
       - auto_merge_disabled
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   TITLE_REGEX: '^(chore|build|ci|docs|feat|fix|perf|refactor|test)(\(.+\))?:[[:blank:]].+$'
 jobs:
   title:
     name: Squash merge message verification
-    runs-on: [self-hosted, c8y-ui-cicd-s]
+    runs-on: ubuntu-latest
     steps:
       - name: Print details
         env:
