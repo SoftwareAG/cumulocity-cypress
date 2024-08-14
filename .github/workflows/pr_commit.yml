@@ -1,0 +1,77 @@
+name: Squash commit message
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - auto_merge_enabled
+      - auto_merge_disabled
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TITLE_REGEX: '^(chore|build|ci|docs|feat|fix|perf|refactor|test)(\(.+\))?:[[:blank:]].+$'
+jobs:
+  title:
+    name: Squash merge message verification
+    runs-on: [self-hosted, c8y-ui-cicd-s]
+    steps:
+      - name: Print details
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github.event) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Add hint regarding squash merge commit message
+        run: |
+          echo "::notice ::This workflow verifies that your final squash merge commit matches https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit."
+
+      - name: Add hint regarding squash merge commit message
+        run: |
+          echo '::notice ::As sample commit message might look like this: "fix(command): fix issue with command"'
+
+      - name: Check if auto-merge is enabled
+        if: ${{ !github.event.pull_request.auto_merge }}
+        run: |
+          echo "::error ::Enable auto-merge (squash) on this PR. While doing so, use a commit message that matches this Regex: ${{ env.TITLE_REGEX }}"
+          exit 1
+
+      - name: Print commit title
+        run: |
+          echo "${{ github.event.pull_request.auto_merge.commit_title }}"
+
+      - name: Print commit message
+        run: |
+          echo "${{ github.event.pull_request.auto_merge.commit_message }}"
+
+      - name: Check if not containing breaking changes in PR to release branch
+        if: ${{ contains(github.event.pull_request.auto_merge.commit_title, 'BREAKING CHANGE') && startsWith(github.base_ref, 'release/') }}
+        run: |
+          echo "::error ::PRs to a release branch should not contain breaking changes."
+          exit 1
+
+      - name: Check if not containing breaking changes in PR to release branch
+        if: ${{ contains(github.event.pull_request.auto_merge.commit_message, 'BREAKING CHANGE') && startsWith(github.base_ref, 'release/') }}
+        run: |
+          echo "::error ::PRs to a release branch should not contain breaking changes."
+          exit 1
+
+      - name: Ensure not merging features into release branches
+        if: ${{ startsWith(github.event.pull_request.auto_merge.commit_title, 'feat') && startsWith(github.base_ref, 'release/y') }}
+        run: |
+          echo "::error ::PRs to a release branch should not contain features. Except for the release/cd branch."
+          exit 1
+
+      - name: Checking squash merge commit title
+        id: check-title
+        run: |
+          echo '${{ github.event.pull_request.auto_merge.commit_title }}'
+          [[ '${{ github.event.pull_request.auto_merge.commit_title }}' =~ ${{ env.TITLE_REGEX }} ]] && exit 0 || echo "missing-id=true" >> $GITHUB_OUTPUT
+
+      - name: squash merge commit title malformed
+        if: ${{ steps.check-title.outputs.missing-id == 'true' }}
+        run: |
+          echo "::error ::The title of your squash merge commit message does not match the expected format. It should match this regex: ${{ env.TITLE_REGEX }}"
+          exit 1
