@@ -4,7 +4,7 @@ Collection of commands and utilities to be used for automating tests for [Cumulo
 
 Contribute by raising pull requests. All commands must be documented and, if possible, tested using test suite in this repository.
 
-Head Update 8
+Head Update 9
 
 # Content
 <!-- set markdown.extension.toc.levels 2..6 - level 1 is ignored in auto generated toc -->
