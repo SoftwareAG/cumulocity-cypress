@@ -1,4 +1,4 @@
-name: Squash commit message
+name: Commit linting
 on:
   pull_request:
     types:
@@ -20,18 +20,18 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github.event) }}
         run: echo "$GITHUB_CONTEXT"
 
-      - name: Add hint regarding squash merge commit message
+      - name: Add annotation for Angular commit message conventions
         run: |
-          echo "::notice ::This workflow verifies that your final squash merge commit matches https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit."
+          echo "::notice ::Verification of squash merge commit messages matching https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit."
 
-      - name: Add hint regarding squash merge commit message
+      - name: Add annotation for sample commit message
         run: |
-          echo '::notice ::As sample commit message might look like this: "fix(command): fix issue with command"'
+          echo '::notice ::Example of a valid commit message is: "fix(command): fix issue with command"'
 
-      - name: Check if auto-merge is enabled
+      - name: Check auto-merge is enabled
         if: ${{ !github.event.pull_request.auto_merge }}
         run: |
-          echo "::error ::Enable auto-merge (squash) on this PR. While doing so, use a commit message that matches this Regex: ${{ env.TITLE_REGEX }}"
+          echo "::error ::Enable auto-merge (squash) on this PR. When enabling auto-merge, provide a commit message matching: ${{ env.TITLE_REGEX }}"
           exit 1
 
       - name: Print commit title
@@ -42,31 +42,31 @@ jobs:
         run: |
           echo "${{ github.event.pull_request.auto_merge.commit_message }}"
 
-      - name: Check if not containing breaking changes in PR to release branch
+      - name: Fail if release branch contains breaking change (commit title)
         if: ${{ contains(github.event.pull_request.auto_merge.commit_title, 'BREAKING CHANGE') && startsWith(github.base_ref, 'release/') }}
         run: |
-          echo "::error ::PRs to a release branch should not contain breaking changes."
+          echo "::error ::PRs to a release branch must not contain breaking changes."
           exit 1
 
-      - name: Check if not containing breaking changes in PR to release branch
+      - name: Fail if release branch contains breaking change (commit message)
         if: ${{ contains(github.event.pull_request.auto_merge.commit_message, 'BREAKING CHANGE') && startsWith(github.base_ref, 'release/') }}
         run: |
-          echo "::error ::PRs to a release branch should not contain breaking changes."
+          echo "::error ::PRs to a release branch must not contain breaking changes."
           exit 1
 
-      - name: Ensure not merging features into release branches
+      - name: Fail if features are merged to release branches
         if: ${{ startsWith(github.event.pull_request.auto_merge.commit_title, 'feat') && startsWith(github.base_ref, 'release/y') }}
         run: |
-          echo "::error ::PRs to a release branch should not contain features. Except for the release/cd branch."
+          echo "::error ::PRs to a release branch must not contain features."
           exit 1
 
-      - name: Checking squash merge commit title
+      - name: Check squash merge commit title
         id: check-title
         run: |
           echo '${{ github.event.pull_request.auto_merge.commit_title }}'
           [[ '${{ github.event.pull_request.auto_merge.commit_title }}' =~ ${{ env.TITLE_REGEX }} ]] && exit 0 || echo "missing-id=true" >> $GITHUB_OUTPUT
 
-      - name: squash merge commit title malformed
+      - name: Fail for malformed squash merge commit title
         if: ${{ steps.check-title.outputs.missing-id == 'true' }}
         run: |
           echo "::error ::The title of your squash merge commit message does not match the expected format. It should match this regex: ${{ env.TITLE_REGEX }}"
