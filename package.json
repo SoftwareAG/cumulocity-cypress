@@ -22,7 +22,8 @@
     "clean:package:json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'",
     "lint": "eslint ./",
     "release": "semantic-release",
-    "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git"
+    "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
@@ -90,6 +91,8 @@
     "set-cookie-parser": "^2.6.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.4.0",
+    "@commitlint/config-conventional": "^19.2.2",
     "@rollup/plugin-json": "^6.1.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/exec": "^6.0.3",
@@ -113,6 +116,7 @@
     "eslint-plugin-cypress": "^2.15.1",
     "eslint-plugin-import": "^2.29.1",
     "express": "^4.19.2",
+    "husky": "^9.1.4",
     "jest": "^29.7.0",
     "memfs": "^4.8.2",
     "rimraf": "^5.0.1",
