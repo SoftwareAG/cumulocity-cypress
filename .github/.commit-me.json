@@ -1,0 +1,17 @@
+{
+  "types": [
+    "build",
+    "chore",
+    "ci",
+    "docs",
+    "style",
+    "refactor",
+    "perf",
+    "test"
+  ],
+  "githubAction": {
+    "includeCommits": false,
+    "includePullRequest": false,
+    "updatePullRequestLabels": false
+  }
+}
