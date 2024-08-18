@@ -1,0 +1,30 @@
+name: Conventional Commits
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - auto_merge_enabled
+      - auto_merge_disabled
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Ensure that only one instance of this workflow is running per Pull Request
+  cancel-in-progress: true # Cancel any previous runs of this workflow
+
+permissions:
+  contents: read # NOTE; you will need to change this permission to `write` in case you do not provide the `include-commits` input parameter.
+
+jobs:
+  commit-me:
+    name: Conventional Commits Compliance
+    runs-on: ubuntu-latest
+    env:
+      # Enable colored output in GitHub Actions
+      FORCE_COLOR: 3
+    steps:
+      - uses: dev-build-deploy/commit-me@v0
+        with:
+          update-labels: false # OPTIONAL; do not update the Pull Request labels based on the Conventional Commits information.
+          include-commits: false # OPTIONAL; enforces the exclusion of commits associated with your Pull Request
