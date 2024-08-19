@@ -1,4 +1,4 @@
-name: Cypress Tests
+name: Tests
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - develop
 
 jobs:
-  test:
+  cypress:
     runs-on: ubuntu-latest
 
     steps:
