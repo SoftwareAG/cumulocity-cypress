@@ -1,0 +1,31 @@
+name: Auto Approve PR
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  approve:
+    if: github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if comment is "approved"
+        if: ${{ github.event.comment.body == 'approved' }}
+        run: echo "Comment is approved"
+
+      - name: Approve the pull request
+        if: ${{ github.event.comment.body == 'approved' && (github.event.comment.user.login == 'thomaswinkler' || contains(github.event.comment.user.login, github.repository_owner)) }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { GITHUB_TOKEN } = process.env;
+            const octokit = github.getOctokit(GITHUB_TOKEN);
+            const pull_number = github.event.issue.number;
+            await octokit.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pull_number,
+              event: 'APPROVE'
+            });
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
