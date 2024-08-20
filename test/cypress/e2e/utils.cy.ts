@@ -1,4 +1,13 @@
-import { getAuthOptions, normalizedArguments } from "../../../src/lib/utils";
+import { stubEnv } from "cypress/support/testutils";
+import {
+  getAuthOptions,
+  getCookieAuthFromEnv,
+  getSystemVersionFromEnv,
+  getXsrfToken,
+  normalizedArguments,
+  normalizedArgumentsWithAuth,
+  normalizedC8yclientArguments,
+} from "../../../src/lib/utils";
 
 describe("utils", () => {
   beforeEach(() => {
@@ -7,6 +16,7 @@ describe("utils", () => {
     expect(Cypress.env("C8Y_USERNAME")).to.be.undefined;
     expect(Cypress.env("C8Y_PASSWORD")).to.be.undefined;
     cy.clearAllLocalStorage();
+    cy.clearAllCookies();
   });
 
   context("normalizedArguments", () => {
@@ -59,6 +69,66 @@ describe("utils", () => {
         "newuser",
         ["business"],
       ]);
+    });
+  });
+
+  context("normalizedArgumentsWithAuth", () => {
+    it("should add auth from env replacing undefined previous subject", () => {
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
+      const args = [undefined, "business"];
+      const result = normalizedArgumentsWithAuth(args);
+      expect(result?.length).to.eq(2);
+      expect(result).to.deep.eq([
+        { user: "admin", password: "password" },
+        "business",
+      ]);
+    });
+
+    it("should add auth from env without previous subject", () => {
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
+      const args = ["business"];
+      const result = normalizedArgumentsWithAuth(args);
+      expect(result?.length).to.eq(2);
+      expect(result).to.deep.eq([
+        { user: "admin", password: "password" },
+        "business",
+      ]);
+    });
+
+    it("should return undefined for no args and cookie auth present", () => {
+      cy.setCookie("XSRF-TOKEN", "123").then(() => {
+        const result = normalizedArgumentsWithAuth([]);
+        expect(result).to.deep.eq([undefined]);
+      });
+    });
+
+    it("should return undefined if args are undefined", () => {
+      const result = normalizedArgumentsWithAuth(undefined as any);
+      expect(result).to.deep.eq([undefined]);
+    });
+  });
+
+  context("normalizedC8yclientArguments", () => {
+    it("should not add auth from env if cookie auth is present", () => {
+      stubEnv({ C8Y_USERNAME: "admin", C8Y_PASSWORD: "password" });
+      cy.setCookie("XSRF-TOKEN", "1234").then(() => {
+        const args = [undefined, "business"];
+        const result = normalizedC8yclientArguments(args);
+        expect(result?.length).to.eq(2);
+        expect(result).to.deep.eq([undefined, "business"]);
+      });
+    });
+
+    it("should return undefined for no args and cookie auth present", () => {
+      cy.setCookie("XSRF-TOKEN", "123").then(() => {
+        const result = normalizedC8yclientArguments([]);
+        expect(result).to.deep.eq([undefined]);
+      });
+    });
+
+    it("should return undefined if arguments is undefined", () => {
+      const result = normalizedC8yclientArguments(undefined as any);
+      expect(result).to.deep.eq([undefined]);
     });
   });
 
@@ -205,6 +275,117 @@ describe("utils", () => {
       expect(result2).to.be.undefined;
       const result3 = getAuthOptions();
       expect(result3).to.be.undefined;
+    });
+  });
+
+  context("getCookieAuthFromEnv", () => {
+    it("cookie auth from env", () => {
+      cy.setCookie("XSRF-TOKEN", "1234").then(() => {
+        const result = getCookieAuthFromEnv();
+        expect(result).to.not.be.undefined;
+      });
+    });
+
+    it("cookie auth from env failure", () => {
+      const result = getCookieAuthFromEnv();
+      expect(result).to.be.undefined;
+    });
+  });
+
+  context("getXsrfToken", () => {
+    it("should get xsrf token from env", () => {
+      cy.setCookie("XSRF-TOKEN", "1234").then(() => {
+        const result = getXsrfToken();
+        expect(result).to.eq("1234");
+      });
+    });
+
+    it("should return undefined without xsrf token cookie", () => {
+      const result = getXsrfToken();
+      expect(result).to.be.undefined;
+    });
+
+    it("should return undefined with empty xsrf token cookie", () => {
+      cy.setCookie("XSRF-TOKEN", "").then(() => {
+        const result = getXsrfToken();
+        expect(result).to.be.undefined;
+      });
+    });
+  });
+
+  context("getSystemVersionFromEnv", () => {
+    it("should get system version from env", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "10.7.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.7.0");
+    });
+
+    it("should get from C8Y_VERSION if C8Y_SYSTEM_VERSION is not present", () => {
+      stubEnv({ C8Y_VERSION: "10.7.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.7.0");
+    });
+
+    it("should prefer C8Y_SYSTEM_VERSION over C8Y_VERSION", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "10.7.0", C8Y_VERSION: "10.8.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.7.0");
+    });
+
+    it("should return undefined without system version", () => {
+      const result = getSystemVersionFromEnv();
+      expect(result).to.be.undefined;
+    });
+
+    it("should return undefined for invalid system version", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "abd" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.be.undefined;
+    });
+
+    it("should return correct coerced semver version", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "abscs10.1" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.1.0");
+    });
+
+    it("should return coerced semver version", () => {
+      stubEnv({ C8Y_SYSTEM_VERSION: "10" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.0.0");
+    });
+
+    it("should get system version from pact if mocking", () => {
+      cy.stub(Cypress, "c8ypact").value({
+        isEnabled: () => true,
+        mode: () => "mock",
+        current: {
+          info: {
+            version: {
+              system: "11.7.0",
+            },
+          },
+        },
+      } as any);
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("11.7.0");
+    });
+
+    it("should prefer system version from env over pact when mocking", () => {
+      cy.stub(Cypress, "c8ypact").value({
+        isEnabled: () => true,
+        mode: () => "mock",
+        current: {
+          info: {
+            version: {
+              system: "11.7.0",
+            },
+          },
+        },
+      } as any);
+      stubEnv({ C8Y_SYSTEM_VERSION: "10.9.0" });
+      const result = getSystemVersionFromEnv();
+      expect(result).to.eq("10.9.0");
     });
   });
 });

@@ -4,6 +4,7 @@ import { BasicAuth, CookieAuth, IAuthentication } from "@c8y/client";
 import { C8yAuthOptions, isAuthOptions } from "../shared/auth";
 import { C8yClient } from "../shared/c8yclient";
 import { getEnvVar } from "../shared/c8ypact/c8ypact";
+import { toSemverVersion } from "../shared/versioning";
 
 const { _ } = Cypress;
 
@@ -45,6 +46,7 @@ export function normalizedArguments(args: any[] | any) {
  * env variables at the beginning of the arguments.
  */
 export function normalizedArgumentsWithAuth(args: any[]) {
+  if (!args) return [undefined];
   const normalized = normalizedArguments(args);
   if (
     _.isEmpty(normalized) ||
@@ -60,6 +62,33 @@ export function normalizedArgumentsWithAuth(args: any[]) {
     }
   }
   return normalized;
+}
+
+export function normalizedC8yclientArguments(args: any[]) {
+  if (!args) return [undefined];
+  const normalized = normalizedArgumentsWithAuth(args);
+  if (getCookieAuthFromEnv() != null && args[0] == null) {
+    normalized[0] = undefined;
+  }
+  return normalized;
+}
+
+export function getCookieAuthFromEnv() {
+  const cookieAuth = new CookieAuth();
+  const token = _.get(cookieAuth.getFetchOptions({}), "headers.X-XSRF-TOKEN");
+  if (!token || _.isEmpty(token)) {
+    return undefined;
+  }
+  return cookieAuth;
+}
+
+export function getXsrfToken() {
+  const cookieAuth = new CookieAuth();
+  const token = _.get(cookieAuth.getFetchOptions({}), "headers.X-XSRF-TOKEN");
+  if (token != null && !_.isEmpty(token)) {
+    return token;
+  }
+  return undefined;
 }
 
 export function getAuthOptionsFromEnv() {
@@ -237,6 +266,27 @@ function authWithTenant(options: C8yAuthOptions) {
     _.extend(options, { tenant });
   }
   return options;
+}
+
+export function getSystemVersionFromEnv(): string | undefined {
+  let result = toSemverVersion(
+    Cypress.env(`C8Y_SYSTEM_VERSION`) || Cypress.env(`C8Y_VERSION`)
+  );
+  if (
+    result == null &&
+    Cypress.c8ypact?.isEnabled() === true &&
+    Cypress.c8ypact.mode() === "mock"
+  ) {
+    const pactVersion = Cypress.c8ypact.current?.info.version?.system;
+    if (pactVersion) {
+      result = toSemverVersion(pactVersion);
+    }
+  }
+  return result;
+}
+
+export function getShellVersionFromEnv(): string | undefined {
+  return Cypress.env(`C8Y_SHELL_VERSION`);
 }
 
 /**

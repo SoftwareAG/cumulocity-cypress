@@ -1,12 +1,13 @@
-name: Jest Tests
+name: Tests
 
 on:
   pull_request:
     branches:
       - main
+      - develop
 
 jobs:
-  test:
+  jest:
     runs-on: ubuntu-latest
 
     steps:

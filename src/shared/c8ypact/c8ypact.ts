@@ -204,7 +204,13 @@ export interface C8yPactInfo extends C8yPactConfigOptions {
   /**
    * Version information of the system, runner and pact standard used to record the pact.
    */
-  version?: C8yPactInfoVersion;
+  version?: {
+    system?: string;
+    shell?: string;
+    shellName?: string;
+    c8ypact?: string;
+    runner?: string;
+  };
   /**
    * Title of the pact. Title is an array of suite and test titles.
    */

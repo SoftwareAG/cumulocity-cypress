@@ -1,9 +1,9 @@
 {
   "name": "cumulocity-cypress",
-  "version": "0.3.2",
+  "version": "0.5.2",
   "description": "Cypress commands for Cumulocity IoT",
   "scripts": {
-    "start-server": "http-server test/cypress/app/ --silent --port 8080 --mimetypes test/custom_mime_types.types --ext json",
+    "start-server": "cross-env NODE_NO_WARNINGS=1 npx tsx test/backend/test-server.ts",
     "test": "npm run jest:run && npm run cypress",
     "cypress": "cross-env TZ=Europe/Berlin start-server-and-test start-server http://localhost:8080 cypress:run",
     "cypress:run": "cross-env TZ=Europe/Berlin cypress run --project test --browser chrome --config video=false",
@@ -12,19 +12,22 @@
     "jest": "npm run jest:run",
     "jest:run": "cross-env NODE_NO_WARNINGS=1 jest --config jest.config.js",
     "clean": "rimraf dist/ && rimraf packages/*/dist/ && rimraf packages/*/.yalc && rimraf packages/*/yalc.lock",
-    "copy-files": "copyfiles --up 1 -V './src/lib/**/*.js' './src/lib/**/*.d.ts' dist/ && copyfiles README.md package.json dist/",
-    "package": "npm run build && rimraf -v -g './dist/**/*.map' && cd dist/ && npm run clean-package-json",
+    "copy-files": "copyfiles --up 1 -V './src/lib/**/*.js' './src/lib/**/*.d.ts' dist/ && copyfiles '*.md' package.json dist/",
     "build": "npm run clean && npm run copy-files && tsc -b -v src/ && npm run build:plugin",
     "build:plugin": "rollup -c rollup.config.mjs",
+    "package": "npm run build && npm run clean:package:folder && cd dist/ && npm run clean:package:json",
     "yalc:runner": "npm run yalc:publish && cd packages/pact-runner && yalc add cumulocity-cypress",
-    "yalc:controller": "npm run yalc:publish && cd packages/pact-http-controller && yalc add cumulocity-cypress",
     "yalc:publish": "npm run clean && npm run build && cd dist/ && yalc publish && cd ..",
-    "clean-package-json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'",
-    "lint": "eslint ./"
+    "yalc:controller": "npm run yalc:publish && cd packages/pact-http-controller && yalc add cumulocity-cypress",
+    "clean:package:folder": "rimraf -v -g './dist/**/*.map' && rimraf -v -g './dist/**/*.tsbuildinfo'",
+    "clean:package:json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'",
+    "lint": "eslint ./",
+    "release": "semantic-release",
+    "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/SoftwareAG/cumulocity-cypress.git"
+    "url": "git+https://github.com/SoftwareAG/cumulocity-cypress.git"
   },
   "keywords": [
     "Cypress",
@@ -90,6 +93,10 @@
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^10.1.3",
     "@types/chai": "^4.3.4",
     "@types/cookie-parser": "^1.4.6",
     "@types/debug": "^4.1.12",
@@ -109,21 +116,23 @@
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-cypress": "^2.15.1",
     "eslint-plugin-import": "^2.29.1",
-    "http-server": "^14.1.1",
+    "express": "^4.19.2",
     "jest": "^29.7.0",
     "memfs": "^4.8.2",
     "rimraf": "^5.0.1",
     "rollup": "^4.14.1",
     "rollup-plugin-dts": "^6.1.0",
-    "rollup-plugin-includepaths": "^0.2.4",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "semantic-release": "^24.0.0",
+    "semver": "^7.6.3",
     "start-server-and-test": "^2.0.0",
     "ts-jest": "^29.1.2",
+    "tsx": "^4.16.5",
     "typescript": "^5.0.2",
     "yalc": "^1.0.0-pre.53"
   },
   "peerDependencies": {
-    "@angular/common": ">=16.0.0",
-    "@angular/core": ">=16.0.0",
+    "@angular/common": ">=14.0.0",
     "@c8y/client": ">=1015.0.0",
     "cypress": ">=12.0.0"
   }

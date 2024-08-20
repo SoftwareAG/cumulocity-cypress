@@ -4,9 +4,10 @@ on:
   pull_request:
     branches:
       - main
+      - develop
 
 jobs:
-  build-cumulocity-cypress:
+  library:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,10 +22,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Run build
         run: npm run build
 
-  build-c8yctrl:
+  c8yctrl:
     runs-on: ubuntu-latest
 
     steps:

@@ -61,7 +61,7 @@ Administration related commands
 - `getCurrentTenant` and `getTenantId`
 - `createUser` and `deleteUser`
 - `assignUserRoles` and `clearUserRoles`
-- `getSystemVersion`
+- `getSystemVersion` and `getShellVersion`
 
 Component testing
 - `mount`
@@ -70,6 +70,7 @@ Component testing
 - `c8yclient`, `c8yclientf`
 - `c8ymatch`
 - `retryRequest`
+- `request`
 
 See [Integration and API testing](./doc/API%20and%20Integration%20Testing.md) for more information.
 
@@ -78,7 +79,7 @@ See [Integration and API testing](./doc/API%20and%20Integration%20Testing.md) fo
 Add dependency to your package.json and install via npm or yarn.
 
 ```bash
-npm install cumulocity-cypress --save-dev
+npm install cumulocity-cypress ---dev
 ```
 or 
 
@@ -93,7 +94,6 @@ yarn add -D cumulocity-cypress
 Make sure the following dependencies are installed in your project:
 - `cypress`
 - `@c8y/client`
-- `angular-core`
 - `angular-common`
 
 ### Load plugin

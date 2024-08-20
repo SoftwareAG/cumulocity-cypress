@@ -2,7 +2,8 @@ const { _ } = Cypress;
 
 import {
   getBaseUrlFromEnv,
-  normalizedArgumentsWithAuth,
+  getCookieAuthFromEnv,
+  normalizedC8yclientArguments,
   restoreClient,
   storeClient,
   tenantFromBasicAuth,
@@ -12,7 +13,6 @@ import {
 import {
   BasicAuth,
   Client,
-  CookieAuth,
   FetchClient,
   IFetchResponse,
   IResult,
@@ -232,7 +232,7 @@ const c8yclientFn = (...args: any[]) => {
   const prevSubjectIsAuth = args && !_.isEmpty(args) && isAuthOptions(args[0]);
   const prevSubject: Cypress.Chainable<any> =
     args && !_.isEmpty(args) && !isAuthOptions(args[0]) ? args[0] : undefined;
-  let $args = normalizedArgumentsWithAuth(
+  let $args = normalizedC8yclientArguments(
     args && prevSubject ? args.slice(1) : args
   );
 
@@ -262,10 +262,8 @@ const c8yclientFn = (...args: any[]) => {
   }
 
   // check if there is a XSRF token to use for CookieAuth
-  cookieAuth = new CookieAuth();
-  const token = _.get(cookieAuth.getFetchOptions({}), "headers.X-XSRF-TOKEN");
-  if (!token || _.isEmpty(token)) {
-    cookieAuth = undefined;
+  if (!cookieAuth) {
+    cookieAuth = getCookieAuthFromEnv();
   }
 
   if (
