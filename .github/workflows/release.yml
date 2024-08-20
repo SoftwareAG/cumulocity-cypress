@@ -33,7 +33,7 @@ jobs:
         run: npm run package
 
       - name: Run semantic release
-        run: npx semantic-release --debug
+        run: npx semantic-release --debug --repositoryUrl "$(git remote get-url origin | tr -d '\n')"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
