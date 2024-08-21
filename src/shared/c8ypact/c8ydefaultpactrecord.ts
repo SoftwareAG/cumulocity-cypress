@@ -14,7 +14,8 @@ import {
   toPactResponse,
 } from "./c8ypact";
 
-const { _ } = Cypress;
+import _ from "lodash";
+
 /**
  * Default implementation of C8yPactRecord. Use C8yDefaultPactRecord.from to create
  * a C8yPactRecord from a Cypress.Response object or an C8yPactRecord object.

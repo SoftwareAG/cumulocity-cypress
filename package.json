@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress",
-  "version": "0.7.5",
+  "version": "0.3.3",
   "description": "Cypress commands for Cumulocity IoT",
   "scripts": {
     "start:cypress:server": "cross-env NODE_NO_WARNINGS=1 npx tsx test/backend/test-server.ts",
@@ -66,8 +66,8 @@
       "default": "./lib/commands/c8ypact.js"
     },
     "./c8yctrl": {
-      "types": "./shared/c8yctrl/index.d.ts",
-      "default": "./shared/c8yctrl/index.js"
+      "types": "./node.d.ts",
+      "default": "./node.js"
     },
     "./node": {
       "types": "./node.d.ts",
@@ -82,7 +82,7 @@
         "./lib/commands/c8ypact.d.ts"
       ],
       "c8yctrl": [
-        "./c8yctrl.d.ts"
+        "./node.d.ts"
       ],
       "node": [
         "./node.d.ts"

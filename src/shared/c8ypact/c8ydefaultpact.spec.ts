@@ -3,7 +3,8 @@
 import _ from "lodash";
 
 import { C8yDefaultPact } from "./c8ydefaultpact";
-import { C8yDefaultPactRecord, isPact } from "./c8ypact";
+import { isPact } from "./c8ypact";
+import { C8yDefaultPactRecord } from "./c8ydefaultpactrecord";
 
 /**
  * Wrapper for protected methods and properties of C8yDefaultPact for testing.
