@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const commitTemplate = require("./.release-commit.template");
+const commitTemplate = require("./.github/release-commit.template");
 
 module.exports = {
   branches: [
@@ -21,7 +21,7 @@ module.exports = {
           { revert: true, release: "patch" },
           { type: "feat", release: "minor" },
           { type: "fix", release: "patch" },
-          { type: "chore", release: "patch" },
+          { type: "chore", release: false },
           { type: "docs", release: "patch" },
         ],
       },
@@ -56,13 +56,13 @@ module.exports = {
         assets: [{ path: "*.tgz", label: "Package (.tgz)" }],
       },
     ],
-    [
-      "@semantic-release/git",
-      {
-        assets: ["package.json", "packages/*/package.json", "CHANGELOG.md"],
-        message:
-          "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}",
-      },
-    ],
+    // [
+    //   "@semantic-release/git",
+    //   {
+    //     assets: ["package.json", "packages/*/package.json", "CHANGELOG.md"],
+    //     message:
+    //       "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}",
+    //   },
+    // ],
   ],
 };

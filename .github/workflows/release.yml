@@ -1,5 +1,6 @@
 name: Release
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -12,7 +13,9 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,7 +33,13 @@ jobs:
         run: npm run package
 
       - name: Run semantic release
-        run: npx semantic-release --debug
+        run: npx semantic-release --debug --repositoryUrl "$(git remote get-url origin | tr -d '\n')"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Upload Changelog.md
+        uses: actions/upload-artifact@v4
+        with:
+          name: CHANGELOG.md
+          path: CHANGELOG.md
