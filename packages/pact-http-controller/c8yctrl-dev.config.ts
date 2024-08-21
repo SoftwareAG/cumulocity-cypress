@@ -6,7 +6,7 @@ import {
   C8yPactHttpController,
   C8yPactHttpControllerConfig,
   C8yPactHttpResponse,
-} from "cumulocity-cypress/c8yctrl";
+} from "cumulocity-cypress/node";
 
 import { Request } from "express";
 
