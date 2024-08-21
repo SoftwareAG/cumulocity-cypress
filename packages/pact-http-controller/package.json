@@ -1,58 +1,11 @@
 {
   "name": "cumulocity-cypress-ctrl",
-  "version": "0.3.3",
   "description": "HTTP controller for Cumulocity pact recordings",
-  "main": "ctrl/index.js",
-  "bin": {
-    "c8yctrl": "ctrl/index.js"
-  },
   "scripts": {
     "start": "cross-env NODE_NO_WARNINGS=1 npx tsx --env-file=.env src/startup.ts --config c8yctrl-dev.config.ts",
     "clean": "rimraf ./dist/",
-    "package": "npm run build && npm run copy-files && npm run clean-package-json",
-    "build": "npm run clean && tsc --project tsconfig.package.json && rollup -c rollup.config.mjs && rimraf ./dist/packages && rimraf ./dist/src && rimraf ./dist/*/*.ts.map && chmod +x dist/ctrl/index.js",
-    "copy-files": "copyfiles package.json README.md dist/",
-    "clean-package-json": "cd dist/ && npm pkg delete 'devDependencies' && npm pkg delete 'scripts'"
+    "build": "npm run clean && tsc --project tsconfig.package.json"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/SoftwareAG/cumulocity-cypress.git"
-  },
-  "keywords": [
-    "Cypress",
-    "Cumulocity",
-    "IoT",
-    "Test"
-  ],
   "author": "twi@softwareag.com",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/SoftwareAG/cumulocity-cypress/issues"
-  },
-  "dependencies": {
-    "body-parser": "^1.20.2",
-    "cookie": "^0.6.0",
-    "cookie-parser": "^1.4.6",
-    "cosmiconfig": "^9.0.0",
-    "cosmiconfig-typescript-loader": "^5.0.0",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "http-proxy-middleware": "^3.0.0",
-    "morgan": "^1.10.0",
-    "set-cookie-parser": "^2.6.0",
-    "tslib": "^2.6.2",
-    "winston": "^3.13.0",
-    "yargs": "^17.7.2"
-  },
-  "devDependencies": {
-    "@types/cookie": "^0.6.0",
-    "@types/cookie-parser": "^1.4.6",
-    "@types/debug": "^4.1.12",
-    "@types/express": "^4.17.21",
-    "@types/morgan": "^1.9.9",
-    "@types/node": "^20.10.6",
-    "@types/set-cookie-parser": "^2.4.7",
-    "tsx": "^4.7.2",
-    "typescript": "^5.0.2"
-  }
+  "license": "Apache-2.0"
 }

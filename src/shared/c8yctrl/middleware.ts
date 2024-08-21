@@ -13,12 +13,12 @@ import {
 } from "http-proxy-middleware";
 import { C8yAuthOptions } from "../auth";
 
-import {
+import { C8yDefaultPact, C8yPactHttpController } from "./index";
+
+import type {
   C8yCtrlHeader,
-  C8yPactHttpController,
   C8yPactHttpResponse,
-} from "./httpcontroller";
-import { C8yDefaultPact } from "../c8ypact";
+} from "./httpcontroller-options";
 
 export function createMiddleware(
   c8yctrl: C8yPactHttpController,

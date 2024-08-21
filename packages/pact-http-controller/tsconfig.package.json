@@ -4,7 +4,7 @@
     "rootDir": "../..",
     "outDir": "dist/",
     "lib": ["dom", "dom.iterable", "ES2020"],
-    "types": ["cypress", "node", "semver", "cookie-parser", "debug", "cosmiconfig"],
+    "types": ["cypress", "node", "semver", "cookie-parser", "debug", "cosmiconfig", "cookie"],
     "target": "es2020",
     "module": "es2020",
     "moduleResolution": "node",

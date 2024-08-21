@@ -1,7 +1,7 @@
 export * from "./shared/c8ypact";
 export * from "./shared/auth";
 export * from "./shared/c8ypact/fileadapter";
-export * from "./shared/c8yctrl/httpcontroller";
+export * from "./shared/c8yctrl";
 export {
   isCypressError,
   isIResult,

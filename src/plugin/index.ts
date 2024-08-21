@@ -9,7 +9,7 @@ import {
 import {
   C8yPactHttpController,
   C8yPactHttpControllerOptions,
-} from "../shared/c8yctrl/httpcontroller";
+} from "../shared/c8yctrl";
 import {
   C8yPact,
   getEnvVar,

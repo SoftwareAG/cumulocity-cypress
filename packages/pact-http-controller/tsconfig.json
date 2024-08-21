@@ -4,7 +4,7 @@
     "baseUrl": ".",
     "rootDir": ".",
     "lib": ["ES2020"],
-    "types": ["node", "cookie-parser", "lodash"],
+    "types": ["node", "cookie-parser", "lodash", "cookie"],
     "paths": {
       "cumulocity-cypress/*": ["./../../src/*"],
       "cumulocity-cypress": ["./../../src"]

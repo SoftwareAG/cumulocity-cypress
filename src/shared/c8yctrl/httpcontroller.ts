@@ -38,8 +38,6 @@ import {
 } from "./middleware";
 import { toBoolean } from "./httpcontroller-utils";
 
-export * from "./httpcontroller-options";
-
 export class C8yPactHttpController {
   currentPact?: C8yDefaultPact;
 
