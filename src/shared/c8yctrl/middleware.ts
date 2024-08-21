@@ -13,7 +13,8 @@ import {
 } from "http-proxy-middleware";
 import { C8yAuthOptions } from "../auth";
 
-import { C8yDefaultPact, C8yPactHttpController } from "./index";
+import { C8yPactHttpController } from "./httpcontroller";
+import { C8yDefaultPact } from "../c8ypact";
 
 import type {
   C8yCtrlHeader,

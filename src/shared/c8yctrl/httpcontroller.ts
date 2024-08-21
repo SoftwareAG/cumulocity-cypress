@@ -12,20 +12,17 @@ import morgan from "morgan";
 import { Server } from "http";
 
 import {
-  C8yAuthOptions,
   C8yDefaultPact,
   C8yPact,
   C8yPactInfo,
   C8yPactSaveKeys,
   pactId,
   toPactSerializableObject,
-  oauthLogin,
-  C8yPactFileAdapter,
   C8yPactRecordingMode,
   C8yPactMode,
   isOneOfStrings,
   C8yPactRecordingModeValues,
-} from "cumulocity-cypress/node";
+} from "../c8ypact";
 
 import {
   C8yPactHttpControllerOptions,
@@ -36,7 +33,11 @@ import {
   createMiddleware,
   wrapPathIgnoreHandler,
 } from "./middleware";
+
 import { toBoolean } from "./httpcontroller-utils";
+import { C8yPactFileAdapter } from "../c8ypact/fileadapter";
+import { C8yAuthOptions } from "../auth";
+import { oauthLogin } from "../c8yclient";
 
 export class C8yPactHttpController {
   currentPact?: C8yDefaultPact;
