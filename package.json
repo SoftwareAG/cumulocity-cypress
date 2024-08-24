@@ -66,26 +66,18 @@
       "default": "./lib/commands/c8ypact.js"
     },
     "./c8yctrl": {
-      "types": "./node.d.ts",
-      "default": "./node.js"
+      "types": "./bin/c8yctrl.d.ts",
+      "default": "./bin/c8yctrl.js"
     },
-    "./node": {
-      "types": "./node.d.ts",
-      "default": "./node.js"
-    },
-    "./commands/*": "./lib/commands/*",
-    "./c8ypact/*": "./lib/pact/*"
+    "./commands/*": "./lib/commands/*"
   },
   "typesVersions": {
     "*": {
       "c8ypact": [
-        "./lib/commands/c8ypact.d.ts"
+        "./c8ypact.d.ts"
       ],
       "c8yctrl": [
-        "./node.d.ts"
-      ],
-      "node": [
-        "./node.d.ts"
+        "./bin/c8yctrl.d.ts"
       ],
       "commands": [
         "./lib/commands/index.d.ts"

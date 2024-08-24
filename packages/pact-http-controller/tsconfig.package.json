@@ -19,6 +19,6 @@
       "cumulocity-cypress": ["./src"]
     }
   },
-  "exclude": ["src/**/*.spec.ts", "**/c8yclient.ts"],
+  "exclude": ["src/**/*.spec.ts", "**/c8yclient.ts", "**/contrib/*"],
   "include": ["src/**/*.ts", "packages/pact-http-controller/**/*.ts"],
 }

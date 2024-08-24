@@ -2,7 +2,7 @@ import {
   C8yAuthOptions,
   C8yDefaultPact,
   C8yPactFetchClient,
-} from "cumulocity-cypress";
+} from "cumulocity-cypress/c8ypact";
 import { BasicAuth, IFetchResponse } from "@c8y/client";
 import { encodeBase64 } from "../../../src/shared/c8yclient";
 import {

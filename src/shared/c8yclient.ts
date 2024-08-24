@@ -14,12 +14,12 @@ import {
 } from "@c8y/client";
 import {
   C8yPactRecord,
-  C8ySchemaMatcher,
   isCypressResponse,
   isPactRecord,
-} from "./c8ypact";
+} from "./c8ypact/c8ypact";
 
 import * as setCookieParser from "set-cookie-parser";
+import { C8ySchemaMatcher } from "./c8ypact/schema";
 
 declare global {
   interface Response {

@@ -9,10 +9,8 @@ import {
   getConfigFromEnvironment,
 } from "./startup-util";
 
-import {
-  C8yPactDefaultFileAdapter,
-  C8yPactHttpControllerOptions,
-} from "../../../src/node";
+import { C8yPactHttpControllerOptions } from "../../../src/shared/c8yctrl";
+import { C8yPactDefaultFileAdapter } from "../../../src/shared/c8ypact";
 
 describe("startup util tests", () => {
   describe("getConfigFromArgs", () => {

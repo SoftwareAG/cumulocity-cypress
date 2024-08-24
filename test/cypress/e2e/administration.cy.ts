@@ -5,7 +5,7 @@ import {
   stubEnv,
   stubResponses,
 } from "../support/testutils";
-import { C8yDefaultPact } from "cumulocity-cypress/index";
+import { C8yDefaultPact } from "cumulocity-cypress/c8ypact";
 const { _, sinon } = Cypress;
 
 declare global {

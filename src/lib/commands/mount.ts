@@ -1,7 +1,7 @@
 import { mount } from "cypress/angular";
 
 import "./auth";
-import "./c8ypact";
+import "../../c8ypact";
 import "./intercept";
 import "./oauthlogin";
 

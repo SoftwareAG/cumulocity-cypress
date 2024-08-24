@@ -18,7 +18,7 @@ import {
   isPact,
   isPactRecord,
   getEnvVar,
-} from "cumulocity-cypress";
+} from "cumulocity-cypress/c8ypact";
 
 const { _ } = Cypress;
 

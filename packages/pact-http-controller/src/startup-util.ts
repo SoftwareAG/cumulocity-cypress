@@ -8,11 +8,11 @@ import { createLogger, format, transports } from "winston";
 // use following import if transports is empty
 import { default as transportsDirect } from "winston/lib/winston/transports/";
 
+import { C8yPactHttpControllerConfig } from "cumulocity-cypress/shared/c8yctrl";
 import {
   C8yDefaultPactPreprocessor,
   C8yPactDefaultFileAdapter,
-  C8yPactHttpControllerConfig,
-} from "cumulocity-cypress/node";
+} from "cumulocity-cypress/shared/c8ypact";
 
 import debug from "debug";
 const log = debug("c8y:ctrl:startup");

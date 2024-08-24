@@ -1,4 +1,4 @@
-import { C8yPactRecord } from "cumulocity-cypress";
+import { C8yPactRecord } from "cumulocity-cypress/c8ypact";
 import {
   HTTP_METHODS,
   STATIC_RESPONSE_KEYS,

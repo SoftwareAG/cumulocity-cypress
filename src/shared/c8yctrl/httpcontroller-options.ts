@@ -1,6 +1,5 @@
 import { C8yPactHttpController } from "./httpcontroller";
 import {
-  C8yAuthOptions,
   C8yPact,
   C8yPactPreprocessor,
   C8yPactRecord,
@@ -8,13 +7,14 @@ import {
   C8yPactResponse,
   C8ySchemaGenerator,
   C8yPactFileAdapter,
-} from "cumulocity-cypress/node";
+} from "cumulocity-cypress/shared/c8ypact";
 
 import { Request, RequestHandler } from "express";
 import { ClientRequest, IncomingMessage, ServerResponse } from "http";
 
 import { FormatFn } from "morgan";
 import winston from "winston";
+import { C8yAuthOptions } from "../auth";
 
 type LogFormat =
   | "json"

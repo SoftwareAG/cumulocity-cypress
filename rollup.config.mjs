@@ -82,4 +82,9 @@ export default [
       json(),
     ],
   },
+  {
+    input: "dist/shared/c8yctrl/index.d.ts",
+    output: [{ file: "dist/bin/c8yctrl.d.ts", format: "es", sourcemap: false }],
+    plugins: [dts()],
+  },
 ];

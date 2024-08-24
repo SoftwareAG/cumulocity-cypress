@@ -7,9 +7,7 @@ import {
   C8yPactID,
   C8yPactInfo,
   C8yPactRecord,
-  C8yDefaultPactPreprocessor,
   C8yPactPreprocessor,
-  C8yPactPreprocessorOptions,
   C8ySchemaGenerator,
   C8ySchemaMatcher,
   C8yDefaultPactMatcher,
@@ -25,7 +23,7 @@ import {
   validatePactMode,
   getEnvVar,
 } from "../../shared/c8ypact";
-import { C8yDefaultPactRunner } from "./runner";
+import { C8yDefaultPactRunner, C8yPactRunner } from "./runner";
 import { C8yAuthOptions } from "../../shared/auth";
 import { C8yClient } from "../../shared/c8yclient";
 import {
@@ -43,6 +41,7 @@ const { _ } = Cypress;
 import { FetchClient, IAuthentication } from "@c8y/client";
 import { C8yPactFetchClient } from "./fetchclient";
 import { validateBaseUrl } from "cumulocity-cypress/shared/c8ypact/url";
+import { C8yCypressEnvPreprocessor } from "./cypresspreprocessor";
 
 declare global {
   namespace Cypress {
@@ -236,57 +235,6 @@ declare global {
    * The C8yPactNextRecord contains a single pact record and the info object.
    */
   type C8yPactNextRecord = { record: C8yPactRecord; info?: C8yPactInfo };
-}
-
-/**
- * The C8yCypressEnvPreprocessor is a preprocessor implementation that uses
- * Cypress environment variables to configure C8yPactPreprocessorOptions.
- *
- * Options are deep merged in the following order:
- * - Cypress environment variables
- * - C8yPactPreprocessorOptions passed to the apply method
- * - C8yPactPreprocessorOptions passed to the constructor
- * - Cypress.c8ypact.config value for preprocessor
- */
-export class C8yCypressEnvPreprocessor extends C8yDefaultPactPreprocessor {
-  apply(
-    obj: Partial<Cypress.Response<any> | C8yPactRecord | C8yPact>,
-    options?: C8yPactPreprocessorOptions
-  ): void {
-    super.apply(obj, this.resolveOptions(options));
-  }
-
-  resolveOptions(
-    options?: Partial<C8yPactPreprocessorOptions>
-  ): C8yPactPreprocessorOptions {
-    let preprocessorConfigValue: C8yPactPreprocessorOptions = {};
-    if (
-      Cypress.c8ypact &&
-      typeof Cypress.c8ypact.getConfigValue === "function"
-    ) {
-      preprocessorConfigValue =
-        Cypress.c8ypact.getConfigValue<C8yPactPreprocessorOptions>(
-          "preprocessor"
-        ) ?? {};
-    }
-
-    return _.defaultsDeep(
-      {
-        ignore: Cypress.env("C8Y_PACT_PREPROCESSOR_IGNORE"),
-        obfuscate: Cypress.env("C8Y_PACT_PREPROCESSOR_OBFUSCATE"),
-        obfuscationPattern: Cypress.env("C8Y_PACT_PREPROCESSOR_PATTERN"),
-      } as C8yPactPreprocessorOptions,
-      options,
-      this.options,
-      preprocessorConfigValue,
-      {
-        ignore: [],
-        obfuscate: [],
-        obfuscationPattern:
-          C8yDefaultPactPreprocessor.defaultObfuscationPattern,
-      }
-    );
-  }
 }
 
 // initialize the following only once. note, cypresspact.ts could be imported multiple times

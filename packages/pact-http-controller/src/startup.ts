@@ -7,7 +7,7 @@ import { config as dotenv } from "dotenv";
 import {
   C8yPactHttpController,
   C8yPactHttpControllerOptions,
-} from "cumulocity-cypress/node";
+} from "cumulocity-cypress/shared/c8yctrl";
 
 import { cosmiconfig } from "cosmiconfig";
 import { TypeScriptLoader } from "cosmiconfig-typescript-loader";
@@ -17,8 +17,6 @@ import {
   defaultLogger,
   getConfigFromArgsOrEnvironment,
 } from "./startup-util";
-
-export * from "cumulocity-cypress/node";
 
 const log = debug("c8y:ctrl:startup");
 
