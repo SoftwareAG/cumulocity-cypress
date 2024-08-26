@@ -40,7 +40,11 @@ import { C8yPactFileAdapter } from "../c8ypact/fileadapter";
 import { C8yAuthOptions } from "../auth";
 import { oauthLogin } from "../c8yclient";
 
+import fs from "fs";
+import path from "path";
+
 import debug from "debug";
+import { isVersionSatisfyingRequirements } from "../versioning";
 const log = debug("c8y:ctrl:http");
 
 export class C8yPactHttpController {
@@ -127,11 +131,6 @@ export class C8yPactHttpController {
     // register cookie parser
     this.app.use(cookieParser());
 
-    // register static root
-    if (this.staticRoot) {
-      this.app.use(express.static(this.staticRoot));
-      this.logger.info(`Static Root: ${this.staticRoot}`);
-    }
     this.authOptions = options.auth;
   }
 
@@ -182,6 +181,7 @@ export class C8yPactHttpController {
         }
       }
     }
+
     if (!this.authOptions) {
       this.logger.warn(`No auth options provided. Not logging in.`);
     }
@@ -213,6 +213,8 @@ export class C8yPactHttpController {
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
 
+    this.registerStaticRootRequestHandler();
+
     this.registerC8yctrlInterface();
 
     try {
@@ -232,6 +234,66 @@ export class C8yPactHttpController {
   async stop(): Promise<void> {
     await this.server?.close();
     this.logger.info("Stopped server");
+  }
+
+  protected async registerStaticRootRequestHandler() {
+    if (!this.staticRoot) return;
+    // register static root
+    this.logger.info(`Static Root: ${this.staticRoot}`);
+
+    const appsDir = path.join(this.staticRoot, "apps");
+    const subfolders = await fs.promises.readdir(appsDir, {
+      withFileTypes: true,
+    });
+
+    const contextPaths: string[] = [];
+    for (const folder of subfolders) {
+      if (!folder.isDirectory()) continue;
+      const cumulocityJsonPath = path.join(
+        appsDir,
+        folder.name,
+        "cumulocity.json"
+      );
+      try {
+        const data = await fs.promises.readFile(cumulocityJsonPath, "utf-8");
+        const c = JSON.parse(data);
+        const version: string = c.version;
+
+        const contextPath: string = c.contextPath;
+        const relativePath = `/apps/${contextPath}`;
+        const semverRange = this.options.appsVersions?.[contextPath];
+        if (semverRange != null) {
+          if (!isVersionSatisfyingRequirements(version, [semverRange])) {
+            this.logger.debug(
+              ` ${relativePath} (${version}) does not satisfy version requirements ${semverRange}`
+            );
+            continue;
+          }
+        }
+
+        if (contextPaths.includes(contextPath)) {
+          this.logger.debug(
+            ` ${contextPath} already registered. Skipping ${cumulocityJsonPath}`
+          );
+          continue;
+        }
+
+        const info = version + (semverRange ? ": " + semverRange : "");
+        this.logger.info(
+          `  ${relativePath} (${info}) -> ${this.staticRoot}/apps/${folder.name}`
+        );
+
+        contextPaths.push(contextPath);
+        this.app.use(
+          relativePath,
+          express.static(`${this.staticRoot}/${relativePath}`)
+        );
+      } catch (error) {
+        this.logger.error(
+          `  error reading or parsing ${cumulocityJsonPath} - ${error}`
+        );
+      }
+    }
   }
 
   protected registerC8yctrlInterface() {

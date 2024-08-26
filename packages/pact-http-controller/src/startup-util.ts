@@ -41,6 +41,8 @@ export function getConfigFromArgs(): [
   string | undefined
 ] {
   const result = yargs(hideBin(process.argv))
+    .usage("Usage: $0 [options]")
+    .scriptName("c8yctrl")
     .option("folder", {
       alias: "pactFolder",
       type: "string",
@@ -104,16 +106,32 @@ export function getConfigFromArgs(): [
       description: "The log level used for logging",
     })
     .option("logFile", {
-      alias: "logFileName",
       type: "string",
       requiresArg: true,
       description: "The path of the logfile",
     })
     .option("accessLogFile", {
-      alias: "accessLogFileName",
       type: "string",
       requiresArg: true,
       description: "The pathc of the access logfile",
+    })
+    .option("apps", {
+      alias: "versions",
+      type: "array",
+      requiresArg: true,
+      description:
+        "Array of of static folder app names and semver ranges separated by '/'",
+      coerce: (arg) => {
+        const result: { [key: string]: string } = {};
+        arg.forEach((item: string) => {
+          const [key, ...value] = item.split("/");
+          const semverRange = value.join("/");
+          if (key != null && value != null && semverRange != null) {
+            result[key] = semverRange;
+          }
+        });
+        return result;
+      },
     })
     .help()
     .wrap(120)
@@ -139,6 +157,7 @@ export function getConfigFromArgs(): [
       logLevel: logLevelValues.includes(result.logLevel || "")
         ? (result.logLevel as (typeof C8yPactHttpControllerLogLevel)[number])
         : undefined,
+      appsVersions: result.apps,
     },
     result.config,
   ];

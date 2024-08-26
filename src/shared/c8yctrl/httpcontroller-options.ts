@@ -123,6 +123,11 @@ export interface C8yPactHttpControllerOptions {
     | string
     | FormatFn<IncomingMessage, ServerResponse<IncomingMessage>>;
   /**
+   * The app names and version to use from static folder. E.g. "cockpit: 1020".
+   * The version must be a semver range.
+   */
+  appsVersions?: { [key: string]: string };
+  /**
    * Custom replacer function to use for JSON.stringify. Use for customization of JSON output.
    * Default is to replace URLs in "self", "next", "initRequest" properties with hostname and
    * port of the controller.

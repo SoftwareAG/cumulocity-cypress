@@ -45,6 +45,8 @@ describe("startup util tests", () => {
         "access.log",
         "--logLevel",
         "debug",
+        "--apps",
+        "ooe/1020",
       ];
       const [config, configFile] = getConfigFromArgs();
       expect(config.folder).toBe("/my/folder");
@@ -60,6 +62,7 @@ describe("startup util tests", () => {
       expect(config.logFilename).toBe("combined.log");
       expect(config.accessLogFilename).toBe("access.log");
       expect(config.logLevel).toBe("debug");
+      expect(config.appsVersions).toMatchObject({ ooe: "1020" });
     });
 
     test("getConfigFromArgs should support aliases", () => {
@@ -103,6 +106,19 @@ describe("startup util tests", () => {
       const [config] = getConfigFromArgs();
       expect(config.isRecordingEnabled).toBe(false);
       expect(config.log).toBe(false);
+    });
+
+    test("getConfigFromArgs should work with apps array values", () => {
+      process.argv = [
+        "node",
+        "script.js",
+        "--apps",
+        "app1/1019",
+        "--apps",
+        "app2/1020",
+      ];
+      const [config] = getConfigFromArgs();
+      expect(config.appsVersions).toMatchObject({ app1: "1019", app2: "1020" });
     });
   });
 
