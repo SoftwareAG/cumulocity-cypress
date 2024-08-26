@@ -45,41 +45,40 @@ export function getConfigFromArgs(): [
       alias: "pactFolder",
       type: "string",
       requiresArg: true,
-      description: "Folder recordings are loaded from and saved to.",
+      description: "The folder recordings are stored in",
     })
     .option("port", {
       type: "number",
       requiresArg: true,
-      description: "HTTP port the controller listens on.",
+      description: "HTTP port c8yctrl listens on",
     })
     .option("baseUrl", {
       alias: "baseurl",
       type: "string",
       requiresArg: true,
-      description:
-        "The Cumulocity URL REST requests are proxied and recorded from.",
+      description: "The Cumulocity URL for proxying requests",
     })
     .option("user", {
       alias: "username",
       requiresArg: true,
       type: "string",
-      description: "Set the username to login at baseUrl.",
+      description: "The username to login at baseUrl",
     })
     .option("password", {
       type: "string",
       requiresArg: true,
-      description: "Set the password to login at baseUrl.",
+      description: "The password to login at baseUrl",
     })
     .option("tenant", {
       type: "string",
       requiresArg: true,
-      description: "Set the tenant of baseUrl.",
+      description: "The tenant id of baseUrl",
     })
     .option("staticRoot", {
       alias: "static",
       requiresArg: true,
       type: "string",
-      description: "Set the static root to serve static files from.",
+      description: "The root folder to serve static files from",
     })
     .option("recording", {
       type: "boolean",
@@ -90,7 +89,7 @@ export function getConfigFromArgs(): [
     .option("config", {
       type: "string",
       requiresArg: true,
-      description: "Path to a config file",
+      description: "The path to the config file",
     })
     .option("log", {
       type: "boolean",
@@ -102,21 +101,22 @@ export function getConfigFromArgs(): [
       type: "string",
       default: "info",
       requiresArg: true,
-      description: "Set the log level",
+      description: "The log level used for logging",
     })
     .option("logFile", {
       alias: "logFileName",
       type: "string",
       requiresArg: true,
-      description: "Filename to log to",
+      description: "The path of the logfile",
     })
     .option("accessLogFile", {
       alias: "accessLogFileName",
       type: "string",
       requiresArg: true,
-      description: "Filename to log access to",
+      description: "The pathc of the access logfile",
     })
     .help()
+    .wrap(120)
     .parseSync();
 
   const logLevelValues: string[] = Object.values(C8yPactHttpControllerLogLevel);
@@ -205,30 +205,29 @@ export const applyDefaultConfig = (
   config: Partial<C8yPactHttpControllerConfig>
 ) => {
   if (!config?.auth) {
-    log("no auth options provided, trying to create from user and password.");
+    log("no auth options provided, trying to create from user and password");
     const { user, password, tenant } = config;
     config.auth = user && password ? { user, password, tenant } : undefined;
   }
 
   if (!("on" in config)) {
-    log("configuring empty object callback 'on' property of config.");
     config.on = {};
+    log("configured empty object callback 'on' property of config");
   }
 
   // check all default properties as _.defaults seems to still overwrite in some cases
   if (!("adapter" in config)) {
-    log(
-      `configuring default file adapter for folder ${
-        config.folder || "./c8ypact"
-      }.`
-    );
     config.adapter = new C8yPactDefaultFileAdapter(
       config.folder || "./c8ypact"
+    );
+    log(
+      `configured default file adapter for folder ${
+        config.folder || "./c8ypact"
+      }.`
     );
   }
 
   if (!("mockNotFoundResponse" in config)) {
-    log("configuring default 404 text mockNotFoundResponse.");
     config.mockNotFoundResponse = (url) => {
       return {
         status: 404,
@@ -239,21 +238,22 @@ export const applyDefaultConfig = (
         },
       };
     };
+    log("configured default 404 text mockNotFoundResponse");
   }
 
   if (!("requestMatching" in config)) {
-    log("configuring default requestMatching.");
     config.requestMatching = {
       ignoreUrlParameters: ["dateFrom", "dateTo", "_", "nocache"],
       baseUrl: config.baseUrl,
     };
+    log("configured default requestMatching");
   }
 
   if (!("preprocessor" in config)) {
-    log("configuring default preprocessor.");
     config.preprocessor = new C8yDefaultPactPreprocessor({
       obfuscate: ["request.headers.Authorization", "response.body.password"],
     });
+    log("configured default preprocessor");
   }
 
   applyDefaultLogConfig(config);
@@ -265,28 +265,33 @@ const applyDefaultLogConfig = (
   config: Partial<C8yPactHttpControllerConfig>
 ) => {
   if ("log" in config && config.log === false) {
-    log("logging is disabled.");
+    log("disabled logging as config.log == false");
     config.logger = undefined;
     config.requestLogger = undefined;
     return;
   }
 
   if (!("logger" in config)) {
-    log("configuring default logger.");
     config.logger = defaultLogger;
-    if (config.logFilename) {
-      const p = path.isAbsolute(config.logFilename)
-        ? config.accessLogFilename
-        : path.join(process.cwd(), config.logFilename);
-      log(`configuring logger file transport ${p}.`);
+    log("configured default logger");
+  }
 
-      config.logger.add(
-        new safeTransports.File({
-          format: format.simple(),
-          filename: p,
-        })
-      );
-    }
+  if (
+    "logFilename" in config &&
+    config.logFilename != null &&
+    config.logger != null
+  ) {
+    const p = path.isAbsolute(config.logFilename)
+      ? config.accessLogFilename
+      : path.join(process.cwd(), config.logFilename);
+
+    config.logger.add(
+      new safeTransports.File({
+        format: format.simple(),
+        filename: p,
+      })
+    );
+    log(`configured default logger file transport ${p}.`);
   }
 
   if (
@@ -294,28 +299,31 @@ const applyDefaultLogConfig = (
     config.logLevel != null &&
     config.logger != null
   ) {
-    log(`configuring log level ${config.logLevel}.`);
     config.logger.level = config.logLevel;
+    log(`configured log level ${config.logLevel}.`);
   }
 
   if (!("requestLogger" in config)) {
-    log("configuring default requestLogger for /c8yctrl interface and errors");
     config.requestLogger = [
-      morgan(":method :url :status :res[content-length] - :response-time ms", {
-        skip: (req) => {
-          return (
-            !req.url.startsWith("/c8yctrl") ||
-            req.url.startsWith("/c8yctrl/log")
-          );
-        },
-
-        stream: {
-          write: (message: string) => {
-            config.logger?.warn(message.trim());
+      morgan(
+        "[c8yctrl] :method :url :status :res[content-length] - :response-time ms",
+        {
+          skip: (req) => {
+            return (
+              !req.url.startsWith("/c8yctrl") ||
+              req.url.startsWith("/c8yctrl/log")
+            );
           },
-        },
-      }),
+
+          stream: {
+            write: (message: string) => {
+              config.logger?.warn(message.trim());
+            },
+          },
+        }
+      ),
     ];
+    log("configured default requestLogger for /c8yctrl interface and errors");
   }
 
   if (!("errorLogger" in config) && config.errorLogger == null) {
@@ -350,7 +358,7 @@ const applyDefaultLogConfig = (
         };
         return safeStringify(errorObject);
       });
-      log("default morgan error-object token compiled and registered.");
+      log("default morgan error-object token compiled and registered");
     }
 
     config.errorLogger = morgan(":error-object", {
@@ -365,14 +373,13 @@ const applyDefaultLogConfig = (
         },
       },
     });
-    log("configured error logger.");
+    log("configured default error logger");
   }
 
   if ("accessLogFilename" in config && config.accessLogFilename != null) {
     const p = path.isAbsolute(config.accessLogFilename)
       ? config.accessLogFilename
       : path.join(process.cwd(), config.accessLogFilename);
-    log(`configuring access log file ${p}.`);
 
     const accessLogger = morgan("common", {
       stream: fs.createWriteStream(p, {
@@ -383,11 +390,11 @@ const applyDefaultLogConfig = (
     if (config.requestLogger != null) {
       if (_.isArrayLike(config.requestLogger)) {
         (config.requestLogger as RequestHandler[]).push(accessLogger);
-        log("added access logger to existing requestLogger.");
+        log(`configured file access logger to existing logger ${p}`);
       }
     } else {
       config.requestLogger = [accessLogger];
-      log("added access logger as requestLogger.");
+      log(`configured file access logger ${p}`);
     }
   }
 };
