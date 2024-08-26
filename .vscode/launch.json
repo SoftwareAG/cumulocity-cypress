@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch HTTP Controller",
+      "name": "Launch c8yctrl",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/packages/pact-http-controller/src/startup.ts",

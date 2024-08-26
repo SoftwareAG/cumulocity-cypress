@@ -4,6 +4,8 @@ import * as glob from "glob";
 import debug from "debug";
 import { C8yPact, C8yPactSaveKeys, pactId } from "./c8ypact";
 
+import { safeStringify } from "../util";
+
 import lodash1 from "lodash";
 import * as lodash2 from "lodash";
 const _ = lodash1 || lodash2;
@@ -122,7 +124,7 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     try {
       fs.writeFileSync(
         file,
-        this.safeStringify(
+        safeStringify(
           {
             id: pact.id,
             info: pact.info,
@@ -135,22 +137,6 @@ export class C8yPactDefaultFileAdapter implements C8yPactFileAdapter {
     } catch (error) {
       console.error(`Failed to save pact.`, error);
     }
-  }
-
-  protected safeStringify(obj: any, indent = 2) {
-    let cache: any[] = [];
-    const retVal = JSON.stringify(
-      obj,
-      (key, value) =>
-        typeof value === "object" && value !== null
-          ? cache.includes(value)
-            ? undefined
-            : cache.push(value) && value
-          : value,
-      indent
-    );
-    cache = [];
-    return retVal;
   }
 
   deletePact(id: string): void {

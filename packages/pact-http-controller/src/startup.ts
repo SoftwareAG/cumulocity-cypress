@@ -27,6 +27,7 @@ const log = debug("c8y:ctrl:startup");
 
   // read config from environment variables or command line arguments
   const [config, configFile] = getConfigFromArgsOrEnvironment();
+  log(`config from args and environment: ${JSON.stringify(config, null, 2)}`);
 
   // load defaults and merge them with the current config
   applyDefaultConfig(config);
@@ -42,7 +43,7 @@ const log = debug("c8y:ctrl:startup");
 
     const result = await configLoader.search(process.cwd());
     if (result) {
-      log("loaded config: ", result.filepath);
+      log("loaded config:", result.filepath);
       if (_.isFunction(result.config)) {
         log("config exported a function");
         const configClone = _.cloneDeep(config);

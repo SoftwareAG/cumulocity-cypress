@@ -38,6 +38,13 @@ describe("startup util tests", () => {
         "true",
         "--config",
         "c8yctrl.config.ts",
+        "--log",
+        "--logFile",
+        "combined.log",
+        "--accessLogFile",
+        "access.log",
+        "--logLevel",
+        "debug",
       ];
       const [config, configFile] = getConfigFromArgs();
       expect(config.folder).toBe("/my/folder");
@@ -49,6 +56,10 @@ describe("startup util tests", () => {
       expect(config.staticRoot).toBe("static");
       expect(config.isRecordingEnabled).toBeTruthy();
       expect(configFile).toBe("c8yctrl.config.ts");
+      expect(config.log).toBeTruthy();
+      expect(config.logFilename).toBe("combined.log");
+      expect(config.accessLogFilename).toBe("access.log");
+      expect(config.logLevel).toBe("debug");
     });
 
     test("getConfigFromArgs should support aliases", () => {
@@ -70,6 +81,29 @@ describe("startup util tests", () => {
       const [config] = getConfigFromArgs();
       expect(config.isRecordingEnabled).toBe(true);
     });
+
+    test("getConfigFromArgs should work with logLevel", () => {
+      process.argv = ["node", "script.js", "--logLevel", "debug"];
+      const [config] = getConfigFromArgs();
+      expect(config.logLevel).toBe("debug");
+      process.argv = ["node", "script.js", "--logLevel", "unsupportedValue"];
+      const [config2] = getConfigFromArgs();
+      expect(config2.logLevel).toBeUndefined();
+    });
+
+    test("getConfigFromArgs should work with boolean values", () => {
+      process.argv = [
+        "node",
+        "script.js",
+        "--recording",
+        "false",
+        "--log",
+        "false",
+      ];
+      const [config] = getConfigFromArgs();
+      expect(config.isRecordingEnabled).toBe(false);
+      expect(config.log).toBe(false);
+    });
   });
 
   describe("getConfigFromEnvironment", () => {
@@ -82,6 +116,10 @@ describe("startup util tests", () => {
       process.env.C8Y_BASE_TENANT = "tenant";
       process.env.C8Y_STATIC_ROOT = "/my/static/root";
       process.env.PACT_MODE = "recording";
+      process.env.C8Y_LOG_FILE = "combined.log";
+      process.env.C8Y_ACCESS_LOG_FILE = "access.log";
+      process.env.C8Y_LOG = "false";
+      process.env.C8Y_LOG_LEVEL = "debug";
       const config = getConfigFromEnvironment();
       expect(config.folder).toBe("/my/folder");
       expect(config.port).toBe(1234);
@@ -91,6 +129,10 @@ describe("startup util tests", () => {
       expect(config.tenant).toBe("tenant");
       expect(config.staticRoot).toBe("/my/static/root");
       expect(config.isRecordingEnabled).toBeTruthy();
+      expect(config.logFilename).toBe("combined.log");
+      expect(config.accessLogFilename).toBe("access.log");
+      expect(config.log).toBeFalsy();
+      expect(config.logLevel).toBe("debug");
     });
   });
 
@@ -194,8 +236,11 @@ describe("startup util tests", () => {
       expect(config.mockNotFoundResponse).toBeDefined();
       expect(config.logger).toBeDefined();
       expect(config.logger).toBe(defaultLogger);
+      expect(config.accessLogFilename).toBeUndefined();
+      expect(config.logFilename).toBeUndefined();
       expect(config.requestMatching).toBeDefined();
       expect(config.preprocessor).toBeDefined();
+      expect(config.errorLogger).toBeDefined();
     });
 
     test("applyDefaultConfig should not overwrite existing values", () => {

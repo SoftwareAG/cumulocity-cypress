@@ -25,6 +25,7 @@ import {
 } from "../c8ypact";
 
 import {
+  C8yPactHttpControllerLogLevel,
   C8yPactHttpControllerOptions,
   C8yPactHttpResponse,
 } from "./httpcontroller-options";
@@ -38,6 +39,9 @@ import { toBoolean } from "./httpcontroller-utils";
 import { C8yPactFileAdapter } from "../c8ypact/fileadapter";
 import { C8yAuthOptions } from "../auth";
 import { oauthLogin } from "../c8yclient";
+
+import debug from "debug";
+const log = debug("c8y:ctrl:http");
 
 export class C8yPactHttpController {
   currentPact?: C8yDefaultPact;
@@ -108,11 +112,16 @@ export class C8yPactHttpController {
       if (!_.isArrayLike(rls)) {
         rls = [rls];
       }
+      log("RequestLogger", rls);
       rls.forEach((h) => this.app.use(h));
     } else {
       this.app.use(
         morgan((options.logFormat || "short") as any, { stream: loggerStream })
       );
+    }
+
+    if (this.options.errorLogger != null) {
+      this.app.use(this.options.errorLogger);
     }
 
     // register cookie parser
@@ -191,13 +200,19 @@ export class C8yPactHttpController {
       }
 
       if (!this.proxyHandler) {
-        this.proxyHandler = this.app.use(createMiddleware(this, this.options));
+        this.proxyHandler = this.app.use(
+          createMiddleware(this, {
+            ...this.options,
+            errorHandler: this.options.errorLogger,
+          })
+        );
       }
     }
 
     // automatically parse request bodies - must come after proxy handler
     this.app.use(bodyParser.json());
     this.app.use(bodyParser.urlencoded({ extended: true }));
+
     this.registerC8yctrlInterface();
 
     try {
@@ -411,7 +426,9 @@ export class C8yPactHttpController {
     this.app.put(`${this.resourcePath}/log`, (req, res) => {
       const parameters = { ...req.body, ...req.query };
       const { level } = parameters;
-      const levelValues = ["debug", "info", "warn", "error"];
+      const levelValues: string[] = Object.values(
+        C8yPactHttpControllerLogLevel
+      );
       if (_.isString(level) && levelValues.includes(level.toLowerCase())) {
         this.logger.level = level.toLowerCase() as any;
       } else {

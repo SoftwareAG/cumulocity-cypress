@@ -30,6 +30,13 @@ export type C8yPactHttpResponse<T = any> = Pick<
   "status" | "statusText" | "body" | "headers"
 >;
 
+export const C8yPactHttpControllerLogLevel = [
+  "info",
+  "debug",
+  "warn",
+  "error",
+] as const;
+
 export interface C8yPactHttpControllerOptions {
   /**
    * The resource path to use for the controller. Default is "/c8yctrl".
@@ -100,9 +107,14 @@ export interface C8yPactHttpControllerOptions {
     | RequestHandler[]
     | ((logger?: winston.Logger) => RequestHandler[]);
   /**
+   * RequestHandler to use for logging errors. Default is morgan logger
+   * that logs error object with url, status, request and response details.
+   */
+  errorLogger?: RequestHandler;
+  /**
    * Log level to use for logging. Default is info.
    */
-  logLevel?: "info" | "debug" | "warn" | "error";
+  logLevel?: (typeof C8yPactHttpControllerLogLevel)[number];
   /**
    * Log format to use for logging.
    */
@@ -218,6 +230,10 @@ export interface C8yPactHttpControllerConfig
    */
   logFilename?: string;
   /**
+   * File to use for http access logging.
+   */
+  accessLogFilename?: string;
+  /**
    * User to login to the target server.
    */
   user?: string;
@@ -225,6 +241,10 @@ export interface C8yPactHttpControllerConfig
    * Password to login to the target server.
    */
   password?: string;
+  /**
+   * Enable or disable logging.
+   */
+  log?: boolean;
 }
 
 export type C8yCtrlHeader =

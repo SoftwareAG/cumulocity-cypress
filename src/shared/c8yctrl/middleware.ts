@@ -28,6 +28,7 @@ export function createMiddleware(
     baseUrl?: string;
     logger?: winston.Logger;
     ignoredPaths?: string[];
+    errorHandler?: RequestHandler;
   } = {}
 ): RequestHandler {
   const ignoredPaths = options.ignoredPaths || ["/c8yctrl"];
@@ -41,7 +42,9 @@ export function createMiddleware(
 
       on: {
         proxyReq: createRequestHandler(c8yctrl, options.auth),
-        proxyRes: responseInterceptor(createResponseInterceptor(c8yctrl)),
+        proxyRes: responseInterceptor(
+          createResponseInterceptor(c8yctrl, options.errorHandler)
+        ),
       },
     }),
     ignoredPaths
@@ -79,7 +82,10 @@ export function wrapPathIgnoreHandler(
   };
 }
 
-export function createResponseInterceptor(c8yctrl: C8yPactHttpController) {
+export function createResponseInterceptor(
+  c8yctrl: C8yPactHttpController,
+  errorHandler?: RequestHandler
+) {
   return async (
     responseBuffer: Buffer,
     proxyRes: Request,
@@ -87,8 +93,13 @@ export function createResponseInterceptor(c8yctrl: C8yPactHttpController) {
     res: Response
   ) => {
     let resBody = responseBuffer.toString("utf8");
-    const c8yctrlId = (req as any).c8yctrlId;
 
+    if (res.statusCode >= 400 && errorHandler != null) {
+      (res as any).body = resBody;
+      errorHandler(req, res, () => {});
+    }
+
+    const c8yctrlId = (req as any).c8yctrlId;
     addC8yCtrlHeader(res, "x-c8yctrl-mode", c8yctrl.recordingMode);
 
     const onProxyResponse = c8yctrl.options.on.proxyResponse;
@@ -115,7 +126,6 @@ export function createResponseInterceptor(c8yctrl: C8yPactHttpController) {
     }
 
     if (c8yctrl.isRecordingEnabled() === false) return responseBuffer;
-
     const reqBody = (req as any).body;
     try {
       resBody = JSON.parse(resBody);
