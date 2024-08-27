@@ -478,23 +478,37 @@ export class C8yPactHttpController {
     });
 
     // log endpoint
+    const logLevels: string[] = Object.values(C8yPactHttpControllerLogLevel);
+    this.app.get(`${this.resourcePath}/log`, (req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.status(200).send(JSON.stringify({ level: this.logger.level }));
+    });
     this.app.post(`${this.resourcePath}/log`, (req, res) => {
-      const { message, level } = req.body;
-      if (message) {
+      const parameters = { ...req.body, ...req.query };
+      const { message, level } = parameters;
+      if (
+        level != null &&
+        (!_.isString(level) || !logLevels.includes(level.toLowerCase()))
+      ) {
+        res
+          .status(400)
+          .send(`Invalid log level. Use one of: ${logLevels.join(", ")}`);
+        return;
+      }
+      if (_.isString(message)) {
         this.logger.log(level || "info", message);
       }
-      res.status(200).send();
+      res.status(204).send();
     });
     this.app.put(`${this.resourcePath}/log`, (req, res) => {
       const parameters = { ...req.body, ...req.query };
       const { level } = parameters;
-      const levelValues: string[] = Object.values(
-        C8yPactHttpControllerLogLevel
-      );
-      if (_.isString(level) && levelValues.includes(level.toLowerCase())) {
+      if (_.isString(level) && logLevels.includes(level.toLowerCase())) {
         this.logger.level = level.toLowerCase() as any;
       } else {
-        res.status(400).send(`Invalid log level: ${level}`);
+        res
+          .status(400)
+          .send(`Invalid log level. Use one of: ${logLevels.join(", ")}`);
         return;
       }
       res.status(204).send();
