@@ -22,6 +22,7 @@ import {
   C8yPactMode,
   isOneOfStrings,
   C8yPactRecordingModeValues,
+  C8yPactModeValues,
 } from "../c8ypact";
 
 import {
@@ -43,8 +44,10 @@ import { oauthLogin } from "../c8yclient";
 import fs from "fs";
 import path from "path";
 
-import debug from "debug";
 import { isVersionSatisfyingRequirements } from "../versioning";
+import { getPackageVersion, safeStringify } from "../util";
+
+import debug from "debug";
 const log = debug("c8y:ctrl:http");
 
 export class C8yPactHttpController {
@@ -62,6 +65,8 @@ export class C8yPactHttpController {
   protected _recordingMode: C8yPactRecordingMode = "append";
   protected _mode: C8yPactMode = "apply";
   protected _isStrictMocking: boolean = true;
+
+  protected staticApps: { [key: string]: string } = {};
 
   protected authOptions?: C8yAuthOptions;
   protected server?: Server;
@@ -246,7 +251,6 @@ export class C8yPactHttpController {
       withFileTypes: true,
     });
 
-    const contextPaths: string[] = [];
     for (const folder of subfolders) {
       if (!folder.isDirectory()) continue;
       const cumulocityJsonPath = path.join(
@@ -271,19 +275,19 @@ export class C8yPactHttpController {
           }
         }
 
-        if (contextPaths.includes(contextPath)) {
+        if (this.staticApps[contextPath] != null) {
           this.logger.debug(
             ` ${contextPath} already registered. Skipping ${cumulocityJsonPath}`
           );
           continue;
         }
 
+        this.staticApps[contextPath] = version;
         const info = version + (semverRange ? ": " + semverRange : "");
         this.logger.info(
           `  ${relativePath} (${info}) -> ${this.staticRoot}/apps/${folder.name}`
         );
 
-        contextPaths.push(contextPath);
         this.app.use(
           relativePath,
           express.static(`${this.staticRoot}/${relativePath}`)
@@ -301,13 +305,9 @@ export class C8yPactHttpController {
     this.app.head(this.resourcePath, (req, res) => {
       res.status(200).send();
     });
-    this.app.get(`${this.resourcePath}/current`, (req, res) => {
-      if (!this.currentPact) {
-        // return 204 instead of 404 to indicate that no pact is set
-        res.status(204).send();
-        return;
-      }
-      return true;
+    this.app.get(`${this.resourcePath}/status`, (req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.send(safeStringify(this.getStatus()));
     });
     this.app.get(`${this.resourcePath}/current`, (req, res) => {
       if (!this.currentPact) {
@@ -319,17 +319,11 @@ export class C8yPactHttpController {
       res.send(this.stringifyPact(this.currentPact));
     });
     this.app.post(`${this.resourcePath}/current`, async (req, res) => {
-      const id = req.body?.id || pactId(req.body?.title) || req.query.id;
-      if (!id) {
-        res.status(200).send("Missing pact id. Reset current pact.");
-        this.currentPact = undefined;
-        return;
-      }
-
       const parameters = { ...req.body, ...req.query };
       const { mode, clear, recordingMode, strictMocking } = parameters;
+      const id = pactId(parameters.id) || pactId(parameters.title);
 
-      if (mode) {
+      if (mode && _.isString(mode)) {
         this._isRecordingEnabled = isOneOfStrings(mode, [
           "record",
           "recording",
@@ -353,6 +347,11 @@ export class C8yPactHttpController {
 
       this._isStrictMocking = toBoolean(strictMocking, this._isStrictMocking);
 
+      if (!id || !_.isString(id)) {
+        res.status(204).send("Missing or invalid pact id");
+        return;
+      }
+
       const refreshPact =
         this.recordingMode === "refresh" &&
         this.isRecordingEnabled() === true &&
@@ -366,7 +365,7 @@ export class C8yPactHttpController {
       );
 
       if (this.currentPact?.id === id) {
-        res.status(200);
+        res.status(204);
       } else {
         let current = this.adapter?.loadPact(id);
         if (!current && this.isRecordingEnabled()) {
@@ -513,6 +512,39 @@ export class C8yPactHttpController {
       }
       res.status(204).send();
     });
+  }
+
+  protected getStatus() {
+    const status = {
+      status: "ok",
+      uptime: process.uptime(),
+      version: getPackageVersion(),
+      adapter: this.adapter?.description() || null,
+      baseUrl: this.baseUrl || null,
+      tenant: this.tenant || null,
+      current: {
+        id: this.currentPact?.id || null,
+      },
+      static: {
+        root: this.staticRoot || null,
+        required: this.options.appsVersions || null,
+        apps: this.staticApps || null,
+      },
+      mode: this.mode,
+      supportedModes: C8yPactModeValues,
+      recording: {
+        recordingMode: this.recordingMode,
+        supportedRecordingModes: C8yPactRecordingModeValues,
+        isRecordingEnabled: this.isRecordingEnabled(),
+      },
+      mocking: {
+        strictMocking: this._isStrictMocking,
+      },
+      logger: {
+        level: this.logger.level,
+      },
+    };
+    return status;
   }
 
   // mock handler - returns recorded response.

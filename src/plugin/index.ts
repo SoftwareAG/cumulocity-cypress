@@ -1,5 +1,4 @@
 import * as path from "path";
-import * as fs from "fs";
 import debug from "debug";
 
 import {
@@ -16,7 +15,8 @@ import {
   validatePactMode,
 } from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
-import { validateBaseUrl } from "cumulocity-cypress/shared/c8ypact/url";
+import { validateBaseUrl } from "../shared/c8ypact/url";
+import { getPackageVersion } from "../shared/util";
 
 export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
@@ -94,7 +94,7 @@ export function configureC8yPlugin(
     log(`savePact() - ${pact.id} (${records?.length || 0} records)`);
     validateId(id);
 
-    const version = getVersion();
+    const version = getPackageVersion();
     if (version && info) {
       if (!info.version) {
         info.version = {};
@@ -168,28 +168,4 @@ export function configureC8yPlugin(
       "c8ypact:oauthLogin": login,
     });
   }
-}
-
-function getVersion() {
-  try {
-    let currentDir = __dirname;
-    let packageJsonPath;
-    let maxLevels = 3;
-    while (maxLevels > 0) {
-      packageJsonPath = path.resolve(currentDir, "package.json");
-      if (fs.existsSync(packageJsonPath)) {
-        const packageJson = JSON.parse(
-          fs.readFileSync(packageJsonPath, "utf8")
-        );
-        return packageJson.version;
-      }
-      currentDir = path.dirname(currentDir);
-      maxLevels--;
-    }
-  } catch {
-    console.error(
-      "Failed to get version from package.json. package.json not found."
-    );
-  }
-  return "unknown";
 }
