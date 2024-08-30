@@ -1,7 +1,7 @@
 import {
   C8yRequireConfigOption,
   isVersionSatisfyingRequirements,
-} from "cumulocity-cypress";
+} from "cumulocity-cypress/shared/versioning";
 
 import * as semver from "semver";
 import { getShellVersionFromEnv, getSystemVersionFromEnv } from "../utils";
