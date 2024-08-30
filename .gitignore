@@ -1,2 +1,4 @@
 node_modules
 dist
+test/cypress/fixtures/c8ypact
+.env

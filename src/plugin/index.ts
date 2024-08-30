@@ -1,13 +1,22 @@
 import * as path from "path";
-import * as fs from "fs";
 import debug from "debug";
 
 import {
   C8yPactFileAdapter,
   C8yPactDefaultFileAdapter,
 } from "../shared/c8ypact/fileadapter";
-import { C8yPact } from "../shared/c8ypact/c8ypact";
+import {
+  C8yPactHttpController,
+  C8yPactHttpControllerOptions,
+} from "../shared/c8yctrl";
+import {
+  C8yPact,
+  getEnvVar,
+  validatePactMode,
+} from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
+import { validateBaseUrl } from "../shared/c8ypact/url";
+import { getPackageVersion } from "../shared/util";
 
 export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
@@ -43,12 +52,12 @@ export function configureC8yPlugin(
   options: C8yPluginConfig = {}
 ) {
   let adapter = options.pactAdapter;
+  const envFolder = getEnvVar("C8Y_PACT_FOLDER");
   if (!adapter) {
     const folder =
       options.pactFolder ||
       options.pactAdapter?.getFolder() ||
-      process.env.C8Y_PACT_FOLDER ||
-      process.env.CYPRESS_C8Y_PACT_FOLDER ||
+      envFolder ||
       // default folder is cypress/fixtures/c8ypact
       path.join(process.cwd(), "cypress", "fixtures", "c8ypact");
     adapter = new C8yPactDefaultFileAdapter(folder);
@@ -56,6 +65,24 @@ export function configureC8yPlugin(
   } else {
     log(`Using adapter from options ${adapter}`);
   }
+
+  // validate pact mode and base url before starting the plugin
+  // use environment variables AND config.env for variables defined in cypress.config.ts
+  const mode =
+    getEnvVar("C8Y_PACT_MODE") || getEnvVar("C8Y_PACT_MODE", config.env);
+  log(`validatePactMode() - ${mode}`);
+
+  validatePactMode(mode); // throws on error
+  const baseUrl =
+    getEnvVar("C8Y_BASEURL") ||
+    getEnvVar("CYPRESS_BASEURL") ||
+    getEnvVar("C8Y_BASEURL", config.env) ||
+    getEnvVar("CYPRESS_BASEURL", config.env);
+
+  log(`validateBaseUrl() - ${baseUrl}`);
+  validateBaseUrl(baseUrl); // throws on error
+
+  let http: C8yPactHttpController | null = null;
 
   // use C8Y_PLUGIN_LOADED to see if the plugin has been loaded
   config.env.C8Y_PLUGIN_LOADED = "true";
@@ -67,7 +94,7 @@ export function configureC8yPlugin(
     log(`savePact() - ${pact.id} (${records?.length || 0} records)`);
     validateId(id);
 
-    const version = getVersion();
+    const version = getPackageVersion();
     if (version && info) {
       if (!info.version) {
         info.version = {};
@@ -102,6 +129,25 @@ export function configureC8yPlugin(
     }
   }
 
+  async function startHttpController(
+    options: C8yPactHttpControllerOptions
+  ): Promise<C8yPactHttpController> {
+    if (http) {
+      await stopHttpController();
+    }
+    http = new C8yPactHttpController(options);
+    await http.start();
+    return http;
+  }
+
+  async function stopHttpController(): Promise<null> {
+    if (http) {
+      await http.stop();
+      http = null;
+    }
+    return null;
+  }
+
   async function login(options: {
     auth: C8yAuthOptions;
     baseUrl: string;
@@ -117,31 +163,9 @@ export function configureC8yPlugin(
       "c8ypact:save": savePact,
       "c8ypact:get": getPact,
       "c8ypact:remove": removePact,
+      "c8ypact:http:start": startHttpController,
+      "c8ypact:http:stop": stopHttpController,
       "c8ypact:oauthLogin": login,
     });
   }
-}
-
-function getVersion() {
-  try {
-    let currentDir = __dirname;
-    let packageJsonPath;
-    let maxLevels = 3;
-    while (maxLevels > 0) {
-      packageJsonPath = path.resolve(currentDir, "package.json");
-      if (fs.existsSync(packageJsonPath)) {
-        const packageJson = JSON.parse(
-          fs.readFileSync(packageJsonPath, "utf8")
-        );
-        return packageJson.version;
-      }
-      currentDir = path.dirname(currentDir);
-      maxLevels--;
-    }
-  } catch {
-    console.error(
-      "Failed to get version from package.json. package.json not found."
-    );
-  }
-  return "unknown";
 }
