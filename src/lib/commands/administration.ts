@@ -567,7 +567,7 @@ Cypress.Commands.add("getTenantId", { prevSubject: "optional" }, (...args) => {
     consoleProps: () => consoleProps,
   });
 
-  if (Cypress.env("C8Y_TENANT") && !auth.tenant) {
+  if (Cypress.env("C8Y_TENANT") && !auth?.tenant) {
     consoleProps.C8Y_TENANT = Cypress.env("C8Y_TENANT");
     return cy.wrap<string>(Cypress.env("C8Y_TENANT"));
   }
