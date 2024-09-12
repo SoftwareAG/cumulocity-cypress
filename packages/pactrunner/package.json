@@ -30,7 +30,6 @@
     "ajv-formats": "^2.1.1",
     "cypress": "^13.3.2",
     "date-fns": "^2.30.0",
-    "micromatch": "4.0.5",
     "quicktype": "^23.0.81",
     "semver": "^7.5.2",
     "set-cookie-parser": "^2.6.0"
