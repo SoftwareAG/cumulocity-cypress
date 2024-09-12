@@ -18,4 +18,4 @@ jobs:
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@v4
         with:
-          deny-licenses: GPL, LGPL, AGPL
+          deny-licenses: LGPL-2.0+, GPL-1.0+, AGPL-1.0, AGPL-3.0 # https://spdx.org/licenses/
