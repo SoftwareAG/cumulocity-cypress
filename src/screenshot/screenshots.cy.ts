@@ -15,24 +15,12 @@ import {
   Visit,
 } from "../lib/screenshots/types";
 
-import { C8yAjvSchemaMatcher } from "../contrib/ajv";
-import schema from "./schema.json";
-
 const { _ } = Cypress;
 
 const yaml: ScreenshotSetup = Cypress.env("_autoScreenshot");
 if (!yaml) {
   throw new Error("No config. Please check the screenshots.config.yml file.");
 }
-
-if (!schema) {
-  throw new Error(
-    "No schema. Please check the schema.json file."
-  );
-}
-
-const ajv = new C8yAjvSchemaMatcher();
-ajv.match(yaml, schema, true);
 
 const actionHandlers: {
   [key: string]: (action: any, item: Screenshot, options: any) => void;

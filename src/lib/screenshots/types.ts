@@ -1,7 +1,6 @@
 export type ScreenshotSetup = {
   /** @format uri */
   baseUrl: string;
-
   /**
    * The title used for root Cypress suite
    */

@@ -3,6 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
 
+import { C8yAjvSchemaMatcher } from "../contrib/ajv";
+import schema from "./schema.json";
+
 function readYamlFile(filePath: string): any {
   const fileContent = fs.readFileSync(filePath, "utf-8");
   const data = yaml.load(fileContent);
@@ -19,14 +22,24 @@ export default defineConfig({
       if (!filePath) {
         return config
       }
+
+      if (!schema) {
+        throw new Error(
+          `Failed to validate ${filePath}. No schema found for validation. Please check the schema.json file.`
+        );
+      }      
       const configData = readYamlFile(filePath);
+      const ajv = new C8yAjvSchemaMatcher();
+      ajv.match(configData, schema, true);
+      
       config.env._autoScreenshot = configData;
+      config.baseUrl = configData.global?.baseUrl ?? config.baseUrl;
 
       // https://github.com/cypress-io/cypress/issues/27260
       on("before:browser:launch", (browser, launchOptions) => {
         if (browser.name === "chrome") {
-          const viewportWidth = configData.config?.viewportWidth ?? 1920;
-          const viewportHeight = configData.config?.viewportHeight ?? 1080;
+          const viewportWidth = configData.global?.viewportWidth ?? 1920;
+          const viewportHeight = configData.global?.viewportHeight ?? 1080;
           launchOptions.args.push(
             `--window-size=${viewportWidth},${viewportHeight} --headless=old`
           );
