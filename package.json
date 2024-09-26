@@ -22,7 +22,8 @@
     "clean:package:json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'",
     "lint": "eslint ./",
     "release": "semantic-release",
-    "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git"
+    "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git",
+    "screenshot:schema": "npx typescript-json-schema --noExtraProps --excludePrivate -o src/lib/screenshots/c8yscreenshot.schema.json src/tsconfig.json ScreenshotConfig"
   },
   "repository": {
     "type": "git",
@@ -42,6 +43,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "bin": {
+    "c8yscreenshot": "./lib/screenshots/screenshot-runner.js"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -80,6 +84,7 @@
     }
   },
   "dependencies": {
+    "@types/js-yaml": "^4.0.9",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "cookie-parser": "^1.4.6",
@@ -114,6 +119,7 @@
     "eslint-plugin-import": "^2.29.1",
     "express": "^4.19.2",
     "jest": "^29.7.0",
+    "js-yaml": "^4.1.0",
     "memfs": "^4.8.2",
     "rimraf": "^5.0.1",
     "rollup": "^4.14.1",
@@ -126,6 +132,7 @@
     "ts-jest": "^29.1.2",
     "tsx": "^4.16.5",
     "typescript": "^5.0.2",
+    "typescript-json-schema": "^0.65.1",
     "yalc": "^1.0.0-pre.53"
   },
   "peerDependencies": {
