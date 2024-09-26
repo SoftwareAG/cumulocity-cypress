@@ -27,7 +27,7 @@ if (!yaml) {
 
 if (!schema) {
   throw new Error(
-    "No schema. Please check the c8yscreenshot.schema.json file."
+    "No schema. Please check the schema.json file."
   );
 }
 
@@ -61,7 +61,7 @@ const defaultOptions: Partial<Cypress.ScreenshotOptions> = _.defaults(
 
 describe(yaml.title ?? `screenshot workflow`, () => {
   before(() => {
-    if (yaml.global?.user) {
+    if (yaml.global?.user != null) {
       cy.getAuth(yaml.global?.user).getShellVersion(yaml.global?.shell);
     } else {
       cy.getShellVersion(yaml.global?.shell);
@@ -120,13 +120,15 @@ describe(yaml.title ?? `screenshot workflow`, () => {
           defaultOptions
         );
 
-        const visitUser = _.isString(item.visit)
-          ? user
-          : (item.visit as any).user;
-
-        cy.login(visitUser || user);
+        const visitDate = item.date ?? yaml.global?.date;
+        if (visitDate) {
+          cy.clock(new Date(visitDate));
+        }
 
         const visitObject = getVisitObject(item.visit);
+        const visitUser = visitObject?.user ?? user;
+        cy.login(visitUser);
+
         const url = visitObject?.url ?? item.visit as string;
         const visitSelector = visitObject?.selector;
         const visitTimeout = visitObject?.timeout;

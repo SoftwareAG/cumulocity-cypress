@@ -1,4 +1,5 @@
 import _ from "lodash";
+import * as semver from "semver";
 
 import Ajv, { AnySchemaObject, SchemaObject } from "ajv";
 import addFormats from "ajv-formats";
@@ -20,7 +21,15 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
   constructor(metas?: AnySchemaObject[]) {
     //https://ajv.js.org/options.html
     this.ajv = new Ajv({ strict: "log" });
-    addFormats(this.ajv);
+    addFormats(this.ajv, [
+      "uri",
+      "url",
+      "uuid",
+      "hostname",
+      "date-time",
+      "date",
+      "password",
+    ]);
 
     this.ajv.addFormat("integer", {
       type: "number",
@@ -35,6 +44,20 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
       type: "string",
       validate: (x: any) =>
         _.isString(x) && ["true", "false"].includes(_.lowerCase(x)),
+    });
+
+    this.ajv.addFormat("semver-range", {
+      type: "string",
+      validate: (x: any) => {
+        return semver.validRange(x) != null;
+      },
+    });
+
+    this.ajv.addFormat("semver-version", {
+      type: "string",
+      validate: (x: any) => {
+        return semver.valid(x) != null;
+      },
     });
 
     if (metas && _.isArrayLike(metas)) {

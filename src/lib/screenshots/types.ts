@@ -1,20 +1,34 @@
 export type ScreenshotSetup = {
+  /** @format uri */
+  baseUrl: string;
+
   /**
    * The title used for root Cypress suite
    */
   title?: string;
-  global: ScreenshotSettings & TestcaseOptions & GlobalVisitOptions;
+  global?: ScreenshotSettings & TestcaseOptions & GlobalVisitOptions;
   screenshots: Screenshot[];
 };
 
 export type TestcaseOptions = {
   /**
-   * Tag screenshots to enable filtering based on tags provided
+   * Tags allow grouping and filtering of screenshots (optional)
    */
   tags?: string[];
+  /**
+   * The shell is used to dermine the version of the application used by "requires" (optional)
+   * @examples ["cockpit, devicemanagement, oee"]
+   */
   shell?: string;
-  requires?: string | string[];
+  /**
+   * The required semver version range of the shell applications. If the shell version does not satisfy the range, the screenshot is skipped. (optional)
+   * @format semver-range
+   * @examples ["1.x, ^1.0.0, >=1.0.0 <2.0.0"]
+   */
+  requires?: SemverRange;
 };
+
+export type SemverRange = string;
 
 export type GlobalVisitOptions = {
   /**
@@ -25,18 +39,23 @@ export type GlobalVisitOptions = {
   /**
    * The user to login representing the env variabls of type *user*_username and *user*_password
    */
-  user: string;
+  user?: string;
+  /** @format date-time
+   * @examples ["2024-09-26T19:17:35+02:00"]
+   */
+  date?: string;
 };
 
-export type Screenshot = GlobalVisitOptions & TestcaseOptions & {
-  image: string;
-  visit: string | Visit;
-  do?: Action[] | Action;
-  requires?: string | string[];
-  only?: boolean;
-  skip?: boolean;
-  settings?: ScreenshotSettings;
-};
+export type Screenshot = GlobalVisitOptions &
+  TestcaseOptions & {
+    image: string;
+    visit: string | Visit;
+    do?: Action[] | Action;
+    requires?: string | string[];
+    only?: boolean;
+    skip?: boolean;
+    settings?: ScreenshotSettings;
+  };
 
 type ScreenshotSettings = {
   /**

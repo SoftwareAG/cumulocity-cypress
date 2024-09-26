@@ -14,6 +14,9 @@
                                     "$ref": "#/definitions/Selector"
                                 }
                             },
+                            "required": [
+                                "selector"
+                            ],
                             "type": "object"
                         }
                     },
@@ -32,6 +35,10 @@
                                     "type": "string"
                                 }
                             },
+                            "required": [
+                                "selector",
+                                "value"
+                            ],
                             "type": "object"
                         }
                     },
@@ -59,6 +66,12 @@
                                             "type": "number"
                                         }
                                     },
+                                    "required": [
+                                        "height",
+                                        "width",
+                                        "x",
+                                        "y"
+                                    ],
                                     "type": "object"
                                 },
                                 "path": {
@@ -105,6 +118,9 @@
                                             "type": "string"
                                         }
                                     },
+                                    "required": [
+                                        "selector"
+                                    ],
                                     "type": "object"
                                 },
                                 {
@@ -122,6 +138,9 @@
                                                 "type": "string"
                                             }
                                         },
+                                        "required": [
+                                            "selector"
+                                        ],
                                         "type": "object"
                                     },
                                     "type": "array"
@@ -136,6 +155,13 @@
         "Screenshot": {
             "additionalProperties": false,
             "properties": {
+                "date": {
+                    "examples": [
+                        "2024-09-26T19:17:35+02:00"
+                    ],
+                    "format": "date-time",
+                    "type": "string"
+                },
                 "do": {
                     "anyOf": [
                         {
@@ -148,6 +174,9 @@
                                             "$ref": "#/definitions/Selector"
                                         }
                                     },
+                                    "required": [
+                                        "selector"
+                                    ],
                                     "type": "object"
                                 }
                             },
@@ -166,6 +195,10 @@
                                             "type": "string"
                                         }
                                     },
+                                    "required": [
+                                        "selector",
+                                        "value"
+                                    ],
                                     "type": "object"
                                 }
                             },
@@ -193,6 +226,12 @@
                                                     "type": "number"
                                                 }
                                             },
+                                            "required": [
+                                                "height",
+                                                "width",
+                                                "x",
+                                                "y"
+                                            ],
                                             "type": "object"
                                         },
                                         "path": {
@@ -239,6 +278,9 @@
                                                     "type": "string"
                                                 }
                                             },
+                                            "required": [
+                                                "selector"
+                                            ],
                                             "type": "object"
                                         },
                                         {
@@ -256,6 +298,9 @@
                                                         "type": "string"
                                                     }
                                                 },
+                                                "required": [
+                                                    "selector"
+                                                ],
                                                 "type": "object"
                                             },
                                             "type": "array"
@@ -339,13 +384,17 @@
                     "type": "object"
                 },
                 "shell": {
+                    "description": "The shell is used to dermine the version of the application used by \"requires\" (optional)",
+                    "examples": [
+                        "cockpit, devicemanagement, oee"
+                    ],
                     "type": "string"
                 },
                 "skip": {
                     "type": "boolean"
                 },
                 "tags": {
-                    "description": "Tag screenshots to enable filtering based on tags provided",
+                    "description": "Tags allow grouping and filtering of screenshots (optional)",
                     "items": {
                         "type": "string"
                     },
@@ -366,6 +415,10 @@
                     ]
                 }
             },
+            "required": [
+                "image",
+                "visit"
+            ],
             "type": "object"
         },
         "Selector": {
@@ -387,6 +440,13 @@
         "Visit": {
             "additionalProperties": false,
             "properties": {
+                "date": {
+                    "examples": [
+                        "2024-09-26T19:17:35+02:00"
+                    ],
+                    "format": "date-time",
+                    "type": "string"
+                },
                 "language": {
                     "description": "The language to use for taking screenshots",
                     "enum": [
@@ -409,10 +469,17 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "url"
+            ],
             "type": "object"
         }
     },
     "properties": {
+        "baseUrl": {
+            "format": "uri",
+            "type": "string"
+        },
         "global": {
             "additionalProperties": false,
             "properties": {
@@ -422,6 +489,13 @@
                         "fullPage",
                         "viewport"
                     ],
+                    "type": "string"
+                },
+                "date": {
+                    "examples": [
+                        "2024-09-26T19:17:35+02:00"
+                    ],
+                    "format": "date-time",
                     "type": "string"
                 },
                 "disableTimersAndAnimations": {
@@ -442,26 +516,25 @@
                     "type": "number"
                 },
                 "requires": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
+                    "description": "The required semver version range of the shell applications. If the shell version does not satisfy the range, the screenshot is skipped. (optional)",
+                    "examples": [
+                        "1.x, ^1.0.0, >=1.0.0 <2.0.0"
+                    ],
+                    "format": "semver-range",
+                    "type": "string"
                 },
                 "scale": {
                     "type": "number"
                 },
                 "shell": {
+                    "description": "The shell is used to dermine the version of the application used by \"requires\" (optional)",
+                    "examples": [
+                        "cockpit, devicemanagement, oee"
+                    ],
                     "type": "string"
                 },
                 "tags": {
-                    "description": "Tag screenshots to enable filtering based on tags provided",
+                    "description": "Tags allow grouping and filtering of screenshots (optional)",
                     "items": {
                         "type": "string"
                     },
@@ -497,6 +570,10 @@
             "type": "string"
         }
     },
+    "required": [
+        "baseUrl",
+        "screenshots"
+    ],
     "type": "object"
 }
 

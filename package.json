@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress",
-  "version": "0.7.56",
+  "version": "0.7.68",
   "description": "Cypress commands for Cumulocity IoT",
   "scripts": {
     "start-server": "cross-env NODE_NO_WARNINGS=1 npx tsx test/backend/test-server.ts",
@@ -23,7 +23,7 @@
     "lint": "eslint ./",
     "release": "semantic-release",
     "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git",
-    "screenshot:schema": "npx typescript-json-schema --noExtraProps --excludePrivate -o src/screenshot/schema.json src/tsconfig.json ScreenshotSetup"
+    "screenshot:schema": "npx typescript-json-schema --required --noExtraProps --excludePrivate -o src/screenshot/schema.json src/tsconfig.json ScreenshotSetup"
   },
   "repository": {
     "type": "git",
