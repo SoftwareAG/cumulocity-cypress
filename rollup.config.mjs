@@ -3,6 +3,7 @@ import resolve from "rollup-plugin-node-resolve";
 import commonjs from "rollup-plugin-commonjs";
 // import typescript from "rollup-plugin-typescript2";
 import json from "@rollup/plugin-json";
+import shebang from 'rollup-plugin-shebang-bin'
 
 // eslint-disable-next-line import/no-named-as-default
 import glob from 'glob';
@@ -37,7 +38,7 @@ export default [
   {
     input: Object.fromEntries(
       // eslint-disable-next-line import/no-named-as-default-member
-      glob.sync("dist/lib/screenshots/*.js").map((file) => [
+      glob.sync("dist/screenshot/*.js").map((file) => [
         path.relative(
           "dist",
           file.slice(0, file.length - path.extname(file).length)
@@ -57,6 +58,13 @@ export default [
       }),
       commonjs(),
       json(),
+      shebang(
+        {
+          include: [
+            "dist/screenshot/startup.js",
+          ]
+        }
+      )
     ],
-  },
+  }
 ];

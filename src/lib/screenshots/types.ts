@@ -1,38 +1,22 @@
-const { _ } = Cypress;
-
-export type ScreenshotConfig = {
+export type ScreenshotSetup = {
   /**
    * The title used for root Cypress suite
    */
   title?: string;
-  config: Setup;
+  global: ScreenshotSettings & TestcaseOptions & GlobalVisitOptions;
   screenshots: Screenshot[];
 };
 
-export type Screenshot = {
-  image: string;
-  visit: string | Visit;
-  do?: Action[] | Action;
-  only?: boolean;
-  skip?: boolean;
-  config?: Setup;
+export type TestcaseOptions = {
+  /**
+   * Tag screenshots to enable filtering based on tags provided
+   */
+  tags?: string[];
+  shell?: string;
+  requires?: string | string[];
 };
 
-type Setup = {
-  /**
-   * The width in px to use for the browser window
-   * @minimum 0
-   * @default 1920 
-   * @TJS-type integer
-   */
-  viewportWidth?: number;
-  /**
-   * The height in px to use for the browser window
-   * @minimum 0
-   * @default 1080 
-   * @TJS-type integer
-   */
-  viewportHeight?: number;
+export type GlobalVisitOptions = {
   /**
    * The language to use for taking screenshots
    * @example "en"
@@ -42,10 +26,33 @@ type Setup = {
    * The user to login representing the env variabls of type *user*_username and *user*_password
    */
   user: string;
+};
+
+export type Screenshot = GlobalVisitOptions & TestcaseOptions & {
+  image: string;
+  visit: string | Visit;
+  do?: Action[] | Action;
+  requires?: string | string[];
+  only?: boolean;
+  skip?: boolean;
+  settings?: ScreenshotSettings;
+};
+
+type ScreenshotSettings = {
   /**
-   * Tag screenshots to enable filtering based on tags provided
+   * The width in px to use for the browser window
+   * @minimum 0
+   * @default 1920
+   * @TJS-type integer
    */
-  tags?: string[];
+  viewportWidth?: number;
+  /**
+   * The height in px to use for the browser window
+   * @minimum 0
+   * @default 1080
+   * @TJS-type integer
+   */
+  viewportHeight?: number;
   /**
    * The type of capturing the screenshot. When fullPage is used, the application is captured in its entirety from top to bottom. Setting is ignored when screenshots are taken for a selected element.
    */
@@ -54,13 +61,10 @@ type Setup = {
   scale?: number;
   overwrite?: boolean;
   disableTimersAndAnimations?: boolean;
-  shell?: string;
-  shellName?: string;
 };
 
-type Visit = {
+export type Visit = GlobalVisitOptions & {
   url: string;
-  user?: string;
   timeout?: number;
   selector?: string;
 };
@@ -89,14 +93,14 @@ export type HighlightAction = {
   highlight?: HighlightActionProperties | HighlightActionProperties[];
 };
 
-type ScreenshotClipArea = {
+export type ScreenshotClipArea = {
   x: number;
   y: number;
   width: number;
   height: number;
 };
 
-type Selector =
+export type Selector =
   | string
   | {
       "data-cy"?: string;
@@ -110,37 +114,8 @@ export type ScreenshotAction = {
   };
 };
 
-type Action = ClickAction | TypeAction | ScreenshotAction | HighlightAction;
-
-export function isClickAction(action: Action): action is ClickAction {
-  return "click" in action;
-}
-
-export function isTypeAction(action: Action): action is TypeAction {
-  return "type" in action;
-}
-
-export function isHighlightAction(action: Action): action is HighlightAction {
-  return "highlight" in action;
-}
-
-export function isScreenshotAction(action: Action): action is ScreenshotAction {
-  return "screenshot" in action;
-}
-
-export function getSelector(
-  selector: Selector | undefined
-): string | undefined {
-  if (!selector) {
-    return undefined;
-  }
-  if (_.isString(selector)) {
-    return selector;
-  }
-  if (_.isPlainObject(selector)) {
-    if ("data-cy" in selector) {
-      return `[data-cy=${_.get(selector, "data-cy")}]`;
-    }
-  }
-  return undefined;
-}
+export type Action =
+  | ClickAction
+  | TypeAction
+  | ScreenshotAction
+  | HighlightAction;

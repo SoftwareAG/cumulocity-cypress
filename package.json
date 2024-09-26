@@ -1,6 +1,6 @@
 {
   "name": "cumulocity-cypress",
-  "version": "0.5.2",
+  "version": "0.7.56",
   "description": "Cypress commands for Cumulocity IoT",
   "scripts": {
     "start-server": "cross-env NODE_NO_WARNINGS=1 npx tsx test/backend/test-server.ts",
@@ -13,7 +13,7 @@
     "jest:run": "jest --config jest.config.js",
     "clean": "rimraf dist/ && rimraf packages/pactrunner/dist/ && rimraf packages/pactrunner/.yalc && rimraf packages/pactrunner/yalc.lock",
     "copy-files": "copyfiles --up 1 -V './src/lib/**/*.js' './src/lib/**/*.d.ts' dist/ && copyfiles '*.md' package.json dist/",
-    "build": "npm run clean && npm run copy-files && tsc -b -v src/ && npm run build:plugin",
+    "build": "npm run clean && npm run screenshot:schema && npm run copy-files && tsc -b -v src/ && npm run build:plugin",
     "build:plugin": "rollup -c rollup.config.mjs",
     "package": "npm run build && npm run clean:package:folder && cd dist/ && npm run clean:package:json",
     "yalc:runner": "npm run yalc:publish && cd packages/pactrunner && yalc add cumulocity-cypress",
@@ -23,7 +23,7 @@
     "lint": "eslint ./",
     "release": "semantic-release",
     "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git",
-    "screenshot:schema": "npx typescript-json-schema --noExtraProps --excludePrivate -o src/lib/screenshots/c8yscreenshot.schema.json src/tsconfig.json ScreenshotConfig"
+    "screenshot:schema": "npx typescript-json-schema --noExtraProps --excludePrivate -o src/screenshot/schema.json src/tsconfig.json ScreenshotSetup"
   },
   "repository": {
     "type": "git",
@@ -44,7 +44,7 @@
     "packages/*"
   ],
   "bin": {
-    "c8yscreenshot": "./lib/screenshots/screenshot-runner.js"
+    "c8yscrn": "./screenshot/startup.js"
   },
   "exports": {
     ".": {
@@ -63,8 +63,13 @@
       "types": "./lib/commands/c8ypact.d.ts",
       "default": "./lib/commands/c8ypact.js"
     },
+    "./screenshot": {
+      "types": "./lib/screenshot/*.d.ts",
+      "default": "./lib/screenshot/*.js"
+    },
     "./commands/*": "./lib/commands/*",
     "./c8ypact/*": "./lib/pact/*",
+    "./screenshot/*": "./lib/screenshot/*",
     "./*": "./*"
   },
   "typesVersions": {
@@ -126,6 +131,7 @@
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-dts": "^6.1.0",
     "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-shebang-bin": "^0.0.7",
     "semantic-release": "^24.0.0",
     "semver": "^7.6.3",
     "start-server-and-test": "^2.0.0",

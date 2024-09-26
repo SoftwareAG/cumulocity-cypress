@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import cypress from "cypress";
 
 import * as path from "path";
@@ -42,7 +40,7 @@ import * as fs from "fs";
   }
   const config = {
     ...{
-      configFile: path.resolve(path.dirname(__filename), "cypress.config.js"),
+      configFile: path.resolve(path.dirname(__filename), "config.js"),
       browser: "chrome",
       testingType: "e2e",
       config: {

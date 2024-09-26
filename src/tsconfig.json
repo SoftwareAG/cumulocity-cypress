@@ -9,5 +9,5 @@
     "allowSyntheticDefaultImports": true
   },
   "exclude": ["**/*.spec.ts", "**/*.spec.tsx"],
-  "include": ["**/*.ts", "**/*.tsx", "**/c8yscreenshot.schema.json"]
+  "include": ["**/*.ts", "**/*.tsx", "**/schema.json"]
 }

@@ -1,25 +1,26 @@
-import "../commands";
-import "../commands/c8ypact";
+import "../lib/commands";
+import "../lib/commands/c8ypact";
 
-import { pactId } from "../../shared/c8ypact";
+import { pactId } from "../shared/c8ypact";
 
 import {
+  Action,
   ClickAction,
-  getSelector,
   HighlightAction,
-  isScreenshotAction,
   Screenshot,
   ScreenshotAction,
-  ScreenshotConfig,
+  ScreenshotSetup,
+  Selector,
   TypeAction,
-} from "./screenshot-config";
+  Visit,
+} from "../lib/screenshots/types";
 
-import { C8yAjvSchemaMatcher } from "../../contrib/ajv";
-import schema from "./c8yscreenshot.schema.json";
+import { C8yAjvSchemaMatcher } from "../contrib/ajv";
+import schema from "./schema.json";
 
 const { _ } = Cypress;
 
-const yaml: ScreenshotConfig = Cypress.env("_autoScreenshot");
+const yaml: ScreenshotSetup = Cypress.env("_autoScreenshot");
 if (!yaml) {
   throw new Error("No config. Please check the screenshots.config.yml file.");
 }
@@ -42,7 +43,7 @@ const actionHandlers: {
   screenshot,
 };
 
-const CyScreenshotOptionKeys = [
+const CyScreenshotSettingsKeys = [
   "capture",
   "scale",
   "padding",
@@ -51,21 +52,22 @@ const CyScreenshotOptionKeys = [
 ];
 
 const defaultOptions: Partial<Cypress.ScreenshotOptions> = _.defaults(
-  _.omitBy(_.pick(yaml.config ?? {}, CyScreenshotOptionKeys), _.isNil),
+  _.omitBy(_.pick(yaml.global ?? {}, CyScreenshotSettingsKeys), _.isNil),
   {
     overwrite: true,
     disableTimersAndAnimations: true,
   }
 );
 
-const user = yaml.config?.user;
-if (user != null) {
-  before(() => {
-    cy.getAuth(user).getTenantId();
-  });
-}
-
 describe(yaml.title ?? `screenshot workflow`, () => {
+  before(() => {
+    if (yaml.global?.user) {
+      cy.getAuth(yaml.global?.user).getShellVersion(yaml.global?.shell);
+    } else {
+      cy.getShellVersion(yaml.global?.shell);
+    }
+  });
+
   beforeEach(() => {
     if (Cypress.env("C8Y_CTRL_MODE") != null) {
       cy.wrap(c8yctrl(), { log: false });
@@ -73,19 +75,16 @@ describe(yaml.title ?? `screenshot workflow`, () => {
   });
 
   yaml.screenshots?.forEach((item) => {
-    const user = yaml.config?.user ?? item.config?.user ?? "admin";
-    const language = yaml.config?.language ?? item.config?.language ?? "en";
-    const tags = yaml.config?.tags ?? item.config?.tags;
     const annotations: any = {};
 
-    const shellName = yaml.config?.shellName ?? item.config?.shellName;
-    cy.getAuth(user).getShellVersion(shellName);
-    const shell = yaml.config?.shell != null ?? item.config?.shell != null;
-    if (shell != null) {
+    const required = item.requires ?? yaml.global?.requires;
+    if (required != null) {
       annotations.requires = {
-        shell: _.isArray(shell) ? shell : [shell],
+        shell: _.isArray(required) ? required : [required],
       };
     }
+
+    const tags = item.tags ?? yaml.global?.tags;
     if (tags != null) {
       annotations.tags = _.isArray(tags) ? tags : [tags];
     }
@@ -98,20 +97,26 @@ describe(yaml.title ?? `screenshot workflow`, () => {
       annotations,
       // @ts-expect-error
       () => {
+        const user = item.user ?? yaml.global?.user ?? "admin";
+        cy.getAuth(user).getTenantId();
+
         const width =
-          yaml.config?.viewportWidth ??
-          item.config?.viewportWidth ??
+          yaml.global?.viewportWidth ??
+          item.settings?.viewportWidth ??
           Cypress.config("viewportWidth") ??
           1920;
         const height =
-          yaml.config?.viewportHeight ??
-          item.config?.viewportWidth ??
+          yaml.global?.viewportHeight ??
+          item.settings?.viewportWidth ??
           Cypress.config("viewportHeight") ??
           1080;
         cy.viewport(width, height);
 
         const options = _.defaults(
-          _.omitBy(_.pick(item.config ?? {}, CyScreenshotOptionKeys), _.isNil),
+          _.omitBy(
+            _.pick(item.settings ?? {}, CyScreenshotSettingsKeys),
+            _.isNil
+          ),
           defaultOptions
         );
 
@@ -121,14 +126,16 @@ describe(yaml.title ?? `screenshot workflow`, () => {
 
         cy.login(visitUser || user);
 
-        const url = _.isString(item.visit) ? item.visit : item.visit.url;
-        const visitSelector = _.isString(item.visit)
-          ? undefined
-          : item.visit.selector;
-        const visitTimeout = _.isString(item.visit)
-          ? undefined
-          : item.visit.timeout;
+        const visitObject = getVisitObject(item.visit);
+        const url = visitObject?.url ?? item.visit as string;
+        const visitSelector = visitObject?.selector;
+        const visitTimeout = visitObject?.timeout;
 
+        const language =
+          visitObject?.language ??
+          item.language ??
+          yaml.global?.language ??
+          "en";
         cy.visitAndWaitForSelector(url, language, visitSelector, visitTimeout);
 
         let actions = item.do == null ? [] : item.do;
@@ -215,6 +222,10 @@ function screenshot(action: ScreenshotAction, item: Screenshot, options: any) {
   }
 }
 
+function getVisitObject(visit: string | Visit): Visit | undefined {
+  return _.isString(visit) ? undefined : visit;
+}
+
 /**
  * Update c8yctrl pact file to be used for recording or mocking.
  * @param titleOrId An id or array of titles with names of suite or titles
@@ -241,4 +252,37 @@ export function c8yctrl(
 
 export function isRecording(): boolean {
   return Cypress.env("C8Y_CTRL_MODE") === "recording";
+}
+
+export function isClickAction(action: Action): action is ClickAction {
+  return "click" in action;
+}
+
+export function isTypeAction(action: Action): action is TypeAction {
+  return "type" in action;
+}
+
+export function isHighlightAction(action: Action): action is HighlightAction {
+  return "highlight" in action;
+}
+
+export function isScreenshotAction(action: Action): action is ScreenshotAction {
+  return "screenshot" in action;
+}
+
+export function getSelector(
+  selector: Selector | undefined
+): string | undefined {
+  if (!selector) {
+    return undefined;
+  }
+  if (_.isString(selector)) {
+    return selector;
+  }
+  if (_.isPlainObject(selector)) {
+    if ("data-cy" in selector) {
+      return `[data-cy=${_.get(selector, "data-cy")}]`;
+    }
+  }
+  return undefined;
 }
