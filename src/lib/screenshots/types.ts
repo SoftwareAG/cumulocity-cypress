@@ -148,3 +148,9 @@ export interface C8yScreenshotOptions {
   quiet: boolean;
   setup: ScreenshotSetup;
 }
+
+export type C8yScreenshotActionHandler = (
+  action: any,
+  item: Screenshot,
+  options: any
+) => void;
