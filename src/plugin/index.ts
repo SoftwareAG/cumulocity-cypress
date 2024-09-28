@@ -9,6 +9,11 @@ import {
 import { C8yPact } from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
 
+import * as yaml from "js-yaml";
+
+import { C8yAjvSchemaMatcher } from "../contrib/ajv";
+import schema from "./../screenshot/schema.json";
+
 export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
 /**
@@ -27,8 +32,6 @@ export type C8yPluginConfig = {
   pactAdapter?: C8yPactFileAdapter;
 };
 
-const log = debug("c8y:plugin");
-
 /**
  * Configuration options for the Cumulocity Pact plugin. Sets up for example required tasks
  * to save and load pact objects.
@@ -42,6 +45,8 @@ export function configureC8yPlugin(
   config: Cypress.PluginConfigOptions,
   options: C8yPluginConfig = {}
 ) {
+  const log = debug("c8y:plugin");
+
   let adapter = options.pactAdapter;
   if (!adapter) {
     const folder =
@@ -122,6 +127,93 @@ export function configureC8yPlugin(
   }
 }
 
+export function configureC8yScreenshotPlugin(
+  on: Cypress.PluginEvents,
+  config: Cypress.PluginConfigOptions
+) {
+  const log = debug("c8y:scrn:plugin");
+  let configData = config.env._c8yscrnyaml;
+  if (!configData) {
+    const filePath = config.env._c8yscrnConfigFile;
+    if (!filePath) {
+      log("No config file provided. Skipping configuration.");
+      return config;
+    }
+    log(`Using config file ${filePath}`);
+
+    if (!schema) {
+      log(`schem.json not found. Skipping configuration.`);
+      throw new Error(
+        `Failed to validate ${filePath}. No schema found for validation. Please check the schema.json file.`
+      );
+    }
+
+    configData = readYamlFile(filePath);
+    const ajv = new C8yAjvSchemaMatcher();
+    log(`Validating config file ${filePath}`);
+    ajv.match(configData, schema, true);
+  } else {
+    log("Using setup from _c8yscrnyaml.");
+  }
+
+  config.env._c8yscrnyaml = configData;
+  config.baseUrl =
+    config.baseUrl ?? configData?.baseUrl ?? "http://localhost:8080";
+  log(`Using baseUrl to ${config.baseUrl}`);
+
+  // https://github.com/cypress-io/cypress/issues/27260
+  on("before:browser:launch", (browser, launchOptions) => {
+    if (browser.name === "chrome") {
+      const viewportWidth = configData?.global?.viewportWidth ?? 1920;
+      const viewportHeight = configData?.global?.viewportHeight ?? 1080;
+      launchOptions.args.push(
+        `--window-size=${viewportWidth},${viewportHeight} --headless=old`
+      );
+      log(
+        `Set chrome launch options: ${
+          launchOptions.args[launchOptions.args.length - 1]
+        }`
+      );
+    }
+    return launchOptions;
+  });
+
+  on("after:screenshot", (details) => {
+    return new Promise((resolve, reject) => {
+      const newPath =
+        details.specName.trim() == ""
+          ? details.path
+          : details.path?.replace(`${details.specName}${path.sep}`, "");
+
+      const folder = newPath?.split(path.sep).slice(0, -1).join(path.sep);
+      if (folder && !fs.existsSync(folder)) {
+        const result = fs.mkdirSync(folder, { recursive: true });
+        if (!result) {
+          reject(`Failed to create folder ${folder}`);
+        }
+      }
+      if (!folder) {
+        resolve({
+          path: details.path,
+          size: details.size,
+          dimensions: details.dimensions,
+        });
+      }
+      log(`Moving screenshot ${details.path} to ${newPath}`);
+      fs.rename(details.path, newPath, (err) => {
+        if (err) return reject(err);
+        resolve({
+          path: newPath,
+          size: details.size,
+          dimensions: details.dimensions,
+        });
+      });
+    });
+  });
+
+  return config;
+}
+
 function getVersion() {
   try {
     let currentDir = __dirname;
@@ -144,4 +236,10 @@ function getVersion() {
     );
   }
   return "unknown";
+}
+
+function readYamlFile(filePath: string): any {
+  const fileContent = fs.readFileSync(filePath, "utf-8");
+  const data = yaml.load(fileContent);
+  return data;
 }

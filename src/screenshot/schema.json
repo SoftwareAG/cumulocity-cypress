@@ -571,7 +571,6 @@
         }
     },
     "required": [
-        "baseUrl",
         "screenshots"
     ],
     "type": "object"

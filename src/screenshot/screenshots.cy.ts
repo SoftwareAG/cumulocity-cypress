@@ -15,12 +15,22 @@ import {
   Visit,
 } from "../lib/screenshots/types";
 
+import { C8yAjvSchemaMatcher } from "../contrib/ajv";
+import schema from "./schema.json";
+
 const { _ } = Cypress;
 
-const yaml: ScreenshotSetup = Cypress.env("_autoScreenshot");
+const yaml: ScreenshotSetup = Cypress.env("_c8yscrnyaml");
 if (!yaml) {
-  throw new Error("No config. Please check the screenshots.config.yml file.");
+  throw new Error("No config. You must pass a config file.");
 }
+
+if (!schema) {
+  throw new Error("No schema. Please check the schema.json file.");
+}
+
+const ajv = new C8yAjvSchemaMatcher();
+ajv.match(yaml, schema, true);
 
 const actionHandlers: {
   [key: string]: (action: any, item: Screenshot, options: any) => void;
@@ -117,7 +127,7 @@ describe(yaml.title ?? `screenshot workflow`, () => {
         const visitUser = visitObject?.user ?? user;
         cy.login(visitUser);
 
-        const url = visitObject?.url ?? item.visit as string;
+        const url = visitObject?.url ?? (item.visit as string);
         const visitSelector = visitObject?.selector;
         const visitTimeout = visitObject?.timeout;
 

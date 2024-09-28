@@ -1,6 +1,6 @@
 export type ScreenshotSetup = {
   /** @format uri */
-  baseUrl: string;
+  baseUrl?: string;
   /**
    * The title used for root Cypress suite
    */
@@ -137,3 +137,14 @@ export type Action =
   | TypeAction
   | ScreenshotAction
   | HighlightAction;
+
+export interface C8yScreenshotOptions {
+  baseUrl: string;
+  config: string;
+  folder: string;
+  open: boolean;
+  browser: string;
+  tags: string[];
+  quiet: boolean;
+  setup: ScreenshotSetup;
+}

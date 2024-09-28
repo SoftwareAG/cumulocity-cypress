@@ -2,63 +2,152 @@ import cypress from "cypress";
 
 import * as path from "path";
 import * as fs from "fs";
+import * as yaml from "js-yaml";
+
+import yargs from "yargs/yargs";
+import { hideBin } from "yargs/helpers";
+import { config as dotenv } from "dotenv";
+
+import { C8yAjvSchemaMatcher } from "../contrib/ajv";
+import schema from "./../screenshot/schema.json";
+import {
+  C8yScreenshotOptions,
+  ScreenshotSetup,
+} from "./../lib/screenshots/types";
 
 (async () => {
-  const args = process.argv.slice(2);
-  if (!args.includes("run") && !args.includes("open")) {
-    // insert the "run" command if it's not already there at the start of the array
-    args.unshift("run");
-  }
-  let runOptions: any | undefined;
-  if (args.includes("run") || args.includes("open")) {
-    runOptions = await cypress.cli.parseRunArguments(args);
-    if (runOptions.configFile?.endsWith(".yml")) {
-      runOptions.configFile = path.resolve(runOptions.configFile);
-      runOptions.env = {
-        ...runOptions.env,
-        ...{ _c8yScreenshotConfig: runOptions.configFile },
-      };
-      delete runOptions.configFile;
-    } else {
-      const configPaths = [
-        "c8yscreenshot.config.yml",
-        "c8yscreenshots.config.yml",
-        "screenshots.config.yml",
-      ];
-      const config = configPaths.find((configPath) => {
-        return fs.existsSync(path.resolve(configPath));
-      });
-      if (config) {
-        console.log("Found config: ", config);
-        runOptions = {
-          env: {
-            _c8yScreenshotConfig: path.resolve(config),
-          },
-        };
-      }
+  try {
+    const envs = {
+      ...(dotenv().parsed ?? {}),
+      ...(dotenv({ path: ".c8yscrn" }).parsed ?? {}),
+    };
+
+    const args = getConfigFromArgs();
+    if (!args.config) {
+      throw new Error(
+        "No config file provided. Use --config option to provide the config file."
+      );
     }
-  }
-  const config = {
-    ...{
-      configFile: path.resolve(path.dirname(__filename), "config.js"),
-      browser: "chrome",
-      testingType: "e2e",
-      config: {
-        e2e: {
-          screenshotsFolder: path.resolve(process.cwd(), "myshots2"),
-          baseUrl: "http://localhost:4200",
-          specPattern: path.join(path.dirname(__filename), "*.cy.js"),
+
+    const yamlFile = path.resolve(process.cwd(), args.config);
+    let configData: ScreenshotSetup;
+    try {
+      configData = readYamlFile(yamlFile);
+    } catch (error: any) {
+      throw new Error(`Error reading config file. ${error.message}`);
+    }
+
+    try {
+      const ajv = new C8yAjvSchemaMatcher();
+      ajv.match(configData, schema, true);
+    } catch (error: any) {
+      throw new Error(`Invalid config file. ${error.message}`);
+    }
+
+    // might run in different environments, so we need to find the correct extension
+    let fileExtension = __filename?.split(".")?.pop();
+    if (!fileExtension || !["js", "ts", "mjs", "cjs"].includes(fileExtension)) {
+      fileExtension = "js";
+    }
+    const cypressConfigFile = path.resolve(
+      path.dirname(__filename),
+      `config.${fileExtension}`
+    );
+    const config = {
+      ...{
+        configFile: cypressConfigFile,
+        browser: args.browser ?? "chrome",
+        testingType: "e2e" as const,
+        quiet: args.quiet ?? true,
+        config: {
+          e2e: {
+            baseUrl: args.baseUrl ?? "http://localhost:8080",
+            screenshotsFolder: path.resolve(
+              process.cwd(),
+              args.folder ?? "c8yscrn"
+            ),
+            specPattern: path.join(
+              path.dirname(__filename),
+              `*.cy.${fileExtension}`
+            ),
+          },
         },
       },
-    },
-    ...(runOptions ?? {}),
-  };
+      ...{
+        env: {
+          ...envs,
+          ...{ _c8yscrnConfigFile: yamlFile, _c8yscrnyaml: configData },
+        },
+      },
+    };
 
-  console.log("Running Cypress with config: ", config);
-
-  if (args.includes("open")) {
-    await cypress.open(config);
-  } else {
-    await cypress.run(config);
+    if (args.open === true) {
+      await cypress.open(config);
+    } else {
+      await cypress.run(config);
+    }
+  } catch (error: any) {
+    console.error(error.message);
+    process.exit(1);
   }
 })();
+
+export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
+  const result = yargs(hideBin(process.argv))
+    .usage("Usage: $0 [options]")
+    .scriptName("c8yscrn")
+    .option("config", {
+      alias: "c",
+      type: "string",
+      requiresArg: true,
+      description: "The yaml config file",
+      required: true,
+      default: "c8yscrn.config.yaml",
+    })
+    .option("folder", {
+      alias: "f",
+      type: "string",
+      requiresArg: true,
+      description: "The target folder for the screenshots",
+    })
+    .option("baseUrl", {
+      alias: "u",
+      type: "string",
+      requiresArg: true,
+      description: "The Cumulocity base url",
+    })
+    .option("browser", {
+      alias: "b",
+      type: "string",
+      requiresArg: true,
+      default: "chrome",
+      description: "Browser to use",
+    })
+    .option("open", {
+      type: "boolean",
+      requiresArg: false,
+      default: false,
+      hidden: true,
+    })
+    .option("quiet", {
+      type: "boolean",
+      default: true,
+      requiresArg: false,
+      hidden: true,
+    })
+    .help()
+    .wrap(80)
+    .parseSync();
+
+  const filteredResult = Object.fromEntries(
+    Object.entries(result).filter(([, value]) => value !== undefined)
+  );
+
+  return filteredResult;
+}
+
+function readYamlFile(filePath: string): any {
+  const fileContent = fs.readFileSync(filePath, "utf-8");
+  const data = yaml.load(fileContent);
+  return data;
+}
