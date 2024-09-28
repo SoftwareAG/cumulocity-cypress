@@ -61,7 +61,10 @@ import {
         quiet: args.quiet ?? true,
         config: {
           e2e: {
-            baseUrl: args.baseUrl ?? "http://localhost:8080",
+            baseUrl:
+              args.baseUrl ??
+              process.env.C8Y_BASEURL ??
+              "http://localhost:8080",
             screenshotsFolder: path.resolve(
               process.cwd(),
               args.folder ?? "c8yscrn"
@@ -136,7 +139,7 @@ export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
       hidden: true,
     })
     .help()
-    .wrap(80)
+    .wrap(100)
     .parseSync();
 
   const filteredResult = Object.fromEntries(
