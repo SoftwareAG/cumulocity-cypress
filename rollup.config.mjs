@@ -18,7 +18,7 @@ export default [
       {
         name: "c8y",
         file: "dist/plugin/index.js",
-        format: "umd",
+        format: "commonjs",
         sourcemap: true,
       },
     ],
