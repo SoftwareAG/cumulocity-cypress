@@ -30,12 +30,10 @@ export class C8yScreenshotRunner {
 
   constructor(config?: ScreenshotSetup) {
     this.config = config ?? Cypress.env("_c8yscrnyaml");
-    if (!config) {
-      throw new Error("No config. You must pass a config file.");
-    }
-
-    if (!schema) {
-      throw new Error("No schema. Please check the schema.json file.");
+    if (!this.config) {
+      throw new Error(
+        "C8yScreenshotRunner requires configuration. You must pass a valid configuration when creating a C8yScreenshotRunner."
+      );
     }
 
     this.actionHandlers = {};

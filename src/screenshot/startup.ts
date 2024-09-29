@@ -30,6 +30,10 @@ import {
     }
 
     const yamlFile = path.resolve(process.cwd(), args.config);
+    if (!fs.existsSync(yamlFile)) {
+      throw new Error(`Config file ${yamlFile} does not exist.`);
+    }
+    
     let configData: ScreenshotSetup;
     try {
       configData = readYamlFile(yamlFile);

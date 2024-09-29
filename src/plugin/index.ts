@@ -13,6 +13,7 @@ import * as yaml from "js-yaml";
 
 import { C8yAjvSchemaMatcher } from "../contrib/ajv";
 import schema from "./../screenshot/schema.json";
+import { ScreenshotSetup } from "../lib/screenshots/types";
 
 export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
@@ -127,39 +128,75 @@ export function configureC8yPlugin(
   }
 }
 
+/**
+ * Configuration options for the Cumulocity Screenshot plugin and workflow. This sets up
+ * the configuration as well as browser and screenshots handlers.
+ * @param on Cypress plugin events
+ * @param config Cypress plugin config
+ * @param setup Configuration file or setup object
+ */
 export function configureC8yScreenshotPlugin(
   on: Cypress.PluginEvents,
-  config: Cypress.PluginConfigOptions
+  config: Cypress.PluginConfigOptions,
+  setup?: string | ScreenshotSetup
 ) {
   const log = debug("c8y:scrn:plugin");
-  let configData = config.env._c8yscrnyaml;
-  if (!configData) {
-    const filePath = config.env._c8yscrnConfigFile;
-    if (!filePath) {
-      log("No config file provided. Skipping configuration.");
-      return config;
-    }
-    log(`Using config file ${filePath}`);
+  let configData: string | ScreenshotSetup | undefined = setup;
+  if (config.env._c8yscrnyaml != null) {
+    log(`Using config from _c8yscrnyaml`);
+    configData = config.env._c8yscrnyaml;
+  }
 
-    if (!schema) {
-      log(`schem.json not found. Skipping configuration.`);
+  let filePaths: string[] = [];
+  if (typeof configData === "string") {
+    filePaths.push(configData);
+    configData = undefined;
+  }
+
+  if (configData == null) {
+    if (config.env._c8yscrnConfigFile != null) {
+      filePaths.push(config.env._c8yscrnConfigFile);
+    }
+    filePaths.push("c8yscrn.config.yaml");
+    log(`Looking for config file in [${filePaths.join(", ")}]`);
+    const projectRoot =
+      path.dirname(config.configFile) ??
+      config.fileServerFolder ??
+      process.cwd();
+    log(`Using project root ${projectRoot}`);
+    
+    filePaths = filePaths
+      .map((p) => path.resolve(projectRoot, p))
+      .filter((p) => fs.existsSync(p));
+    if (filePaths.length !== 0) {
+      log(`Found ${filePaths.join(", ")}`);
+    }
+    if (filePaths.length == 0) {
       throw new Error(
-        `Failed to validate ${filePath}. No schema found for validation. Please check the schema.json file.`
+        "No config file found. Please provide config file or create c8yscrn.config.yaml."
       );
     }
 
-    configData = readYamlFile(filePath);
-    const ajv = new C8yAjvSchemaMatcher();
-    log(`Validating config file ${filePath}`);
-    ajv.match(configData, schema, true);
-  } else {
-    log("Using setup from _c8yscrnyaml.");
+    log(`Using config file ${filePaths[0]}`);
+    configData = readYamlFile(filePaths[0]);
   }
+
+  if (!configData || typeof configData === "string") {
+    throw new Error(
+      "No config data found. Please provide config file or create c8yscrn.config.yaml."
+    );
+  }
+
+  const ajv = new C8yAjvSchemaMatcher();
+  ajv.match(configData, schema, true);
+  log(
+    `Config validated. ${configData.screenshots?.length} screenshots configured.`
+  );
 
   config.env._c8yscrnyaml = configData;
   config.baseUrl =
     config.baseUrl ?? configData?.baseUrl ?? "http://localhost:8080";
-  log(`Using baseUrl to ${config.baseUrl}`);
+  log(`Using baseUrl ${config.baseUrl}`);
 
   // https://github.com/cypress-io/cypress/issues/27260
   on("before:browser:launch", (browser, launchOptions) => {
