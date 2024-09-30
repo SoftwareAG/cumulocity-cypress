@@ -571,7 +571,7 @@
                 },
                 "url": {
                     "description": "The URI to visit. This should be a relative URI to the base URL.",
-                    "format": "uri",
+                    "format": "uri-reference",
                     "type": "string"
                 },
                 "user": {

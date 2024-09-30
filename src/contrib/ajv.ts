@@ -23,6 +23,7 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
     this.ajv = new Ajv({ strict: "log" });
     addFormats(this.ajv, [
       "uri",
+      "uri-reference",
       "url",
       "uuid",
       "hostname",

@@ -142,8 +142,9 @@ type ScreenshotSettings = {
 
 export type Visit = GlobalVisitOptions & {
   /**
-   * The URI to visit. This should be a relative URI to the base URL.
-   * @format uri
+   * The URL to visit. Currently only an URI relative to the base URL is 
+   * supported.
+   * @format uri-reference
    */
   url: string;
   /**
