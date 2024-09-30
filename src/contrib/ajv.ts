@@ -4,7 +4,7 @@ import * as semver from "semver";
 import Ajv, { AnySchemaObject, SchemaObject } from "ajv";
 import addFormats from "ajv-formats";
 
-import { C8ySchemaMatcher } from "cumulocity-cypress/shared/c8ypact/schema";
+import { C8ySchemaMatcher } from "../shared/c8ypact/schema";
 
 import draft06Schema from "ajv/lib/refs/json-schema-draft-06.json";
 
