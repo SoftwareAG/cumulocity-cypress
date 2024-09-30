@@ -140,10 +140,6 @@
                                                 "outline: dashed",
                                                 "outline-offset: +3px"
                                             ]
-                                        },
-                                        "text": {
-                                            "description": "The text to set in the element",
-                                            "type": "string"
                                         }
                                     },
                                     "required": [
@@ -173,10 +169,6 @@
                                                     "outline: dashed",
                                                     "outline-offset: +3px"
                                                 ]
-                                            },
-                                            "text": {
-                                                "description": "The text to set in the element",
-                                                "type": "string"
                                             }
                                         },
                                         "required": [
@@ -187,6 +179,30 @@
                                     "type": "array"
                                 }
                             ]
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "additionalProperties": false,
+                            "description": "A text action modifies the text value of selected DOM element.",
+                            "properties": {
+                                "selector": {
+                                    "$ref": "#/definitions/Selector"
+                                },
+                                "value": {
+                                    "description": "The value to set",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "selector",
+                                "value"
+                            ],
+                            "type": "object"
                         }
                     },
                     "type": "object"
@@ -342,10 +358,6 @@
                                                         "outline: dashed",
                                                         "outline-offset: +3px"
                                                     ]
-                                                },
-                                                "text": {
-                                                    "description": "The text to set in the element",
-                                                    "type": "string"
                                                 }
                                             },
                                             "required": [
@@ -375,10 +387,6 @@
                                                             "outline: dashed",
                                                             "outline-offset: +3px"
                                                         ]
-                                                    },
-                                                    "text": {
-                                                        "description": "The text to set in the element",
-                                                        "type": "string"
                                                     }
                                                 },
                                                 "required": [
@@ -389,6 +397,30 @@
                                             "type": "array"
                                         }
                                     ]
+                                }
+                            },
+                            "type": "object"
+                        },
+                        {
+                            "additionalProperties": false,
+                            "properties": {
+                                "text": {
+                                    "additionalProperties": false,
+                                    "description": "A text action modifies the text value of selected DOM element.",
+                                    "properties": {
+                                        "selector": {
+                                            "$ref": "#/definitions/Selector"
+                                        },
+                                        "value": {
+                                            "description": "The value to set",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "selector",
+                                        "value"
+                                    ],
+                                    "type": "object"
                                 }
                             },
                             "type": "object"

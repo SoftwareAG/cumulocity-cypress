@@ -190,6 +190,22 @@ export type TypeAction = {
   };
 };
 
+export type TextAction = {
+  /**
+   * A text action modifies the text value of selected DOM element.
+   */
+  text?: {
+    /*
+     * The selector to modify
+     */
+    selector: Selector;
+    /**
+     * The value to set
+     */
+    value: string;
+  };
+};
+
 export type HighlightActionProperties = {
   /**
    * The selector of the DOM element
@@ -205,10 +221,6 @@ export type HighlightActionProperties = {
    * @examples ["background-color: yellow", "outline: dashed", "outline-offset: +3px"]
    */
   styles?: any;
-  /**
-   * The text to set in the element
-   */
-  text?: string;
 };
 
 export type HighlightAction = {
@@ -275,7 +287,8 @@ export type Action =
   | ClickAction
   | TypeAction
   | ScreenshotAction
-  | HighlightAction;
+  | HighlightAction
+  | TextAction;
 
 // Internal types used within C8yScreenshotRunner
 // This will not be exposed to schema.json

@@ -12,6 +12,7 @@ import {
   ScreenshotAction,
   ScreenshotSetup,
   Selector,
+  TextAction,
   TypeAction,
   Visit,
 } from "../lib/screenshots/types";
@@ -41,6 +42,7 @@ export class C8yScreenshotRunner {
     this.registerActionHandler("type", this.type);
     this.registerActionHandler("highlight", this.highlight);
     this.registerActionHandler("screenshot", this.screenshot);
+    this.registerActionHandler("text", this.text);
   }
 
   registerActionHandler(key: string, handler: C8yScreenshotActionHandler) {
@@ -223,13 +225,18 @@ export class C8yScreenshotRunner {
             $element.css(highlight.styles);
           } else if (highlight?.border != null) {
             $element.css("border", highlight.border || "2px solid red");
-          } else if (highlight?.text != null) {
-            cy.get(selector).then(($element) => {
-              $element.text(highlight.text!);
-            });
           }
         });
       }
+    });
+  }
+
+  protected text(action: TextAction) {
+    const selector = getSelector(action.text?.selector);
+    const value = action.text?.value;
+    if (selector == null || value == null) return;
+    cy.get(selector).then(($element) => {
+      $element.text(value);
     });
   }
 
