@@ -46,7 +46,7 @@ export function configureC8yPlugin(
   config: Cypress.PluginConfigOptions,
   options: C8yPluginConfig = {}
 ) {
-  const log = debug("c8y:plugin");
+  const log = debug("c8y:c8yscrn:plugin");
 
   let adapter = options.pactAdapter;
   if (!adapter) {
