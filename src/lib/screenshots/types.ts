@@ -1,11 +1,20 @@
 export type ScreenshotSetup = {
-  /** @format uri */
+  /**
+   * The base URL used for all relative requests.
+   * @format uri
+   */
   baseUrl?: string;
   /**
-   * The title used for root Cypress suite
+   * The title used for root group of screenshot workflows
    */
   title?: string;
+  /**
+   * The global settings for all screenshots
+   */
   global?: ScreenshotSettings & TestcaseOptions & GlobalVisitOptions;
+  /**
+   * The screensht workflows
+   */
   screenshots: Screenshot[];
 };
 
@@ -15,12 +24,16 @@ export type TestcaseOptions = {
    */
   tags?: string[];
   /**
-   * The shell is used to dermine the version of the application used by "requires" (optional)
+   * The shell is used to dermine the version of the application used by
+   * "requires" (optional)
    * @examples ["cockpit, devicemanagement, oee"]
    */
   shell?: string;
   /**
-   * The required semver version range of the shell applications. If the shell version does not satisfy the range, the screenshot is skipped. (optional)
+   * Requires the shell application to have the a version in the given range.
+   * The range must be a valid semver range. If requires is configured and shell
+   * version does not fullfill the version requirement, the screenshot workflow
+   * will be skipped.
    * @format semver-range
    * @examples ["1.x, ^1.0.0, >=1.0.0 <2.0.0"]
    */
@@ -31,15 +44,19 @@ export type SemverRange = string;
 
 export type GlobalVisitOptions = {
   /**
-   * The language to use for taking screenshots
+   * Load Cumulocity with the given language
    * @example "en"
    */
   language?: C8yLanguage;
   /**
-   * The user to login representing the env variabls of type *user*_username and *user*_password
+   * The login user alias. Configure *user*_username and *user*_password env
+   * variables to set the actual user id and password.
+   * @examples ["admin"]
    */
   user?: string;
-  /** @format date-time
+  /**
+   * The date to simulate when running the screenshot workflows
+   * @format date-time
    * @examples ["2024-09-26T19:17:35+02:00"]
    */
   date?: string;
@@ -47,12 +64,35 @@ export type GlobalVisitOptions = {
 
 export type Screenshot = GlobalVisitOptions &
   TestcaseOptions & {
+    /**
+     * The name of the screenshot image as relative path
+     * @examples ["/images/cockpit/dashboard.png"]
+     */
     image: string;
+    /**
+     * The URI to visit
+     * @examples ["/apps/cockpit/index.html#/"]
+     */
     visit: string | Visit;
+    /**
+     * The actions to perform in the screenshot workflow. The last action
+     * is always a screenshot action. If no actions are defined or last actions is
+     * not a screenshot action, a screenshot is taken of the current state of
+     * the application.
+     */
     do?: Action[] | Action;
-    requires?: string | string[];
+    /**
+     * Run only this screenshot workflow and all other workflows that
+     * have only setting enabled
+     */
     only?: boolean;
+    /**
+     * Skip this screenshot workflow
+     */
     skip?: boolean;
+    /**
+     * The configuration and settings of the screenshot
+     */
     settings?: ScreenshotSettings;
   };
 
@@ -72,38 +112,101 @@ type ScreenshotSettings = {
    */
   viewportHeight?: number;
   /**
-   * The type of capturing the screenshot. When fullPage is used, the application is captured in its entirety from top to bottom. Setting is ignored when screenshots are taken for a selected element.
+   * The type of capturing the screenshot. When fullPage is used,
+   * the application is captured in its entirety from top to bottom.
+   * Setting is ignored when screenshots are taken for a selected element.
    */
   capture?: "viewport" | "fullPage";
+  /**
+   * The padding in px used to alter the dimensions of a screenshot of an
+   * element.
+   * @minimum 0
+   * @TJS-type integer
+   */
   padding?: number;
-  scale?: number;
+  /**
+   * Whether to scale the app to fit into the browser viewport.
+   */
+  scale?: boolean;
+  /**
+   * Overwrite existing screenshots. By enabling this setting, existing
+   * screenshots might be deleted before running the screenshot workflow.
+   */
   overwrite?: boolean;
+  /**
+   * When true, prevents JavaScript timers (setTimeout, setInterval, etc)
+   * and CSS animations from running while the screenshot is taken.
+   */
   disableTimersAndAnimations?: boolean;
 };
 
 export type Visit = GlobalVisitOptions & {
+  /**
+   * The URI to visit. This should be a relative URI to the base URL.
+   * @format uri
+   */
   url: string;
+  /**
+   * The timeout in ms to wait for the page to load.
+   * @examples [30000]
+   * @TJS-type integer
+   */
   timeout?: number;
+  /**
+   * The selector to wait for before taking the screenshot.
+   * @examples ["c8y-navigator-outlet c8y-app-icon"]
+   * @default "c8y-navigator-outlet c8y-app-icon"
+   */
   selector?: string;
 };
 
 export type ClickAction = {
+  /**
+   * A click action triggers a click event on the selected DOM element.
+   */
   click?: {
+    /**
+     * The selector to click
+     */
     selector: Selector;
   };
 };
 
 export type TypeAction = {
+  /**
+   * A type action triggers a type event on the selected DOM element. Use to
+   * simulate typing in an input field.
+   */
   type?: {
+    /**
+     * The selector to type
+     */
     selector: Selector;
+    /**
+     * The value to type
+     */
     value: string;
   };
 };
 
 export type HighlightActionProperties = {
+  /**
+   * The selector of the DOM element
+   */
   selector: Selector;
+  /**
+   * The border style. Use any valid CSS border style.
+   * @examples ["1px solid red"]
+   */
   border?: string;
+  /**
+   * The CSS styles to apply to the selected  element. Use any valid CSS styles.
+   * @examples ["background-color: yellow", "outline: dashed", "outline-offset: +3px"]
+   */
   styles?: any;
+  /**
+   * The text to set in the element
+   */
   text?: string;
 };
 
@@ -112,9 +215,29 @@ export type HighlightAction = {
 };
 
 export type ScreenshotClipArea = {
+  /**
+   * The x-coordinate of the top-left corner of the clip area
+   * @minimum 0
+   * @TJS-type integer
+   */
   x: number;
+  /**
+   * The y-coordinate of the top-left corner of the clip area
+   * @minimum 0
+   * @TJS-type integer
+   */
   y: number;
+  /**
+   * The width of the clip area. If negative, the width is subtracted from the
+   * viewport width.
+   * @TJS-type integer
+   */
   width: number;
+  /**
+   * The height of the clip area. If negative, the height is subtracted from the
+   * viewport height.
+   * @TJS-type integer
+   */
   height: number;
 };
 
@@ -125,9 +248,24 @@ export type Selector =
     };
 
 export type ScreenshotAction = {
+  /**
+   * The screenshot action triggers a screenshot of the current state of the
+   * application.
+   */
   screenshot?: {
+    /**
+     * The path to store the screenshot. This is the relative path used
+     * within the screenshot folder.
+     */
     path?: string;
+    /**
+     * The clip area within the screenshot image. The clip area is defined
+     * by the top-left corner (x, y) and the width and height of the clip area.
+     */
     clip?: ScreenshotClipArea;
+    /**
+     * The selector of the DOM element to capture
+     */
     selector?: Selector;
   };
 };
@@ -137,6 +275,9 @@ export type Action =
   | TypeAction
   | ScreenshotAction
   | HighlightAction;
+
+// Internal types used within C8yScreenshotRunner
+// This will not be exposed to schema.json
 
 export interface C8yScreenshotOptions {
   baseUrl: string;
