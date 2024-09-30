@@ -17,11 +17,6 @@ import {
 
 (async () => {
   try {
-    const envs = {
-      ...(dotenv().parsed ?? {}),
-      ...(dotenv({ path: ".c8yscrn" }).parsed ?? {}),
-    };
-
     const args = getConfigFromArgs();
     if (!args.config) {
       throw new Error(
@@ -33,7 +28,14 @@ import {
     if (!fs.existsSync(yamlFile)) {
       throw new Error(`Config file ${yamlFile} does not exist.`);
     }
-    
+
+    const tags = (args.tags ?? []).join(",");
+    const envs = {
+      ...(dotenv().parsed ?? {}),
+      ...(dotenv({ path: ".c8yscrn" }).parsed ?? {}),
+      ...(tags.length > 0 ? { grepTags: tags } : {}),
+    };
+
     let configData: ScreenshotSetup;
     try {
       configData = readYamlFile(yamlFile);
@@ -141,6 +143,22 @@ export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
       default: true,
       requiresArg: false,
       hidden: true,
+    })
+    .option("tags", {
+      alias: "t",
+      type: "array",
+      requiresArg: false,
+      description: "Run only screenshot workflows with the given tags",
+      coerce: (arg) => {
+        const result: string[] = [];
+        (Array.isArray(arg) ? arg : [arg]).forEach((tag: string) => {
+          const t = tag?.split(",");
+          if (t != null) {
+            result.push(...t);
+          }
+        });
+        return result;
+      },
     })
     .help()
     .wrap(100)
