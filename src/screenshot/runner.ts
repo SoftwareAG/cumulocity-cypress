@@ -155,7 +155,7 @@ export class C8yScreenshotRunner {
               "en";
             cy.visitAndWaitForSelector(
               url,
-              language,
+              language as any,
               visitSelector,
               visitTimeout
             );

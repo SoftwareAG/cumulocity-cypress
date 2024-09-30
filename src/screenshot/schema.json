@@ -443,10 +443,6 @@
                 },
                 "language": {
                     "description": "Load Cumulocity with the given language",
-                    "enum": [
-                        "de",
-                        "en"
-                    ],
                     "type": "string"
                 },
                 "only": {
@@ -580,10 +576,6 @@
                 },
                 "language": {
                     "description": "Load Cumulocity with the given language",
-                    "enum": [
-                        "de",
-                        "en"
-                    ],
                     "type": "string"
                 },
                 "selector": {
@@ -602,7 +594,7 @@
                     "type": "integer"
                 },
                 "url": {
-                    "description": "The URI to visit. This should be a relative URI to the base URL.",
+                    "description": "The URL to visit. Currently only an URI relative to the base URL is \nsupported.",
                     "format": "uri-reference",
                     "type": "string"
                 },
@@ -652,10 +644,6 @@
                 },
                 "language": {
                     "description": "Load Cumulocity with the given language",
-                    "enum": [
-                        "de",
-                        "en"
-                    ],
                     "type": "string"
                 },
                 "overwrite": {

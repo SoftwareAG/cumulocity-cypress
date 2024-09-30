@@ -47,7 +47,7 @@ export type GlobalVisitOptions = {
    * Load Cumulocity with the given language
    * @example "en"
    */
-  language?: C8yLanguage;
+  language?: "en" | "de" | string;
   /**
    * The login user alias. Configure *user*_username and *user*_password env
    * variables to set the actual user id and password.
