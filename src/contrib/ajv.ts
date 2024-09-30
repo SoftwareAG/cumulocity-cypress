@@ -34,7 +34,7 @@ export class C8yAjvSchemaMatcher implements C8ySchemaMatcher {
 
     this.ajv.addFormat("integer", {
       type: "number",
-      validate: (x) => _.isInteger(x),
+      validate: (x: any) => _.isInteger(x),
     });
 
     this.ajv.addFormat("boolean", {
