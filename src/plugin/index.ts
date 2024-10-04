@@ -9,11 +9,10 @@ import {
 import { C8yPact } from "../shared/c8ypact/c8ypact";
 import { C8yAuthOptions, oauthLogin } from "../shared/c8yclient";
 
-import * as yaml from "js-yaml";
-
 import { C8yAjvSchemaMatcher } from "../contrib/ajv";
 import schema from "./../screenshot/schema.json";
 import { ScreenshotSetup } from "../lib/screenshots/types";
+import { readYamlFile } from "../screenshot/helper";
 
 export { C8yPactFileAdapter, C8yPactDefaultFileAdapter };
 
@@ -273,10 +272,4 @@ function getVersion() {
     );
   }
   return "unknown";
-}
-
-function readYamlFile(filePath: string): any {
-  const fileContent = fs.readFileSync(filePath, "utf-8");
-  const data = yaml.load(fileContent);
-  return data;
 }

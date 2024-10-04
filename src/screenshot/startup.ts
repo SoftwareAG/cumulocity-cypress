@@ -2,7 +2,6 @@ import cypress from "cypress";
 
 import * as path from "path";
 import * as fs from "fs";
-import * as yaml from "js-yaml";
 
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
@@ -10,10 +9,14 @@ import { config as dotenv } from "dotenv";
 
 import { C8yAjvSchemaMatcher } from "../contrib/ajv";
 import schema from "./../screenshot/schema.json";
+import { createInitConfig, readYamlFile } from "./helper";
 import {
   C8yScreenshotOptions,
   ScreenshotSetup,
 } from "./../lib/screenshots/types";
+
+import debug from "debug";
+const log = debug("c8y:c8yscrn:startup");
 
 (async () => {
   try {
@@ -25,7 +28,18 @@ import {
     }
 
     const yamlFile = path.resolve(process.cwd(), args.config);
+    if (args.init === true) {
+      if (!fs.existsSync(yamlFile)) {
+        fs.writeFileSync(yamlFile, createInitConfig(), "utf8");
+        log(`Config file ${yamlFile} created.`);
+        return;
+      } else {
+        log(`Config file ${yamlFile} already exists. Skipping init.`);
+      }
+    }
+
     if (!fs.existsSync(yamlFile)) {
+      log(`Config file ${yamlFile} does not exist.`);
       throw new Error(`Config file ${yamlFile} does not exist.`);
     }
 
@@ -44,6 +58,7 @@ import {
     }
 
     try {
+      log(`Validating config file ${yamlFile}`);
       const ajv = new C8yAjvSchemaMatcher();
       ajv.match(configData, schema, true);
     } catch (error: any) {
@@ -55,10 +70,19 @@ import {
     if (!fileExtension || !["js", "ts", "mjs", "cjs"].includes(fileExtension)) {
       fileExtension = "js";
     }
+    const baseUrl =
+      args.baseUrl ?? process.env.C8Y_BASEURL ?? "http://localhost:8080";
+    log(`Using baseUrl ${baseUrl}`);
+    const screenshotsFolder = path.resolve(
+      process.cwd(),
+      args.folder ?? "c8yscrn"
+    );
+    log(`Using screenshots folder ${screenshotsFolder}`);
     const cypressConfigFile = path.resolve(
       path.dirname(__filename),
       `config.${fileExtension}`
     );
+    log(`Using cypress config file ${cypressConfigFile}`);
     const config = {
       ...{
         configFile: cypressConfigFile,
@@ -67,14 +91,8 @@ import {
         quiet: args.quiet ?? true,
         config: {
           e2e: {
-            baseUrl:
-              args.baseUrl ??
-              process.env.C8Y_BASEURL ??
-              "http://localhost:8080",
-            screenshotsFolder: path.resolve(
-              process.cwd(),
-              args.folder ?? "c8yscrn"
-            ),
+            baseUrl,
+            screenshotsFolder,
             specPattern: path.join(
               path.dirname(__filename),
               `*.cy.${fileExtension}`
@@ -144,6 +162,13 @@ export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
       requiresArg: false,
       hidden: true,
     })
+    .option("init", {
+      alias: "i",
+      type: "boolean",
+      requiresArg: false,
+      default: false,
+      description: "Initialize the config file",
+    })
     .option("tags", {
       alias: "t",
       type: "array",
@@ -169,10 +194,4 @@ export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
   );
 
   return filteredResult;
-}
-
-function readYamlFile(filePath: string): any {
-  const fileContent = fs.readFileSync(filePath, "utf-8");
-  const data = yaml.load(fileContent);
-  return data;
 }

@@ -302,6 +302,7 @@ export interface C8yScreenshotOptions {
   tags: string[];
   quiet: boolean;
   setup: ScreenshotSetup;
+  init: boolean;
 }
 
 export type C8yScreenshotActionHandler = (
