@@ -3,8 +3,9 @@
   "compilerOptions": {
     "rootDir": ".",
     "types": ["node", "jest"],
+    "resolveJsonModule": true,
     "strict": true,
     "strictNullChecks": false,
   },
-  "include": ["**/*.spec.ts", "**/*.spec.tsx"],
+  "include": ["**/*.spec.ts", "**/*.spec.tsx", "**/schema.json"],
 }
