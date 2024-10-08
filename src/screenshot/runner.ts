@@ -15,6 +15,7 @@ import {
   TextAction,
   TypeAction,
   Visit,
+  WaitAction,
 } from "../lib/screenshots/types";
 
 import { C8yAjvSchemaMatcher } from "../contrib/ajv";
@@ -43,6 +44,7 @@ export class C8yScreenshotRunner {
     this.registerActionHandler("highlight", this.highlight);
     this.registerActionHandler("screenshot", this.screenshot);
     this.registerActionHandler("text", this.text);
+    this.registerActionHandler("wait", this.wait);
   }
 
   registerActionHandler(key: string, handler: C8yScreenshotActionHandler) {
@@ -238,6 +240,11 @@ export class C8yScreenshotRunner {
     cy.get(selector).then(($element) => {
       $element.text(value);
     });
+  }
+
+  protected wait(action: WaitAction) {
+    if (action.wait == null) return;
+    cy.wait(action.wait);
   }
 
   protected screenshot(

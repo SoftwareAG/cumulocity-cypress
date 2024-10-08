@@ -206,6 +206,14 @@ export type TextAction = {
   };
 };
 
+export type WaitAction = {
+  /**
+   * A wait action waits for the given time in ms.
+   * @TJS-type integer
+   */
+  wait?: number;
+};
+
 export type HighlightActionProperties = {
   /**
    * The selector of the DOM element
@@ -288,7 +296,8 @@ export type Action =
   | TypeAction
   | ScreenshotAction
   | HighlightAction
-  | TextAction;
+  | TextAction
+  | WaitAction;
 
 // Internal types used within C8yScreenshotRunner
 // This will not be exposed to schema.json
