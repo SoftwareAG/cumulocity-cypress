@@ -66,6 +66,7 @@ const log = debug("c8y:c8yscrn:startup");
     }
 
     // might run in different environments, so we need to find the correct extension
+    // this is required when running in development mode from ts files
     let fileExtension = __filename?.split(".")?.pop();
     if (!fileExtension || !["js", "ts", "mjs", "cjs"].includes(fileExtension)) {
       fileExtension = "js";
@@ -77,16 +78,31 @@ const log = debug("c8y:c8yscrn:startup");
       process.cwd(),
       args.folder ?? "c8yscrn"
     );
+
     log(`Using screenshots folder ${screenshotsFolder}`);
     const cypressConfigFile = path.resolve(
       path.dirname(__filename),
       `config.${fileExtension}`
     );
     log(`Using cypress config file ${cypressConfigFile}`);
+
+    const browser = (args.browser ?? "chrome").toLowerCase().trim();
+    log(`Using browser ${args.browser}`);
+    if (!["chrome", "firefox", "electron"].includes(browser)) {
+      throw new Error(
+        `Invalid browser ${browser}. Supported browsers are chrome, firefox, electron.`
+      );
+    }
+
+    const browserLaunchArgs =
+      process.env[`C8Y_${browser.toUpperCase()}_LAUNCH_ARGS`] ??
+      process.env.C8Y_BROWSER_LAUNCH_ARGS ??
+      "";
+
     const config = {
       ...{
         configFile: cypressConfigFile,
-        browser: args.browser ?? "chrome",
+        browser,
         testingType: "e2e" as const,
         quiet: args.quiet ?? true,
         config: {
@@ -103,7 +119,11 @@ const log = debug("c8y:c8yscrn:startup");
       ...{
         env: {
           ...envs,
-          ...{ _c8yscrnConfigFile: yamlFile, _c8yscrnyaml: configData },
+          ...{
+            _c8yscrnConfigFile: yamlFile,
+            _c8yscrnyaml: configData,
+            _c8yscrnBrowserLaunchArgs: browserLaunchArgs,
+          },
         },
       },
     };

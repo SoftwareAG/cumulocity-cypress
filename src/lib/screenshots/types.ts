@@ -307,7 +307,8 @@ export interface C8yScreenshotOptions {
   config: string;
   folder: string;
   open: boolean;
-  browser: string;
+  browser: "chrome" | "firefox" | "electron";
+  browserLaunchArgs: string;
   tags: string[];
   quiet: boolean;
   setup: ScreenshotSetup;

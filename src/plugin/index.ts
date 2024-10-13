@@ -146,38 +146,38 @@ export function configureC8yScreenshotPlugin(
     configData = config.env._c8yscrnyaml;
   }
 
-  let filePaths: string[] = [];
+  let lookupPaths: string[] = [];
   if (typeof configData === "string") {
-    filePaths.push(configData);
+    lookupPaths.push(configData);
     configData = undefined;
   }
 
   if (configData == null) {
     if (config.env._c8yscrnConfigFile != null) {
-      filePaths.push(config.env._c8yscrnConfigFile);
+      lookupPaths.push(config.env._c8yscrnConfigFile);
     }
-    filePaths.push("c8yscrn.config.yaml");
-    log(`Looking for config file in [${filePaths.join(", ")}]`);
+    lookupPaths.push("c8yscrn.config.yaml");
+    log(`Looking for config file in [${lookupPaths.join(", ")}]`);
     const projectRoot =
       path.dirname(config.configFile) ??
       config.fileServerFolder ??
       process.cwd();
     log(`Using project root ${projectRoot}`);
-    
-    filePaths = filePaths
+
+    lookupPaths = lookupPaths
       .map((p) => path.resolve(projectRoot, p))
       .filter((p) => fs.existsSync(p));
-    if (filePaths.length !== 0) {
-      log(`Found ${filePaths.join(", ")}`);
+    if (lookupPaths.length !== 0) {
+      log(`Found ${lookupPaths.join(", ")}`);
     }
-    if (filePaths.length == 0) {
+    if (lookupPaths.length == 0) {
       throw new Error(
         "No config file found. Please provide config file or create c8yscrn.config.yaml."
       );
     }
 
-    log(`Using config file ${filePaths[0]}`);
-    configData = readYamlFile(filePaths[0]);
+    log(`Using config file ${lookupPaths[0]}`);
+    configData = readYamlFile(lookupPaths[0]);
   }
 
   if (!configData || typeof configData === "string") {
@@ -197,20 +197,43 @@ export function configureC8yScreenshotPlugin(
     config.baseUrl ?? configData?.baseUrl ?? "http://localhost:8080";
   log(`Using baseUrl ${config.baseUrl}`);
 
+  // https://www.cypress.io/blog/generate-high-resolution-videos-and-screenshots
   // https://github.com/cypress-io/cypress/issues/27260
   on("before:browser:launch", (browser, launchOptions) => {
+    log(
+      `Launching browser ${browser.name} in ${
+        browser.isHeadless ? "headless" : "headed"
+      } mode`
+    );
+
+    const viewportWidth = configData?.global?.viewportWidth ?? 1920;
+    const viewportHeight = configData?.global?.viewportHeight ?? 1080;
+    log(`Setting viewport to ${viewportWidth}x${viewportHeight}`);
     if (browser.name === "chrome") {
-      const viewportWidth = configData?.global?.viewportWidth ?? 1920;
-      const viewportHeight = configData?.global?.viewportHeight ?? 1080;
       launchOptions.args.push(
-        `--window-size=${viewportWidth},${viewportHeight} --headless=old`
+        `--window-size=${viewportWidth},${viewportHeight}`
       );
+      log(`Set chrome launch options: ${launchOptions.args.slice(-1)}`);
+    }
+    if (browser.name === "electron") {
+      launchOptions.preferences.width = viewportWidth;
+      launchOptions.preferences.height = viewportHeight;
+      launchOptions.preferences.resizable = false;
       log(
-        `Set chrome launch options: ${
-          launchOptions.args[launchOptions.args.length - 1]
-        }`
+        `Set electron perferences width=${viewportWidth}, height=${viewportHeight}`
       );
     }
+    if (browser.name === "firefox") {
+      launchOptions.args.push(`--width=${viewportWidth}`);
+      launchOptions.args.push(`--height=${viewportHeight}`);
+      log(`Set firefox launch options: ${launchOptions.args.slice(-2)}`);
+    }
+    const launchArgs = config.env._c8yscrnBrowserLaunchArgs
+    if (launchArgs != null && launchArgs !== "") {
+      log(`Adding additional launch options ${launchArgs}`);
+      launchOptions.args.push(launchArgs);
+    }
+
     return launchOptions;
   });
 
