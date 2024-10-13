@@ -208,10 +208,39 @@ export type TextAction = {
 
 export type WaitAction = {
   /**
-   * A wait action waits for the given time in ms.
-   * @TJS-type integer
+   * A wait action waits for the given time in ms or for a given
+   * chainer assertion.
+   * @examples [1000, 10000]
    */
-  wait?: number;
+  wait?: number | {
+    /**
+     * The selector of the DOM element to wait for
+     */
+    selector: Selector;
+    /**
+     * The timeout in ms to wait for
+     * @TJS-type integer
+     * @default 4000
+     */
+    timeout?: number;
+    /**
+     * The chainer assertion to wait for. This translates to a Cypress get().should(). 
+     * See https://docs.cypress.io/api/commands/should
+     */
+    assert?: string | {
+      /**
+       * The chainer assertion to. Could be any valid Cypress chainer. The chainer is
+       * not validated and may or may not have a value to assert.
+       * @examples ["have.length", "eq", "be.visible"]
+       */
+      chainer: string;
+      /**
+       * The value to assert. The value is optional and may not be required by the
+       * chainer assertion.
+       */
+      value?: string | string[];
+    };
+  };
 };
 
 export type HighlightActionProperties = {

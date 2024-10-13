@@ -206,6 +206,82 @@
                         }
                     },
                     "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "wait": {
+                            "anyOf": [
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "assert": {
+                                            "anyOf": [
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "chainer": {
+                                                            "description": "The chainer assertion to. Could be any valid Cypress chainer. The chainer is\nnot validated and may or may not have a value to assert.",
+                                                            "examples": [
+                                                                "have.length",
+                                                                "eq",
+                                                                "be.visible"
+                                                            ],
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "type": "array"
+                                                                },
+                                                                {
+                                                                    "type": "string"
+                                                                }
+                                                            ],
+                                                            "description": "The value to assert. The value is optional and may not be required by the\nchainer assertion."
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "chainer"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "type": "string"
+                                                }
+                                            ],
+                                            "description": "The chainer assertion to wait for. This translates to a Cypress get().should(). \nSee https://docs.cypress.io/api/commands/should"
+                                        },
+                                        "selector": {
+                                            "$ref": "#/definitions/Selector",
+                                            "description": "The selector of the DOM element to wait for"
+                                        },
+                                        "timeout": {
+                                            "default": 4000,
+                                            "description": "The timeout in ms to wait for",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "selector"
+                                    ],
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "number"
+                                }
+                            ],
+                            "description": "A wait action waits for the given time in ms or for a given\nchainer assertion.",
+                            "examples": [
+                                1000,
+                                10000
+                            ]
+                        }
+                    },
+                    "type": "object"
                 }
             ]
         },
@@ -421,6 +497,82 @@
                                         "value"
                                     ],
                                     "type": "object"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        {
+                            "additionalProperties": false,
+                            "properties": {
+                                "wait": {
+                                    "anyOf": [
+                                        {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "assert": {
+                                                    "anyOf": [
+                                                        {
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "chainer": {
+                                                                    "description": "The chainer assertion to. Could be any valid Cypress chainer. The chainer is\nnot validated and may or may not have a value to assert.",
+                                                                    "examples": [
+                                                                        "have.length",
+                                                                        "eq",
+                                                                        "be.visible"
+                                                                    ],
+                                                                    "type": "string"
+                                                                },
+                                                                "value": {
+                                                                    "anyOf": [
+                                                                        {
+                                                                            "items": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "type": "array"
+                                                                        },
+                                                                        {
+                                                                            "type": "string"
+                                                                        }
+                                                                    ],
+                                                                    "description": "The value to assert. The value is optional and may not be required by the\nchainer assertion."
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "chainer"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        {
+                                                            "type": "string"
+                                                        }
+                                                    ],
+                                                    "description": "The chainer assertion to wait for. This translates to a Cypress get().should(). \nSee https://docs.cypress.io/api/commands/should"
+                                                },
+                                                "selector": {
+                                                    "$ref": "#/definitions/Selector",
+                                                    "description": "The selector of the DOM element to wait for"
+                                                },
+                                                "timeout": {
+                                                    "default": 4000,
+                                                    "description": "The timeout in ms to wait for",
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "selector"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        {
+                                            "type": "number"
+                                        }
+                                    ],
+                                    "description": "A wait action waits for the given time in ms or for a given\nchainer assertion.",
+                                    "examples": [
+                                        1000,
+                                        10000
+                                    ]
                                 }
                             },
                             "type": "object"

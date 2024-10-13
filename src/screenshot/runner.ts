@@ -244,7 +244,33 @@ export class C8yScreenshotRunner {
 
   protected wait(action: WaitAction) {
     if (action.wait == null) return;
-    cy.wait(action.wait);
+    if (_.isNumber(action.wait)) {
+      cy.wait(action.wait);
+    } else if (_.isObjectLike(action.wait)) {
+      const selector = getSelector(action.wait.selector);
+      if (selector != null) {
+        const timeout = action.wait.timeout ?? 4000;
+        const chainer = action.wait.assert;
+        if (chainer != null) {
+          if (_.isString(chainer)) {
+            cy.get(selector, { timeout }).should(chainer);
+          } else if (chainer.value == null) {
+            cy.get(selector, { timeout }).should(chainer.chainer);
+          } else if (_.isArray(chainer.value)) {
+            cy.get(selector, { timeout }).should(
+              chainer.chainer,
+              ...chainer.value
+            );
+          } else {
+            cy.get(selector, {
+              timeout,
+            }).should(chainer.chainer, chainer.value);
+          }
+        } else {
+          cy.get(selector, { timeout });
+        }
+      }
+    }
   }
 
   protected screenshot(
