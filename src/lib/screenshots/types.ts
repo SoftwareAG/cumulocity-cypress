@@ -138,6 +138,35 @@ type ScreenshotSettings = {
    * and CSS animations from running while the screenshot is taken.
    */
   disableTimersAndAnimations?: boolean;
+  /**
+   * The timeouts supported by Cypress.
+   */
+  timeouts?: {
+    /**
+     * The time, in milliseconds, to wait until most DOM based commands are 
+     * considered timed out.
+     * @examples [10000]
+     * @default 4000
+     * @TJS-type integer
+     */
+    default?: number;
+    /**
+     * The time, in milliseconds, to wait for the page to load. This is used
+     * for visit actions.
+     * @examples [30000]
+     * @default 60000
+     * @TJS-type integer
+     */
+    pageLoad?: number;
+    /**
+     * The time, in milliseconds, to wait for a response from a network request.
+     * Also applies to screenshot action.
+     * @examples [60000]
+     * @default 30000
+     * @TJS-type integer
+     */
+    screenshot?: number;
+  }
 };
 
 export type Visit = GlobalVisitOptions & {

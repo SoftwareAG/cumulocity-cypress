@@ -638,6 +638,37 @@
                             "description": "Whether to scale the app to fit into the browser viewport.",
                             "type": "boolean"
                         },
+                        "timeouts": {
+                            "additionalProperties": false,
+                            "description": "The timeouts supported by Cypress.",
+                            "properties": {
+                                "default": {
+                                    "default": 4000,
+                                    "description": "The time, in milliseconds, to wait until most DOM based commands are \nconsidered timed out.",
+                                    "examples": [
+                                        10000
+                                    ],
+                                    "type": "integer"
+                                },
+                                "pageLoad": {
+                                    "default": 60000,
+                                    "description": "The time, in milliseconds, to wait for the page to load. This is used\nfor visit actions.",
+                                    "examples": [
+                                        30000
+                                    ],
+                                    "type": "integer"
+                                },
+                                "screenshot": {
+                                    "default": 30000,
+                                    "description": "The time, in milliseconds, to wait for a response from a network request.\nAlso applies to screenshot action.",
+                                    "examples": [
+                                        60000
+                                    ],
+                                    "type": "integer"
+                                }
+                            },
+                            "type": "object"
+                        },
                         "viewportHeight": {
                             "default": 1080,
                             "description": "The height in px to use for the browser window",
@@ -832,6 +863,37 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "timeouts": {
+                    "additionalProperties": false,
+                    "description": "The timeouts supported by Cypress.",
+                    "properties": {
+                        "default": {
+                            "default": 4000,
+                            "description": "The time, in milliseconds, to wait until most DOM based commands are \nconsidered timed out.",
+                            "examples": [
+                                10000
+                            ],
+                            "type": "integer"
+                        },
+                        "pageLoad": {
+                            "default": 60000,
+                            "description": "The time, in milliseconds, to wait for the page to load. This is used\nfor visit actions.",
+                            "examples": [
+                                30000
+                            ],
+                            "type": "integer"
+                        },
+                        "screenshot": {
+                            "default": 30000,
+                            "description": "The time, in milliseconds, to wait for a response from a network request.\nAlso applies to screenshot action.",
+                            "examples": [
+                                60000
+                            ],
+                            "type": "integer"
+                        }
+                    },
+                    "type": "object"
                 },
                 "user": {
                     "description": "The login user alias. Configure *user*_username and *user*_password env\nvariables to set the actual user id and password.",

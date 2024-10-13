@@ -186,6 +186,19 @@ export function configureC8yScreenshotPlugin(
     );
   }
 
+  if (configData.global?.timeouts?.default) {
+    config.defaultCommandTimeout = configData.global.timeouts.default;
+    log(`Setting default command timeout to ${config.defaultCommandTimeout}`);
+  }
+  if (configData.global?.timeouts?.pageLoad) {
+    config.pageLoadTimeout = configData.global.timeouts.pageLoad;
+    log(`Setting page load timeout to ${config.pageLoadTimeout}`);
+  }
+  if (configData.global?.timeouts?.screenshot) {
+    config.responseTimeout = configData.global.timeouts.screenshot;
+    log(`Setting screenshot timeout to ${config.responseTimeout}`);
+  }
+
   const ajv = new C8yAjvSchemaMatcher();
   ajv.match(configData, schema, true);
   log(
@@ -213,20 +226,20 @@ export function configureC8yScreenshotPlugin(
       launchOptions.args.push(
         `--window-size=${viewportWidth},${viewportHeight}`
       );
-      log(`Set chrome launch options: ${launchOptions.args.slice(-1)}`);
+      log(`Setting chrome launch options: ${launchOptions.args.slice(-1)}`);
     }
     if (browser.name === "electron") {
       launchOptions.preferences.width = viewportWidth;
       launchOptions.preferences.height = viewportHeight;
       launchOptions.preferences.resizable = false;
       log(
-        `Set electron perferences width=${viewportWidth}, height=${viewportHeight}`
+        `Setting electron perferences width=${viewportWidth}, height=${viewportHeight}`
       );
     }
     if (browser.name === "firefox") {
       launchOptions.args.push(`--width=${viewportWidth}`);
       launchOptions.args.push(`--height=${viewportHeight}`);
-      log(`Set firefox launch options: ${launchOptions.args.slice(-2)}`);
+      log(`Setting firefox launch options: ${launchOptions.args.slice(-2)}`);
     }
     const launchArgs = config.env._c8yscrnBrowserLaunchArgs
     if (launchArgs != null && launchArgs !== "") {
