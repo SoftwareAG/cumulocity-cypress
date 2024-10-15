@@ -70,6 +70,7 @@ export class C8yScreenshotRunner {
       ),
       {
         overwrite: true,
+        scale: false,
         disableTimersAndAnimations: true,
       }
     );
@@ -162,7 +163,7 @@ export class C8yScreenshotRunner {
               visitTimeout
             );
 
-            let actions = item.do == null ? [] : item.do;
+            let actions = item.actions == null ? [] : item.actions;
             actions = _.isArray(actions) ? actions : [actions];
             actions.forEach((action) => {
               const handler = this.actionHandlers[Object.keys(action)[0]];

@@ -80,7 +80,7 @@ export type Screenshot = GlobalVisitOptions &
      * not a screenshot action, a screenshot is taken of the current state of
      * the application.
      */
-    do?: Action[] | Action;
+    actions?: Action[] | Action;
     /**
      * Run only this screenshot workflow and all other workflows that
      * have only setting enabled
