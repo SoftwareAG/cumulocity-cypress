@@ -14,7 +14,7 @@ describe("startup", () => {
   describe("createInitConfig", () => {
     it("should be valid yaml", () => {
       expect(() => {
-        const data = yaml.parse(createInitConfig());
+        const data = yaml.parse(createInitConfig("http://localhost:8080"));
         expect(data).not.toBeNull();
         ajv.match(data, schema, true);
       }).not.toThrow();
