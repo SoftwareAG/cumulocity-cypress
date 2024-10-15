@@ -428,24 +428,24 @@ function run(
           );
         };
 
-        const preprocessedResponse = async (promise: Promise<any>) => {
-          let result;
+        const preprocessedResponse = async (promise: Promise<any>): Promise<Cypress.Response<any> | undefined> => {
+          let result: any;
           try {
             result = await promise;
           } catch (error) {
             result = error;
           }
-          result = toCypressResponse(result);
-          if (result) {
-            result.$body = options.schema;
+          const cypressResponse = toCypressResponse(result);
+          if (cypressResponse) {
+            cypressResponse.$body = options.schema;
             if (savePact) {
-              await Cypress.c8ypact.savePact(result, client);
+              await Cypress.c8ypact.savePact(cypressResponse, client);
             }
-            if (isErrorResponse(result)) {
-              throw result;
+            if (isErrorResponse(cypressResponse)) {
+              throw cypressResponse;
             }
           }
-          return result;
+          return cypressResponse;
         };
 
         const resultPromise = clientFn(safeClient, prevSubject);
@@ -456,7 +456,7 @@ function run(
 
         if (_.isArray(resultPromise)) {
           let toReject = false;
-          const result = [];
+          const result: any[] = [];
           for (const task of resultPromise) {
             try {
               result.push(await preprocessedResponse(task));
