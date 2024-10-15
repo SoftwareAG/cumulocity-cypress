@@ -13,7 +13,7 @@
     "jest:run": "jest --config jest.config.js",
     "clean": "rimraf dist/ && rimraf packages/pactrunner/dist/ && rimraf packages/pactrunner/.yalc && rimraf packages/pactrunner/yalc.lock",
     "copy-files": "copyfiles --up 1 -V './src/lib/**/*.js' './src/lib/**/*.d.ts' dist/ && copyfiles '*.md' package.json dist/",
-    "build": "npm run clean && npm run copy-files && tsc -b -v src/ && npm run build:plugin",
+    "build": "npm run clean && npm run screenshot:schema && npm run copy-files && tsc -b -v src/ && npm run build:plugin",
     "build:plugin": "rollup -c rollup.config.mjs",
     "package": "npm run build && npm run clean:package:folder && cd dist/ && npm run clean:package:json",
     "yalc:runner": "npm run yalc:publish && cd packages/pactrunner && yalc add cumulocity-cypress",
@@ -22,7 +22,8 @@
     "clean:package:json": "npm pkg delete 'devDependencies' && npm pkg delete 'scripts'",
     "lint": "eslint ./",
     "release": "semantic-release",
-    "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git"
+    "release:test": "semantic-release --debug --dry-run --no-ci --repositoryUrl git@github.com:SoftwareAG/cumulocity-cypress.git",
+    "screenshot:schema": "npx typescript-json-schema --required --noExtraProps --excludePrivate -o src/screenshot/schema.json src/tsconfig.schematypes.json ScreenshotSetup"
   },
   "repository": {
     "type": "git",
@@ -42,6 +43,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "bin": {
+    "c8yscrn": "./screenshot/startup.js"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -80,14 +84,18 @@
     }
   },
   "dependencies": {
+    "@cypress/grep": "^4.1.0",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "cookie-parser": "^1.4.6",
     "date-fns": "^2.30.0",
+    "dotenv": "^16.4.5",
     "lodash": "^4.17.21",
     "quicktype": "^23.0.81",
     "semver": "^7.5.2",
-    "set-cookie-parser": "^2.6.0"
+    "set-cookie-parser": "^2.6.0",
+    "yaml": "^2.5.1",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@rollup/plugin-json": "^6.1.0",
@@ -120,12 +128,14 @@
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-dts": "^6.1.0",
     "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-shebang-bin": "^0.0.7",
     "semantic-release": "^24.0.0",
     "semver": "^7.6.3",
     "start-server-and-test": "^2.0.0",
     "ts-jest": "^29.1.2",
     "tsx": "^4.16.5",
     "typescript": "^5.0.2",
+    "typescript-json-schema": "^0.65.1",
     "yalc": "^1.0.0-pre.53"
   },
   "peerDependencies": {

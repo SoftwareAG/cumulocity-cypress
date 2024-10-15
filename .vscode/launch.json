@@ -5,13 +5,16 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Pact Provider",
-      "runtimeArgs": ["-r", "ts-node/register"],
-      "program": "${workspaceFolder}/packages/pactprovider/src/httpprovider.ts",
-      "outFiles": ["${workspaceFolder}/packages/pactprovider/**/*.js"],
-      "sourceMaps": true,
-      "envFile": "${workspaceFolder}/packages/pactprovider/.env",
-      "console": "integratedTerminal"
+      "name": "Screenshot",
+      "program": "${workspaceFolder}/src/screenshot/startup.ts",
+      "args": ["--config", "/Users/twi/Projects/cumulocity-screenshots/c8yscreenshot.config.yml"],
+      "internalConsoleOptions": "neverOpen",
+      "console": "integratedTerminal",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ]
     },
     {
       "name": "Cypress Chrome",
