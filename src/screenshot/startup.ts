@@ -4,6 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 
 import yargs from "yargs/yargs";
+import { Argv } from "yargs";
 import { hideBin } from "yargs/helpers";
 import { config as dotenv } from "dotenv";
 
@@ -27,10 +28,13 @@ const log = debug("c8y:c8yscrn:startup");
       );
     }
 
+    const baseUrl =
+      args.baseUrl ?? process.env.C8Y_BASEURL ?? "http://localhost:8080";
+
     const yamlFile = path.resolve(process.cwd(), args.config);
     if (args.init === true) {
       if (!fs.existsSync(yamlFile)) {
-        fs.writeFileSync(yamlFile, createInitConfig(), "utf8");
+        fs.writeFileSync(yamlFile, createInitConfig(baseUrl), "utf8");
         log(`Config file ${yamlFile} created.`);
         return;
       } else {
@@ -71,8 +75,6 @@ const log = debug("c8y:c8yscrn:startup");
     if (!fileExtension || !["js", "ts", "mjs", "cjs"].includes(fileExtension)) {
       fileExtension = "js";
     }
-    const baseUrl =
-      args.baseUrl ?? process.env.C8Y_BASEURL ?? "http://localhost:8080";
     log(`Using baseUrl ${baseUrl}`);
     const screenshotsFolder = path.resolve(
       process.cwd(),
@@ -86,7 +88,9 @@ const log = debug("c8y:c8yscrn:startup");
     );
     log(`Using cypress config file ${cypressConfigFile}`);
 
-    const browser = (args.browser ?? "chrome").toLowerCase().trim();
+    const browser = (args.browser ?? process.env.C8Y_BROWSER ?? "chrome")
+      .toLowerCase()
+      .trim();
     log(`Using browser ${args.browser}`);
     if (!["chrome", "firefox", "electron"].includes(browser)) {
       throw new Error(
@@ -143,25 +147,58 @@ export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
   const result = yargs(hideBin(process.argv))
     .usage("Usage: $0 [options]")
     .scriptName("c8yscrn")
+    .command("run", "Run workflows in headless mode", (yargs) => {
+      return runOptions(sharedOptions(yargs));
+    })
+    .command("open", "Run workflows in Cypress open mode", (yargs) => {
+      return runOptions(sharedOptions(yargs)).options("open", {
+        type: "boolean",
+        default: true,
+        hidden: true,
+      });
+    })
+    .command("init", "Initialize and create a new config file", (yargs) => {
+      return sharedOptions(yargs).options("init", {
+        type: "boolean",
+        default: true,
+        hidden: true,
+      });
+    })
+    .help()
+    .wrap(100)
+    .parseSync();
+
+  const filteredResult = Object.fromEntries(
+    Object.entries(result).filter(([, value]) => value !== undefined)
+  );
+
+  return filteredResult;
+}
+
+function sharedOptions(yargs: Argv) {
+  return yargs
     .option("config", {
       alias: "c",
       type: "string",
       requiresArg: true,
       description: "The yaml config file",
-      required: true,
       default: "c8yscrn.config.yaml",
-    })
-    .option("folder", {
-      alias: "f",
-      type: "string",
-      requiresArg: true,
-      description: "The target folder for the screenshots",
     })
     .option("baseUrl", {
       alias: "u",
       type: "string",
       requiresArg: true,
       description: "The Cumulocity base url",
+    });
+}
+
+function runOptions(yargs: Argv) {
+  return yargs
+    .option("folder", {
+      alias: "f",
+      type: "string",
+      requiresArg: true,
+      description: "The target folder for the screenshots",
     })
     .option("browser", {
       alias: "b",
@@ -170,24 +207,11 @@ export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
       default: "chrome",
       description: "Browser to use",
     })
-    .option("open", {
-      type: "boolean",
-      requiresArg: false,
-      default: false,
-      hidden: true,
-    })
     .option("quiet", {
       type: "boolean",
       default: true,
       requiresArg: false,
       hidden: true,
-    })
-    .option("init", {
-      alias: "i",
-      type: "boolean",
-      requiresArg: false,
-      default: false,
-      description: "Initialize the config file",
     })
     .option("tags", {
       alias: "t",
@@ -204,14 +228,5 @@ export function getConfigFromArgs(): Partial<C8yScreenshotOptions> {
         });
         return result;
       },
-    })
-    .help()
-    .wrap(100)
-    .parseSync();
-
-  const filteredResult = Object.fromEntries(
-    Object.entries(result).filter(([, value]) => value !== undefined)
-  );
-
-  return filteredResult;
+    });
 }

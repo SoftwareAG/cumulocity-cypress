@@ -47,7 +47,7 @@ screenshots:
             data-cy: right-drawer-toggle-button
 ```
 
-The example workflow creates a single screenshot. For the screenshot it first visits a specific URL in the Cumulocity application, types text into a search field, highlights two elements on the page, and clicks a button. At the end of the workflow, `c8yscrn` automatically captures a screenshot of the page and stores it in the location defined by the root image property.
+The example workflow creates a single screenshot. For the screenshot it first visits a specific URL in the Cumulocity "example" application, types text into a search field, highlights two elements on the page, and clicks a button. At the end of the workflow, `c8yscrn` automatically captures a screenshot of the page and stores it in the location defined by the root image property.
 
 Contents of this document:
 - [Installation and Usage](#installation-and-usage)
@@ -80,43 +80,68 @@ The screenshot automation provided by `cumulocity-cypress` can be used standalon
 ### For Standalone Users
 
 #### Installation
+
 Install `cumulocity-cypress` globally and run the `c8yscrn` command from the command line:
 
 ```bash
 npm install -g cumulocity-cypress
 
-c8yscrn --help
+npx c8yscrn init
+npx c8yscrn run --baseUrl http://localhost:8080
 ```
 
 By default, it will look for a configuration file named `c8yscrn.config.yaml` in the current directory.
 
 #### Command Line Options
 
-`c8yscrn` supports the following command-line options:
+`c8yscrn` supports the following commands:
 
 ```
 Usage: c8yscrn [options]
 
+Commands:
+  c8yscrn run   Run workflows in headless mode
+  c8yscrn open  Run workflows in Cypress open mode
+  c8yscrn init  Initialize and create a new config file
+
 Options:
-      --version  Show version number                                                       [boolean]
-  -c, --config   The yaml config file           [string] [required] [default: "c8yscrn.config.yaml"]
+  --version  Show version number                                                           [boolean]
+  --help     Show help                                                                     [boolean]
+```
+
+To run the screenshot automation in headless mode, use the `run` command. The following options are supported:
+
+```
+c8yscrn run
+
+Run workflows in headless mode
+
+Options:
+  -c, --config   The yaml config file                      [string] [default: "c8yscrn.config.yaml"]
   -f, --folder   The target folder for the screenshots                                      [string]
   -u, --baseUrl  The Cumulocity base url                                                    [string]
   -b, --browser  Browser to use                                         [string] [default: "chrome"]
-  -i, --init     Initialize the config file                               [boolean] [default: false]
   -t, --tags     Run only screenshot workflows with the given tags                           [array]
-      --help     Show help                                                                 [boolean]
 ```
 
-To get started, run the `init` command to create a new configuration file:
+When using `open` instead of `run`, the Cypress test runner will open in Cypress open mode. This can be useful for debugging and developing new screenshot workflows.
+
+To get started, run the `init` command to create a new configuration file. This is important to create the config file including the correct location of the schema used for code completion and validation in VSC.
 
 ```bash
-# Use the default configuration file name
-c8yscrn --init
-# Specify a custom configuration file name
-c8yscrn --init --config my-screenshot-config.yaml
-# Specify the base URL of your Cumulocity instance and write it to the configuration file
-c8yscrn --init --config my-screenshot-config.yaml --baseUrl https://my-cumulocity-instance.com
+npx c8yscrn init
+```
+
+Init command supports the following options:
+
+```
+c8yscrn init
+
+Initialize and create a new config file
+
+Options:
+  -c, --config   The yaml config file                      [string] [default: "c8yscrn.config.yaml"]
+  -u, --baseUrl  The Cumulocity base url                                                    [string]
 ```
 
 ### Integrate in to existing Cypress Projects
@@ -201,6 +226,7 @@ The following environment variables are supported:
 - `C8Y_TENANT`: The tenant id used for authentication. Will be determined from the base URL if not provided.
 - `C8Y_USERNAME`: The username to use for authentication.
 - `C8Y_PASSWORD`: The password to use for authentication.
+- `C8Y_BROWSER`: The browser to use for running the screenshot workflows ("chrome", "firefox" or "electron").
 - `C8Y_SHELL_VERSION`: The version of the shell application to validate `requires` version dependencies.
 - `C8Y_SHELL_NAME`: The name of the shell application to use for determining the shell version (default is "cockpit").
 - `C8Y_BROWSER_LAUNCH_ARGS`: Additional arguments to pass to the browser when launching.
@@ -272,7 +298,7 @@ Tags are used to group and filter screenshot workflows. They can be defined glob
 Tags are useful for organizing and categorizing screenshots, e.g., by functionality, feature, or test type. When running the `c8yscrn` command, you can specify tags to filter which screenshots to run.
 
 ```bash
-c8yscrn --tags "dashboard, regression"
+npx c8yscrn --tags "dashboard, regression"
 ```
 
 ## Version Requirements

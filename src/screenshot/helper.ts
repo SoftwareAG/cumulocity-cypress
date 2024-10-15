@@ -7,14 +7,14 @@ export function readYamlFile(filePath: string): any {
   return data;
 }
 
-export function createInitConfig(): string {
+export function createInitConfig(baseUrl: string): string {
   return `
 # yaml-language-server: $schema=${__dirname}/schema.json
 
 # The title is used to describe the screenshot run
 title: "My screenshot automation"
 # The baseUrl is the Cumulocity base URL and can be overwritten by the command line argument
-baseUrl: "http://localhost:8080"
+baseUrl: "${baseUrl}"
 
 global:
   viewportWidth: 1920
