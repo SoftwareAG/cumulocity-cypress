@@ -74,6 +74,9 @@ Component testing
 
 See [Integration and API testing](./doc/API%20and%20Integration%20Testing.md) for more information.
 
+Screenshot automation
+See [Screenshot automation](./doc/Screenshot%20automation.md) for more information.
+
 ## Installation and setup
 
 Add dependency to your package.json and install via npm or yarn.
